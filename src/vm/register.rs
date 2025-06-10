@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use crate::immediate::Immediate;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Register {
     B0,
     W0,
@@ -13,6 +13,25 @@ pub enum Register {
     IP,
     SP,
     BP,
+}
+
+impl TryFrom<&str> for Register {
+    type Error = ();
+
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        match value {
+            "b0" => Ok(Register::B0),
+            "w0" => Ok(Register::W0),
+            "d0" => Ok(Register::D0),
+            "q0" => Ok(Register::Q0),
+            "ff0" => Ok(Register::FF0),
+            "dd0" => Ok(Register::DD0),
+            "ip" => Ok(Register::IP),
+            "sp" => Ok(Register::SP),
+            "bp" => Ok(Register::BP),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Debug)]

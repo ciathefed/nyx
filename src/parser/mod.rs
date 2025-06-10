@@ -1,0 +1,143 @@
+use anyhow::Result;
+
+use crate::{
+    lexer::{
+        Lexer,
+        token::{Token, TokenKind},
+    },
+    parser::ast::{Expression, Statement},
+    vm::register::Register,
+};
+
+pub mod ast;
+
+#[cfg(test)]
+mod tests;
+
+#[derive(thiserror::Error, Debug)]
+pub enum Erorr {
+    #[error("unexpected token: {0}")]
+    UnexpectedToken(Token),
+    #[error("expected {0}, got {1} instead")]
+    Expected(String, Token),
+}
+
+pub struct Parser<'a> {
+    lexer: Lexer<'a>,
+    cur_token: Token,
+    peek_token: Token,
+}
+
+impl<'a> Parser<'a> {
+    pub fn new(lexer: Lexer<'a>) -> Self {
+        let mut parser = Self {
+            lexer,
+            cur_token: Token::BLANK,
+            peek_token: Token::BLANK,
+        };
+        parser.next_token();
+        parser.next_token();
+        parser
+    }
+
+    pub fn parse(&mut self) -> Result<Vec<Statement>> {
+        let mut stmts = vec![];
+        while self.cur_token.kind != TokenKind::Eof {
+            stmts.push(self.parse_statement()?);
+        }
+        Ok(stmts)
+    }
+
+    fn parse_statement(&mut self) -> Result<Statement> {
+        match self.cur_token.kind {
+            TokenKind::Identifier => {
+                if self.peek_token_is(TokenKind::Colon) {
+                    let ident = self.cur_token.literal.clone();
+                    self.next_token();
+                    self.next_token();
+                    Ok(Statement::Label(ident))
+                } else {
+                    Err(Erorr::UnexpectedToken(self.cur_token.clone()).into())
+                }
+            }
+            TokenKind::KwHlt => {
+                self.next_token();
+                Ok(Statement::Hlt)
+            }
+            TokenKind::KwMov => {
+                self.next_token();
+                let dest = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let src = self.parse_expression()?;
+                Ok(Statement::Mov(dest, src))
+            }
+            _ => todo!("parse_statement"),
+        }
+    }
+
+    fn parse_expression(&mut self) -> Result<Expression> {
+        match self.cur_token.kind {
+            TokenKind::Identifier => {
+                let ident = self.cur_token.literal.clone();
+                self.next_token();
+                Ok(Expression::Identifier(ident))
+            }
+            TokenKind::Register => {
+                let reg = match Register::try_from(self.cur_token.literal.as_str()) {
+                    Ok(v) => v,
+                    Err(_) => todo!(),
+                };
+                self.next_token();
+                Ok(Expression::Register(reg))
+            }
+            TokenKind::Integer => {
+                let int: i64 = match self.cur_token.literal.parse() {
+                    Ok(v) => v,
+                    Err(_) => todo!(),
+                };
+                self.next_token();
+                Ok(Expression::IntegerLiteral(int))
+            }
+            TokenKind::Float => {
+                let float: f64 = match self.cur_token.literal.parse() {
+                    Ok(v) => v,
+                    Err(_) => todo!(),
+                };
+                self.next_token();
+                Ok(Expression::FloatLiteral(float))
+            }
+            _ => todo!("parse_expression"),
+        }
+    }
+
+    fn next_token(&mut self) {
+        self.cur_token = self.peek_token.clone();
+        self.peek_token = self.lexer.next_token();
+    }
+
+    fn cur_token_is(&self, kind: TokenKind) -> bool {
+        self.cur_token.kind == kind
+    }
+
+    fn peek_token_is(&self, kind: TokenKind) -> bool {
+        self.peek_token.kind == kind
+    }
+
+    fn expect_cur(&mut self, kind: TokenKind) -> Result<()> {
+        if self.cur_token_is(kind) {
+            self.next_token();
+            Ok(())
+        } else {
+            Err(Erorr::UnexpectedToken(self.peek_token.clone()).into())
+        }
+    }
+
+    fn expect_peek(&mut self, kind: TokenKind) -> Result<()> {
+        if self.peek_token_is(kind) {
+            self.next_token();
+            Ok(())
+        } else {
+            Err(Erorr::UnexpectedToken(self.peek_token.clone()).into())
+        }
+    }
+}

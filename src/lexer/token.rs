@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 use lazy_static::lazy_static;
 
@@ -69,6 +69,30 @@ impl Token {
             kind,
             literal: literal.to_string(),
             loc,
+        }
+    }
+}
+
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.kind {
+            TokenKind::Eof => write!(f, "EOF"),
+            TokenKind::Illegal => write!(f, "{}", self.literal),
+            TokenKind::Identifier => write!(f, "{}", self.literal),
+            TokenKind::Register => write!(f, "{}", self.literal),
+            TokenKind::Integer => write!(f, "{}", self.literal),
+            TokenKind::Float => write!(f, "{}", self.literal),
+            TokenKind::String => write!(f, "\"{}\"", self.literal),
+            TokenKind::Colon => write!(f, "{}", self.literal),
+            TokenKind::Comma => write!(f, "{}", self.literal),
+            TokenKind::Plus => write!(f, "{}", self.literal),
+            TokenKind::Minus => write!(f, "{}", self.literal),
+            TokenKind::KwHlt => write!(f, "{}", self.literal),
+            TokenKind::KwMov => write!(f, "{}", self.literal),
+            TokenKind::KwLdr => write!(f, "{}", self.literal),
+            TokenKind::KwStr => write!(f, "{}", self.literal),
+            TokenKind::KwPush => write!(f, "{}", self.literal),
+            TokenKind::KwPop => write!(f, "{}", self.literal),
         }
     }
 }
