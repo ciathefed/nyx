@@ -105,16 +105,28 @@ impl<'a> Parser<'a> {
             }
             TokenKind::KwPush => {
                 self.next_token();
-                let size = self.parse_expression()?;
-                self.next_token();
+
+                let size = if self.cur_token.kind == TokenKind::DataSize {
+                    self.parse_expression()?
+                } else {
+                    Expression::DataSize(DataSize::QWord)
+                };
+
                 let src = self.parse_expression()?;
+
                 Ok(Statement::Push(size, src))
             }
             TokenKind::KwPop => {
                 self.next_token();
-                let size = self.parse_expression()?;
-                self.next_token();
+
+                let size = if self.cur_token.kind == TokenKind::DataSize {
+                    self.parse_expression()?
+                } else {
+                    Expression::DataSize(DataSize::QWord)
+                };
+
                 let dest = self.parse_expression()?;
+
                 Ok(Statement::Pop(size, dest))
             }
             TokenKind::KwHlt => {
