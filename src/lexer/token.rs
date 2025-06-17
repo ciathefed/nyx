@@ -7,12 +7,13 @@ use crate::span::Span;
 lazy_static! {
     static ref KEYWORDS: HashMap<&'static str, TokenKind> = HashMap::from([
         // Keywords
-        ("hlt", TokenKind::KwHlt),
+        ("nop", TokenKind::KwNop),
         ("mov", TokenKind::KwMov),
         ("ldr", TokenKind::KwLdr),
         ("str", TokenKind::KwStr),
         ("push", TokenKind::KwPush),
         ("pop", TokenKind::KwPop),
+        ("hlt", TokenKind::KwHlt),
         // Registers
         ("b0", TokenKind::Register),
         ("w0", TokenKind::Register),
@@ -23,6 +24,13 @@ lazy_static! {
         ("ip", TokenKind::Register),
         ("sp", TokenKind::Register),
         ("bp", TokenKind::Register),
+        // Data Sizes
+        ("byte", TokenKind::DataSize),
+        ("word", TokenKind::DataSize),
+        ("dword", TokenKind::DataSize),
+        ("qword", TokenKind::DataSize),
+        ("float", TokenKind::DataSize),
+        ("double", TokenKind::DataSize),
     ]);
 }
 
@@ -36,18 +44,20 @@ pub enum TokenKind {
     Integer,
     Float,
     String,
+    DataSize,
 
     Colon,
     Comma,
     Plus,
     Minus,
 
-    KwHlt,
+    KwNop,
     KwMov,
     KwLdr,
     KwStr,
     KwPush,
     KwPop,
+    KwHlt,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -83,16 +93,18 @@ impl fmt::Display for Token {
             TokenKind::Integer => write!(f, "{}", self.literal),
             TokenKind::Float => write!(f, "{}", self.literal),
             TokenKind::String => write!(f, "\"{}\"", self.literal),
+            TokenKind::DataSize => write!(f, "{}", self.literal),
             TokenKind::Colon => write!(f, "{}", self.literal),
             TokenKind::Comma => write!(f, "{}", self.literal),
             TokenKind::Plus => write!(f, "{}", self.literal),
             TokenKind::Minus => write!(f, "{}", self.literal),
-            TokenKind::KwHlt => write!(f, "{}", self.literal),
+            TokenKind::KwNop => write!(f, "{}", self.literal),
             TokenKind::KwMov => write!(f, "{}", self.literal),
             TokenKind::KwLdr => write!(f, "{}", self.literal),
             TokenKind::KwStr => write!(f, "{}", self.literal),
             TokenKind::KwPush => write!(f, "{}", self.literal),
             TokenKind::KwPop => write!(f, "{}", self.literal),
+            TokenKind::KwHlt => write!(f, "{}", self.literal),
         }
     }
 }

@@ -1,6 +1,8 @@
 use anyhow::Result;
 
-#[derive(Clone, Copy, Debug)]
+use crate::vm::register::Register;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum DataSize {
     Byte,
     Word,
@@ -8,6 +10,38 @@ pub enum DataSize {
     QWord,
     Float,
     Double,
+}
+
+impl From<Register> for DataSize {
+    fn from(value: Register) -> Self {
+        match value {
+            Register::B0 => Self::Byte,
+            Register::W0 => Self::Word,
+            Register::D0 => Self::DWord,
+            Register::Q0 => Self::QWord,
+            Register::FF0 => Self::Float,
+            Register::DD0 => Self::Double,
+            Register::IP => Self::QWord,
+            Register::SP => Self::QWord,
+            Register::BP => Self::QWord,
+        }
+    }
+}
+
+impl TryFrom<&str> for DataSize {
+    type Error = ();
+
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        match value.to_lowercase().as_str() {
+            "byte" => Ok(Self::Byte),
+            "word" => Ok(Self::Word),
+            "dword" => Ok(Self::DWord),
+            "qword" => Ok(Self::QWord),
+            "float" => Ok(Self::Float),
+            "double" => Ok(Self::Double),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

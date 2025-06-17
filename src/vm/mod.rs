@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 use crate::{
-    instruction::Instruction,
+    parser::ast::Instruction,
     vm::{memory::Memory, register::Registers, stack::Stack},
 };
 
@@ -60,11 +60,11 @@ impl VM {
             Instruction::MovRegImm(dst, imm) => {
                 self.regs.set(*dst, *imm)?;
             }
-            Instruction::Ldr(dst, addr, size) => {
+            Instruction::Ldr(size, dst, addr) => {
                 let value = self.mem.read(*addr, *size)?;
                 self.regs.set(*dst, value)?;
             }
-            Instruction::Str(addr, src, size) => {
+            Instruction::Str(size, src, addr) => {
                 let value = self.regs.get(*src);
                 self.mem.write(*addr, value, *size)?;
             }

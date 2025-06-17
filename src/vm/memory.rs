@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 use crate::{
-    immediate::{DataSize, Immediate},
+    parser::ast::{DataSize, Immediate},
     vm::Error,
 };
 

@@ -1,7 +1,6 @@
 use anyhow::Result;
 
-mod immediate;
-mod instruction;
+mod compiler;
 mod lexer;
 mod parser;
 mod span;

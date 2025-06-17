@@ -5,11 +5,13 @@ use crate::{
         Lexer,
         token::{Token, TokenKind},
     },
-    parser::ast::{Expression, Statement},
+    parser::ast::{DataSize, Expression, Statement},
     vm::register::Register,
 };
 
 pub mod ast;
+mod immediate;
+mod instruction;
 
 #[cfg(test)]
 mod tests;
@@ -60,9 +62,9 @@ impl<'a> Parser<'a> {
                     Err(Erorr::UnexpectedToken(self.cur_token.clone()).into())
                 }
             }
-            TokenKind::KwHlt => {
+            TokenKind::KwNop => {
                 self.next_token();
-                Ok(Statement::Hlt)
+                Ok(Statement::Nop)
             }
             TokenKind::KwMov => {
                 self.next_token();
@@ -71,7 +73,29 @@ impl<'a> Parser<'a> {
                 let src = self.parse_expression()?;
                 Ok(Statement::Mov(dest, src))
             }
-            _ => todo!("parse_statement"),
+            TokenKind::KwLdr => {
+                self.next_token();
+                let size = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let dest = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let src = self.parse_expression()?;
+                Ok(Statement::Ldr(size, dest, src))
+            }
+            TokenKind::KwStr => {
+                self.next_token();
+                let size = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let src = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let dest = self.parse_expression()?;
+                Ok(Statement::Ldr(size, src, dest))
+            }
+            TokenKind::KwHlt => {
+                self.next_token();
+                Ok(Statement::Hlt)
+            }
+            _ => return Err(Erorr::UnexpectedToken(self.cur_token.clone()).into()),
         }
     }
 
@@ -105,6 +129,19 @@ impl<'a> Parser<'a> {
                 };
                 self.next_token();
                 Ok(Expression::FloatLiteral(float))
+            }
+            TokenKind::String => {
+                let string = self.cur_token.literal.clone();
+                self.next_token();
+                Ok(Expression::StringLiteral(string))
+            }
+            TokenKind::DataSize => {
+                let token = self.cur_token.clone();
+                self.next_token();
+                match DataSize::try_from(token.literal.as_str()) {
+                    Ok(size) => Ok(Expression::DataSize(size)),
+                    Err(_) => Err(Erorr::UnexpectedToken(token).into()),
+                }
             }
             _ => todo!("parse_expression"),
         }

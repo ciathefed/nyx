@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::{immediate::Immediate, vm::Error};
+use crate::{parser::ast::Immediate, vm::Error};
 
 #[derive(Debug)]
 pub struct Stack {

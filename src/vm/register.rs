@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::immediate::Immediate;
+use crate::parser::ast::Immediate;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Register {
@@ -13,6 +13,12 @@ pub enum Register {
     IP,
     SP,
     BP,
+}
+
+impl Into<u8> for Register {
+    fn into(self) -> u8 {
+        self as u8
+    }
 }
 
 impl TryFrom<&str> for Register {
@@ -29,6 +35,25 @@ impl TryFrom<&str> for Register {
             "ip" => Ok(Register::IP),
             "sp" => Ok(Register::SP),
             "bp" => Ok(Register::BP),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<u8> for Register {
+    type Error = ();
+
+    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
+        match value {
+            0x00 => Ok(Register::B0),
+            0x01 => Ok(Register::W0),
+            0x02 => Ok(Register::D0),
+            0x03 => Ok(Register::Q0),
+            0x04 => Ok(Register::FF0),
+            0x05 => Ok(Register::DD0),
+            0x06 => Ok(Register::IP),
+            0x07 => Ok(Register::SP),
+            0x08 => Ok(Register::BP),
             _ => Err(()),
         }
     }
