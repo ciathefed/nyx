@@ -50,6 +50,8 @@ pub enum TokenKind {
     Comma,
     Plus,
     Minus,
+    LBracket,
+    RBracket,
 
     KwNop,
     KwMov,
@@ -74,11 +76,11 @@ impl Token {
         loc: Span { start: 0, end: 0 },
     };
 
-    pub fn new<T: ToString>(kind: TokenKind, literal: T, loc: Span) -> Self {
+    pub fn new<T: ToString, L: Into<Span>>(kind: TokenKind, literal: T, loc: L) -> Self {
         Token {
             kind,
             literal: literal.to_string(),
-            loc,
+            loc: loc.into(),
         }
     }
 }
@@ -98,6 +100,8 @@ impl fmt::Display for Token {
             TokenKind::Comma => write!(f, "{}", self.literal),
             TokenKind::Plus => write!(f, "{}", self.literal),
             TokenKind::Minus => write!(f, "{}", self.literal),
+            TokenKind::LBracket => write!(f, "{}", self.literal),
+            TokenKind::RBracket => write!(f, "{}", self.literal),
             TokenKind::KwNop => write!(f, "{}", self.literal),
             TokenKind::KwMov => write!(f, "{}", self.literal),
             TokenKind::KwLdr => write!(f, "{}", self.literal),

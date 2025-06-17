@@ -30,12 +30,14 @@ impl<'a> Lexer<'a> {
         let start = self.pos;
 
         let token = match self.ch {
-            ',' => Token::new(TokenKind::Comma, self.ch, (start, self.read_pos).into()),
-            ':' => Token::new(TokenKind::Colon, self.ch, (start, self.read_pos).into()),
-            '+' => Token::new(TokenKind::Plus, self.ch, (start, self.read_pos).into()),
-            '-' => Token::new(TokenKind::Minus, self.ch, (start, self.read_pos).into()),
+            ',' => Token::new(TokenKind::Comma, self.ch, (start, self.read_pos)),
+            ':' => Token::new(TokenKind::Colon, self.ch, (start, self.read_pos)),
+            '+' => Token::new(TokenKind::Plus, self.ch, (start, self.read_pos)),
+            '-' => Token::new(TokenKind::Minus, self.ch, (start, self.read_pos)),
+            '[' => Token::new(TokenKind::LBracket, self.ch, (start, self.read_pos)),
+            ']' => Token::new(TokenKind::RBracket, self.ch, (start, self.read_pos)),
             '"' => self.read_string(),
-            '\0' => Token::new(TokenKind::Eof, "", (start, self.read_pos).into()),
+            '\0' => Token::new(TokenKind::Eof, "", (start, self.read_pos)),
             _ => {
                 if self.ch.is_digit(10) {
                     return self.read_number();
@@ -45,7 +47,7 @@ impl<'a> Lexer<'a> {
                     return self.read_identifier();
                 }
 
-                Token::new(TokenKind::Illegal, self.ch, (start, self.read_pos).into())
+                Token::new(TokenKind::Illegal, self.ch, (start, self.read_pos))
             }
         };
 
@@ -73,10 +75,10 @@ impl<'a> Lexer<'a> {
             }
 
             let literal = &self.input[start..self.pos];
-            Token::new(TokenKind::Float, literal, (start, self.pos).into())
+            Token::new(TokenKind::Float, literal, (start, self.pos))
         } else {
             let literal = &self.input[start..self.pos];
-            Token::new(TokenKind::Integer, literal, (start, self.pos).into())
+            Token::new(TokenKind::Integer, literal, (start, self.pos))
         }
     }
 
@@ -89,7 +91,7 @@ impl<'a> Lexer<'a> {
         let literal = &self.input[start..self.pos];
         let kind = lookup_ident(literal);
 
-        Token::new(kind, literal, (start, self.pos).into())
+        Token::new(kind, literal, (start, self.pos))
     }
 
     fn read_string(&mut self) -> Token {
@@ -105,7 +107,7 @@ impl<'a> Lexer<'a> {
         return Token::new(
             TokenKind::String,
             &self.input[start..self.pos],
-            (start - 1, self.pos + 1).into(),
+            (start - 1, self.pos + 1),
         );
     }
 
