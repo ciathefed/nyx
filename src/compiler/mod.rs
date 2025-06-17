@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt};
+use std::collections::HashMap;
 
 use anyhow::Result;
 
@@ -59,10 +59,10 @@ impl Compiler {
                 }
                 Statement::Nop => self.bytecode.push(Opcode::Nop),
                 Statement::Mov(lhs, rhs) => self.compile_mov(lhs, rhs)?,
-                Statement::Ldr(size, lhs, rhs) => self.compile_ldr(size, lhs, rhs)?,
-                Statement::Str(size, lhs, rhs) => self.compile_str(size, lhs, rhs)?,
-                Statement::Push(size, expr) => self.compile_push(size, expr)?,
-                Statement::Pop(size, expr) => self.compile_pop(size, expr)?,
+                Statement::Ldr(ds, lhs, rhs) => self.compile_ldr(ds, lhs, rhs)?,
+                Statement::Str(ds, lhs, rhs) => self.compile_str(ds, lhs, rhs)?,
+                Statement::Push(ds, expr) => self.compile_push(ds, expr)?,
+                Statement::Pop(ds, expr) => self.compile_pop(ds, expr)?,
                 Statement::Hlt => self.bytecode.push(Opcode::Hlt),
             }
         }
@@ -138,27 +138,23 @@ impl Compiler {
         Ok(())
     }
 
-    fn compile_ldr(&mut self, size: Expression, lhs: Expression, rhs: Expression) -> Result<()> {
+    fn compile_ldr(&mut self, ds: Expression, lhs: Expression, rhs: Expression) -> Result<()> {
         const INST: &str = "LDR";
-        // Implementation would follow same pattern as compile_mov
-        todo!()
+        todo!("compile_ldr")
     }
 
-    fn compile_str(&mut self, size: Expression, lhs: Expression, rhs: Expression) -> Result<()> {
+    fn compile_str(&mut self, ds: Expression, lhs: Expression, rhs: Expression) -> Result<()> {
         const INST: &str = "STR";
-        // Implementation would follow same pattern as compile_mov
-        todo!()
+        todo!("compile_str")
     }
 
-    fn compile_push(&mut self, size: Expression, expr: Expression) -> Result<()> {
+    fn compile_push(&mut self, ds: Expression, expr: Expression) -> Result<()> {
         const INST: &str = "PUSH";
-        // Implementation would follow same pattern as compile_mov
-        todo!()
+        todo!("compile_push")
     }
 
-    fn compile_pop(&mut self, size: Expression, expr: Expression) -> Result<()> {
+    fn compile_pop(&mut self, ds: Expression, expr: Expression) -> Result<()> {
         const INST: &str = "POP";
-        // Implementation would follow same pattern as compile_mov
-        todo!()
+        todo!("compile_pop")
     }
 }

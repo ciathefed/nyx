@@ -24,17 +24,5 @@ pub enum Expression {
     FloatLiteral(f64),
     StringLiteral(String),
     DataSize(DataSize),
-}
-
-impl fmt::Display for Expression {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Expression::Identifier(_) => todo!(),
-            Expression::Register(_) => todo!(),
-            Expression::IntegerLiteral(_) => todo!(),
-            Expression::FloatLiteral(_) => todo!(),
-            Expression::StringLiteral(_) => todo!(),
-            Expression::DataSize(_) => todo!(),
-        }
-    }
+    Address(Box<Expression>, Option<Box<Expression>>),
 }

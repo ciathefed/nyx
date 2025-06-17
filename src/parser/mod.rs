@@ -75,21 +75,47 @@ impl<'a> Parser<'a> {
             }
             TokenKind::KwLdr => {
                 self.next_token();
-                let size = self.parse_expression()?;
-                self.expect_cur(TokenKind::Comma)?;
+
+                let size = if self.cur_token.kind == TokenKind::DataSize {
+                    self.parse_expression()?
+                } else {
+                    Expression::DataSize(DataSize::QWord)
+                };
+
                 let dest = self.parse_expression()?;
                 self.expect_cur(TokenKind::Comma)?;
                 let src = self.parse_expression()?;
+
                 Ok(Statement::Ldr(size, dest, src))
             }
             TokenKind::KwStr => {
                 self.next_token();
-                let size = self.parse_expression()?;
-                self.expect_cur(TokenKind::Comma)?;
+
+                let size = if self.cur_token.kind == TokenKind::DataSize {
+                    self.parse_expression()?
+                } else {
+                    Expression::DataSize(DataSize::QWord)
+                };
+
                 let src = self.parse_expression()?;
                 self.expect_cur(TokenKind::Comma)?;
                 let dest = self.parse_expression()?;
-                Ok(Statement::Ldr(size, src, dest))
+
+                Ok(Statement::Str(size, src, dest))
+            }
+            TokenKind::KwPush => {
+                self.next_token();
+                let size = self.parse_expression()?;
+                self.next_token();
+                let src = self.parse_expression()?;
+                Ok(Statement::Push(size, src))
+            }
+            TokenKind::KwPop => {
+                self.next_token();
+                let size = self.parse_expression()?;
+                self.next_token();
+                let dest = self.parse_expression()?;
+                Ok(Statement::Pop(size, dest))
             }
             TokenKind::KwHlt => {
                 self.next_token();
@@ -142,6 +168,26 @@ impl<'a> Parser<'a> {
                     Ok(size) => Ok(Expression::DataSize(size)),
                     Err(_) => Err(Erorr::UnexpectedToken(token).into()),
                 }
+            }
+            TokenKind::LBracket => {
+                self.next_token();
+                let base = self.parse_expression()?;
+
+                let offset = if self.cur_token_is(TokenKind::Comma) {
+                    self.next_token();
+                    let off = self.parse_expression()?;
+                    Some(Box::new(off))
+                } else {
+                    None
+                };
+
+                if !self.cur_token_is(TokenKind::RBracket) {
+                    return Err(Erorr::Expected("]".to_string(), self.cur_token.clone()).into());
+                }
+
+                self.next_token();
+
+                Ok(Expression::Address(Box::new(base), offset))
             }
             _ => todo!("parse_expression"),
         }

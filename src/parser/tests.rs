@@ -41,6 +41,25 @@ fn instructions() {
                 Expression::IntegerLiteral(1337),
             )],
         ),
+        (
+            "ldr q0, [w0, 10]",
+            vec![Statement::Ldr(
+                Expression::DataSize(DataSize::QWord),
+                Expression::Register(Register::Q0),
+                Expression::Address(
+                    Box::new(Expression::Register(Register::W0)),
+                    Some(Box::new(Expression::IntegerLiteral(10))),
+                ),
+            )],
+        ),
+        (
+            "str BYTE d0, [q0]",
+            vec![Statement::Str(
+                Expression::DataSize(DataSize::Byte),
+                Expression::Register(Register::D0),
+                Expression::Address(Box::new(Expression::Register(Register::Q0)), None),
+            )],
+        ),
     ];
 
     for (input, expected) in tests {
