@@ -53,11 +53,25 @@ fn instructions() {
             )],
         ),
         (
-            "str BYTE d0, [q0]",
+            "str BYTE d0, [buffer]",
             vec![Statement::Str(
                 Expression::DataSize(DataSize::Byte),
                 Expression::Register(Register::D0),
-                Expression::Address(Box::new(Expression::Register(Register::Q0)), None),
+                Expression::Address(Box::new(Expression::Identifier("buffer".into())), None),
+            )],
+        ),
+        (
+            "push q0",
+            vec![Statement::Push(
+                Expression::DataSize(DataSize::QWord),
+                Expression::Register(Register::Q0),
+            )],
+        ),
+        (
+            "pop FLOAT ff0",
+            vec![Statement::Pop(
+                Expression::DataSize(DataSize::Float),
+                Expression::Register(Register::FF0),
             )],
         ),
     ];
