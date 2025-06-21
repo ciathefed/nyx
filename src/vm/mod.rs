@@ -1,8 +1,8 @@
 use anyhow::Result;
 
 use crate::{
-    compiler::{ADDRESSING_VARIANT_1, opcode::Opcode},
-    parser::ast::{DataSize, Immediate, Instruction},
+    compiler::{ADDRESSING_VARIANT_1, ADDRESSING_VARIANT_2, opcode::Opcode},
+    parser::ast::{DataSize, Immediate},
     vm::{
         memory::Memory,
         register::{Register, Registers},
@@ -98,6 +98,22 @@ impl VM {
                 let addr = (base + offset) as usize;
                 let imm = self.mem.read(addr, DataSize::from(dest))?;
                 self.regs.set(dest, imm)
+            }
+            Opcode::Str => {
+                let src = self.read_register()?;
+                let value = self.regs.get(src);
+                let variant = self.read_byte()?;
+                let base = match variant {
+                    ADDRESSING_VARIANT_1 => {
+                        let dest = self.read_register()?;
+                        self.regs.get(dest).as_u64()?
+                    }
+                    ADDRESSING_VARIANT_2 => self.read_qword()?,
+                    _ => return Err(Error::UnknownAddressingVariant(variant).into()),
+                };
+                let offset = self.read_qword()?;
+                let addr = (base + offset) as usize;
+                self.mem.write(addr, value, DataSize::from(src))
             }
             Opcode::Hlt => {
                 self.halted = true;
