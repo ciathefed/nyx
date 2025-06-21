@@ -68,3 +68,17 @@ fn ldr() -> Result<()> {
     assert_eq!(vm.regs.get(Register::Q0), Immediate::QWord(1337));
     Ok(())
 }
+
+#[test]
+fn str() -> Result<()> {
+    let input = r#"
+        mov q0, 7331
+        str q0, [d0, 0]
+        hlt
+    "#;
+    let vm = run(input)?;
+    assert_eq!(vm.halted, true);
+    assert_eq!(vm.regs.ip, 19);
+    assert_eq!(vm.mem.read(0x00, DataSize::QWord)?, Immediate::QWord(7331));
+    Ok(())
+}
