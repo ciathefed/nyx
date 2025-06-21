@@ -62,8 +62,8 @@ impl Compiler {
                 }
                 Statement::Nop => self.bytecode.push(Opcode::Nop),
                 Statement::Mov(lhs, rhs) => self.compile_mov(lhs, rhs)?,
-                Statement::Ldr(lhs, rhs) => self.compile_ldr(lhs, rhs)?,
-                Statement::Str(lhs, rhs) => self.compile_str(lhs, rhs)?,
+                Statement::Ldr(lhs, rhs) => self.compile_ldr_or_str(lhs, rhs, Opcode::Ldr)?,
+                Statement::Str(lhs, rhs) => self.compile_ldr_or_str(lhs, rhs, Opcode::Str)?,
                 Statement::Push(ds, expr) => self.compile_push(ds, expr)?,
                 Statement::Pop(ds, expr) => self.compile_pop(ds, expr)?,
                 Statement::Hlt => self.bytecode.push(Opcode::Hlt),
@@ -141,15 +141,20 @@ impl Compiler {
         Ok(())
     }
 
-    fn compile_ldr(&mut self, lhs: Expression, rhs: Expression) -> Result<()> {
-        const INST: &str = "LDR";
+    fn compile_ldr_or_str(
+        &mut self,
+        lhs: Expression,
+        rhs: Expression,
+        opcode: Opcode,
+    ) -> Result<()> {
+        const INST: &str = "STR";
 
         match (lhs, rhs) {
-            (Expression::Register(dest), Expression::Address(base_expr, offset_expr)) => {
+            (Expression::Register(reg), Expression::Address(base_expr, offset_expr)) => {
                 match (base_expr.deref(), offset_expr.as_deref()) {
                     (Expression::Register(base), Some(Expression::IntegerLiteral(offset))) => {
-                        self.bytecode.push(Opcode::Ldr);
-                        self.bytecode.push(dest);
+                        self.bytecode.push(opcode);
+                        self.bytecode.push(reg);
                         self.bytecode.push(ADDRESSING_VARIANT_1);
                         self.bytecode.push(*base);
                         self.bytecode.extend(offset.to_le_bytes());
@@ -158,20 +163,43 @@ impl Compiler {
                         Expression::IntegerLiteral(base),
                         Some(Expression::IntegerLiteral(offset)),
                     ) => {
-                        self.bytecode.push(Opcode::Ldr);
-                        self.bytecode.push(dest);
+                        self.bytecode.push(opcode);
+                        self.bytecode.push(reg);
                         self.bytecode.push(ADDRESSING_VARIANT_2);
                         self.bytecode.extend(base.to_le_bytes());
                         self.bytecode.extend(offset.to_le_bytes());
                     }
                     (Expression::Identifier(base), Some(Expression::IntegerLiteral(offset))) => {
-                        self.bytecode.push(Opcode::Ldr);
-                        self.bytecode.push(dest);
+                        self.bytecode.push(opcode);
+                        self.bytecode.push(reg);
                         self.bytecode.push(ADDRESSING_VARIANT_2);
                         self.bytecode.extend((0x00 as i64).to_le_bytes());
                         self.fixups
                             .insert(self.bytecode.len(), (DataSize::QWord, base.clone()));
                         self.bytecode.extend(offset.to_le_bytes());
+                    }
+                    (Expression::Register(base), None) => {
+                        self.bytecode.push(opcode);
+                        self.bytecode.push(reg);
+                        self.bytecode.push(ADDRESSING_VARIANT_1);
+                        self.bytecode.push(*base);
+                        self.bytecode.extend((0x00 as u64).to_le_bytes());
+                    }
+                    (Expression::IntegerLiteral(base), None) => {
+                        self.bytecode.push(opcode);
+                        self.bytecode.push(reg);
+                        self.bytecode.push(ADDRESSING_VARIANT_1);
+                        self.bytecode.extend(base.to_le_bytes());
+                        self.bytecode.extend((0x00 as u64).to_le_bytes());
+                    }
+                    (Expression::Identifier(base), None) => {
+                        self.bytecode.push(opcode);
+                        self.bytecode.push(reg);
+                        self.bytecode.push(ADDRESSING_VARIANT_2);
+                        self.bytecode.extend((0x00 as i64).to_le_bytes());
+                        self.fixups
+                            .insert(self.bytecode.len(), (DataSize::QWord, base.clone()));
+                        self.bytecode.extend((0x00 as u64).to_le_bytes());
                     }
                     _ => {
                         return Err(Error::InvalidOperands(
@@ -194,11 +222,6 @@ impl Compiler {
             }
         }
         Ok(())
-    }
-
-    fn compile_str(&mut self, lhs: Expression, rhs: Expression) -> Result<()> {
-        const INST: &str = "STR";
-        todo!("compile_str")
     }
 
     fn compile_push(&mut self, ds: Expression, expr: Expression) -> Result<()> {
