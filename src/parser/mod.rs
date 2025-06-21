@@ -76,32 +76,20 @@ impl<'a> Parser<'a> {
             TokenKind::KwLdr => {
                 self.next_token();
 
-                let size = if self.cur_token.kind == TokenKind::DataSize {
-                    self.parse_expression()?
-                } else {
-                    Expression::DataSize(DataSize::QWord)
-                };
-
                 let dest = self.parse_expression()?;
                 self.expect_cur(TokenKind::Comma)?;
                 let src = self.parse_expression()?;
 
-                Ok(Statement::Ldr(size, dest, src))
+                Ok(Statement::Ldr(dest, src))
             }
             TokenKind::KwStr => {
                 self.next_token();
 
-                let size = if self.cur_token.kind == TokenKind::DataSize {
-                    self.parse_expression()?
-                } else {
-                    Expression::DataSize(DataSize::QWord)
-                };
-
                 let src = self.parse_expression()?;
                 self.expect_cur(TokenKind::Comma)?;
                 let dest = self.parse_expression()?;
 
-                Ok(Statement::Str(size, src, dest))
+                Ok(Statement::Str(src, dest))
             }
             TokenKind::KwPush => {
                 self.next_token();
@@ -109,6 +97,7 @@ impl<'a> Parser<'a> {
                 let size = if self.cur_token.kind == TokenKind::DataSize {
                     self.parse_expression()?
                 } else {
+                    // TODO: this can be assumed if pushing a value from register
                     Expression::DataSize(DataSize::QWord)
                 };
 
@@ -122,6 +111,7 @@ impl<'a> Parser<'a> {
                 let size = if self.cur_token.kind == TokenKind::DataSize {
                     self.parse_expression()?
                 } else {
+                    // TODO: this can be assumed if pushing a value from register
                     Expression::DataSize(DataSize::QWord)
                 };
 

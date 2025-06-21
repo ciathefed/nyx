@@ -44,7 +44,7 @@ impl TryFrom<&str> for DataSize {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Immediate {
     Byte(u8),
     Word(u16),

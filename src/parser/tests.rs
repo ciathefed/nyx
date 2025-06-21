@@ -44,7 +44,6 @@ fn instructions() {
         (
             "ldr q0, [w0, 10]",
             vec![Statement::Ldr(
-                Expression::DataSize(DataSize::QWord),
                 Expression::Register(Register::Q0),
                 Expression::Address(
                     Box::new(Expression::Register(Register::W0)),
@@ -53,9 +52,8 @@ fn instructions() {
             )],
         ),
         (
-            "str BYTE d0, [buffer]",
+            "str d0, [buffer]",
             vec![Statement::Str(
-                Expression::DataSize(DataSize::Byte),
                 Expression::Register(Register::D0),
                 Expression::Address(Box::new(Expression::Identifier("buffer".into())), None),
             )],

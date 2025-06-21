@@ -9,8 +9,8 @@ pub enum Statement {
     Label(String),
     Nop,
     Mov(Expression, Expression),
-    Ldr(Expression, Expression, Expression), // DataSize, Register (Dest), Addressing (Src)
-    Str(Expression, Expression, Expression), // DataSize, Register (Src), Addressing (Dest)
+    Ldr(Expression, Expression),
+    Str(Expression, Expression),
     Push(Expression, Expression),
     Pop(Expression, Expression),
     Hlt,
