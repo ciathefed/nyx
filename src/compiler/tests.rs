@@ -5,8 +5,7 @@ use super::*;
 fn compile(input: &str) -> Result<Vec<u8>> {
     let lexer = Lexer::new(input);
     let mut parser = Parser::new(lexer);
-    let program = parser.parse()?;
-    let mut compiler = Compiler::new(program);
+    let mut compiler = Compiler::new(parser.parse()?);
     Ok(Vec::from(compiler.compile()?))
 }
 
