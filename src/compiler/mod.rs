@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref};
 
 use anyhow::Result;
 
@@ -12,6 +12,9 @@ pub mod opcode;
 
 #[cfg(test)]
 mod tests;
+
+pub const ADDRESSING_VARIANT_1: u8 = 0x00; // [REGISTER, Option<INTEGER>]
+pub const ADDRESSING_VARIANT_2: u8 = 0x01; // [INTEGER, Option<INTEGER>]
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -59,8 +62,8 @@ impl Compiler {
                 }
                 Statement::Nop => self.bytecode.push(Opcode::Nop),
                 Statement::Mov(lhs, rhs) => self.compile_mov(lhs, rhs)?,
-                Statement::Ldr(ds, lhs, rhs) => self.compile_ldr(ds, lhs, rhs)?,
-                Statement::Str(ds, lhs, rhs) => self.compile_str(ds, lhs, rhs)?,
+                Statement::Ldr(lhs, rhs) => self.compile_ldr(lhs, rhs)?,
+                Statement::Str(lhs, rhs) => self.compile_str(lhs, rhs)?,
                 Statement::Push(ds, expr) => self.compile_push(ds, expr)?,
                 Statement::Pop(ds, expr) => self.compile_pop(ds, expr)?,
                 Statement::Hlt => self.bytecode.push(Opcode::Hlt),
@@ -138,12 +141,62 @@ impl Compiler {
         Ok(())
     }
 
-    fn compile_ldr(&mut self, ds: Expression, lhs: Expression, rhs: Expression) -> Result<()> {
+    fn compile_ldr(&mut self, lhs: Expression, rhs: Expression) -> Result<()> {
         const INST: &str = "LDR";
-        todo!("compile_ldr")
+
+        match (lhs, rhs) {
+            (Expression::Register(dest), Expression::Address(base_expr, offset_expr)) => {
+                match (base_expr.deref(), offset_expr.as_deref()) {
+                    (Expression::Register(base), Some(Expression::IntegerLiteral(offset))) => {
+                        self.bytecode.push(Opcode::Ldr);
+                        self.bytecode.push(dest);
+                        self.bytecode.push(ADDRESSING_VARIANT_1);
+                        self.bytecode.push(*base);
+                        self.bytecode.extend(offset.to_le_bytes());
+                    }
+                    (
+                        Expression::IntegerLiteral(base),
+                        Some(Expression::IntegerLiteral(offset)),
+                    ) => {
+                        self.bytecode.push(Opcode::Ldr);
+                        self.bytecode.push(dest);
+                        self.bytecode.push(ADDRESSING_VARIANT_2);
+                        self.bytecode.extend(base.to_le_bytes());
+                        self.bytecode.extend(offset.to_le_bytes());
+                    }
+                    (Expression::Identifier(base), Some(Expression::IntegerLiteral(offset))) => {
+                        self.bytecode.push(Opcode::Ldr);
+                        self.bytecode.push(dest);
+                        self.bytecode.push(ADDRESSING_VARIANT_2);
+                        self.bytecode.extend((0x00 as i64).to_le_bytes());
+                        self.fixups
+                            .insert(self.bytecode.len(), (DataSize::QWord, base.clone()));
+                        self.bytecode.extend(offset.to_le_bytes());
+                    }
+                    _ => {
+                        return Err(Error::InvalidOperands(
+                            INST,
+                            format!(
+                                "unsupported addressing operands: {:?} -> {:?}",
+                                base_expr, offset_expr
+                            ),
+                        )
+                        .into());
+                    }
+                }
+            }
+            (lhs, rhs) => {
+                return Err(Error::InvalidOperands(
+                    INST,
+                    format!("unsupported operands: {:?} -> {:?}", lhs, rhs),
+                )
+                .into());
+            }
+        }
+        Ok(())
     }
 
-    fn compile_str(&mut self, ds: Expression, lhs: Expression, rhs: Expression) -> Result<()> {
+    fn compile_str(&mut self, lhs: Expression, rhs: Expression) -> Result<()> {
         const INST: &str = "STR";
         todo!("compile_str")
     }
