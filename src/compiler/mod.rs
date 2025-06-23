@@ -378,6 +378,75 @@ impl Compiler {
 
     fn compile_pop(&mut self, ds: Option<Expression>, expr: Expression) -> Result<()> {
         const INST: &str = "POP";
-        todo!("compile_pop")
+
+        match (ds, expr) {
+            (None, Expression::Register(dest)) => {
+                self.bytecode.push(Opcode::PopReg);
+                self.bytecode.push(dest);
+            }
+            (None, Expression::Address(base_expr, offset_expr)) => {
+                self.bytecode.push(Opcode::PopAddr);
+                self.bytecode.push(DataSize::QWord); // default size for pop address
+
+                match (base_expr.deref(), offset_expr.as_deref()) {
+                    (Expression::Register(base), Some(Expression::IntegerLiteral(offset))) => {
+                        self.bytecode.push(ADDRESSING_VARIANT_1);
+                        self.bytecode.push(*base);
+                        self.bytecode.extend(offset.to_le_bytes());
+                    }
+                    (Expression::Register(base), None) => {
+                        self.bytecode.push(ADDRESSING_VARIANT_1);
+                        self.bytecode.push(*base);
+                        self.bytecode.extend((0x00 as u64).to_le_bytes());
+                    }
+                    (
+                        Expression::IntegerLiteral(base),
+                        Some(Expression::IntegerLiteral(offset)),
+                    ) => {
+                        self.bytecode.push(ADDRESSING_VARIANT_2);
+                        self.bytecode.extend(base.to_le_bytes());
+                        self.bytecode.extend(offset.to_le_bytes());
+                    }
+                    (Expression::IntegerLiteral(base), None) => {
+                        self.bytecode.push(ADDRESSING_VARIANT_2);
+                        self.bytecode.extend(base.to_le_bytes());
+                        self.bytecode.extend((0x00 as u64).to_le_bytes());
+                    }
+                    (Expression::Identifier(base), Some(Expression::IntegerLiteral(offset))) => {
+                        self.bytecode.push(ADDRESSING_VARIANT_2);
+                        self.bytecode.extend((0x00 as i64).to_le_bytes());
+                        self.fixups
+                            .insert(self.bytecode.len() - 8, (DataSize::QWord, base.clone()));
+                        self.bytecode.extend(offset.to_le_bytes());
+                    }
+                    (Expression::Identifier(base), None) => {
+                        self.bytecode.push(ADDRESSING_VARIANT_2);
+                        self.bytecode.extend((0x00 as i64).to_le_bytes());
+                        self.fixups
+                            .insert(self.bytecode.len() - 8, (DataSize::QWord, base.clone()));
+                        self.bytecode.extend((0x00 as u64).to_le_bytes());
+                    }
+                    _ => {
+                        return Err(Error::InvalidOperands(
+                            INST,
+                            format!(
+                                "unsupported addressing operands: {:?} -> {:?}",
+                                base_expr, offset_expr
+                            ),
+                        )
+                        .into());
+                    }
+                }
+            }
+            (ds, expr) => {
+                return Err(Error::InvalidOperands(
+                    INST,
+                    format!("unsupported data size and operand: {:?} -> {:?}", ds, expr),
+                )
+                .into());
+            }
+        }
+
+        Ok(())
     }
 }
