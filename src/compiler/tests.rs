@@ -119,6 +119,153 @@ fn mov() {
 }
 
 #[test]
+fn str() {
+    let tests = vec![
+        (
+            "str b0, [q0, 8]",
+            vec![
+                Opcode::Str as u8,
+                Register::B0 as u8,
+                ADDRESSING_VARIANT_1,
+                Register::Q0 as u8,
+                0x08,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+            ],
+        ),
+        (
+            "str b0, [1000, 32]",
+            vec![
+                Opcode::Str as u8,
+                Register::B0 as u8,
+                ADDRESSING_VARIANT_2,
+                0xE8,
+                0x03,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x20,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
+fn ldr() {
+    let tests = vec![
+        (
+            "ldr b0, [q0]",
+            vec![
+                Opcode::Ldr as u8,
+                Register::B0 as u8,
+                ADDRESSING_VARIANT_1,
+                Register::Q0 as u8,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+            ],
+        ),
+        (
+            "ldr b0, [1000]",
+            vec![
+                Opcode::Ldr as u8,
+                Register::B0 as u8,
+                ADDRESSING_VARIANT_1,
+                0xE8,
+                0x03,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
+fn push() {
+    let tests = vec![
+        ("push b0", vec![Opcode::PushReg as u8, Register::B0 as u8]),
+        (
+            "push dword 1337",
+            vec![
+                Opcode::PushImm as u8,
+                DataSize::DWord as u8,
+                0x39,
+                0x05,
+                0x00,
+                0x00,
+            ],
+        ),
+        (
+            "push qword [q0, 8]",
+            vec![
+                Opcode::PushAddr as u8,
+                DataSize::QWord as u8,
+                ADDRESSING_VARIANT_1,
+                Register::Q0 as u8,
+                0x08,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
 fn hlt() {
     let tests = vec![("hlt", vec![Opcode::Hlt as u8])];
 
