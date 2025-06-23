@@ -266,6 +266,60 @@ fn push() {
 }
 
 #[test]
+fn pop() {
+    let tests = vec![
+        ("pop b0", vec![Opcode::PopReg as u8, Register::B0 as u8]),
+        (
+            "pop [q0, 8]",
+            vec![
+                Opcode::PopAddr as u8,
+                DataSize::QWord as u8,
+                ADDRESSING_VARIANT_1,
+                Register::Q0 as u8,
+                0x08,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+            ],
+        ),
+        (
+            "pop [1000, 16]",
+            vec![
+                Opcode::PopAddr as u8,
+                DataSize::QWord as u8,
+                ADDRESSING_VARIANT_2,
+                0xE8,
+                0x03,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x10,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
 fn hlt() {
     let tests = vec![("hlt", vec![Opcode::Hlt as u8])];
 
