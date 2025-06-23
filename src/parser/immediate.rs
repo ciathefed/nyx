@@ -44,6 +44,12 @@ impl TryFrom<&str> for DataSize {
     }
 }
 
+impl Into<u8> for DataSize {
+    fn into(self) -> u8 {
+        self as u8
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Immediate {
     Byte(u8),

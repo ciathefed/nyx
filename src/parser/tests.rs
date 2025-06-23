@@ -60,15 +60,12 @@ fn instructions() {
         ),
         (
             "push q0",
-            vec![Statement::Push(
-                Expression::DataSize(DataSize::QWord),
-                Expression::Register(Register::Q0),
-            )],
+            vec![Statement::Push(None, Expression::Register(Register::Q0))],
         ),
         (
             "pop FLOAT ff0",
             vec![Statement::Pop(
-                Expression::DataSize(DataSize::Float),
+                Some(Expression::DataSize(DataSize::Float)),
                 Expression::Register(Register::FF0),
             )],
         ),

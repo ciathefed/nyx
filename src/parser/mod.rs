@@ -95,10 +95,9 @@ impl<'a> Parser<'a> {
                 self.next_token();
 
                 let size = if self.cur_token.kind == TokenKind::DataSize {
-                    self.parse_expression()?
+                    Some(self.parse_expression()?)
                 } else {
-                    // TODO: this can be assumed if pushing a value from register
-                    Expression::DataSize(DataSize::QWord)
+                    None
                 };
 
                 let src = self.parse_expression()?;
@@ -109,10 +108,9 @@ impl<'a> Parser<'a> {
                 self.next_token();
 
                 let size = if self.cur_token.kind == TokenKind::DataSize {
-                    self.parse_expression()?
+                    Some(self.parse_expression()?)
                 } else {
-                    // TODO: this can be assumed if pushing a value from register
-                    Expression::DataSize(DataSize::QWord)
+                    None
                 };
 
                 let dest = self.parse_expression()?;

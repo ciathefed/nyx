@@ -1,5 +1,3 @@
-use std::fmt;
-
 use crate::vm::register::Register;
 
 pub use crate::parser::{immediate::*, instruction::*};
@@ -11,8 +9,8 @@ pub enum Statement {
     Mov(Expression, Expression),
     Ldr(Expression, Expression),
     Str(Expression, Expression),
-    Push(Expression, Expression),
-    Pop(Expression, Expression),
+    Push(Option<Expression>, Expression),
+    Pop(Option<Expression>, Expression),
     Hlt,
 }
 
