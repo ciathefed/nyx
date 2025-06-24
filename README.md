@@ -61,7 +61,7 @@ nyx execute hello.nyb --mem 16384
 ```asm
 mov q0, 1337
 push q0
-pop d0
+pop QWORD d0
 hlt
 ```
 
