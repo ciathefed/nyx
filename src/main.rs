@@ -6,6 +6,13 @@ use clap::{Parser as ClapParser, Subcommand};
 
 use crate::{compiler::Compiler, lexer::Lexer, parser::Parser, vm::VM};
 
+mod compiler;
+mod lexer;
+mod parser;
+mod preprocessor;
+mod span;
+mod vm;
+
 #[derive(ClapParser)]
 #[command(name = env!("CARGO_PKG_NAME"))]
 #[command(version = env!("CARGO_PKG_VERSION"))]
@@ -76,12 +83,6 @@ pub enum Command {
         memory: usize,
     },
 }
-
-mod compiler;
-mod lexer;
-mod parser;
-mod span;
-mod vm;
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
