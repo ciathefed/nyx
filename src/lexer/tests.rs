@@ -64,7 +64,20 @@ fn identifiers() {
 }
 
 #[test]
-fn keywords() {
+fn preprocessor_directives() {
+    let tests = vec![(
+        "#define",
+        vec![Token::new(TokenKind::KwDefine, "#define", (0, 7))],
+    )];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
+fn instructions() {
     let tests = vec![
         ("nop", vec![Token::new(TokenKind::KwNop, "nop", (0, 3))]),
         ("mov", vec![Token::new(TokenKind::KwMov, "mov", (0, 3))]),
@@ -82,11 +95,8 @@ fn keywords() {
 }
 
 #[test]
-fn directives() {
-    let tests = vec![(
-        "#define",
-        vec![Token::new(TokenKind::KwDefine, "#define", (0, 7))],
-    )];
+fn data_decleration_directives() {
+    let tests = vec![("db", vec![Token::new(TokenKind::KwDb, "db", (0, 2))])];
 
     for (input, expected) in tests {
         let tokens = lex(input);

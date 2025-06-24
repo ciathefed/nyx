@@ -354,6 +354,25 @@ fn pop() {
 }
 
 #[test]
+fn db() {
+    let tests = vec![
+        ("db 69", vec![0x45]),
+        (
+            r#"db "Hello, World", 10, 0"#,
+            vec![
+                0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x2C, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64, 0x0A, 0x00,
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
 fn hlt() {
     let tests = vec![("hlt", vec![Opcode::Hlt as u8])];
 
