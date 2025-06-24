@@ -1,3 +1,5 @@
+use miette::Result;
+
 use crate::{lexer::Lexer, parser::Parser, vm::register::Register};
 
 use super::*;
@@ -12,19 +14,18 @@ fn preprocess(input: &str) -> Result<Vec<Statement>> {
 #[test]
 fn define() {
     let tests = vec![(
-        r#"
-        #define NUMBER 1337
-        _start:
-            mov q0, NUMBER
-            hlt
-        "#,
+        r#"#define NUMBER 1337
+_start:
+    mov q0, NUMBER
+    hlt"#,
         vec![
-            Statement::Label("_start".into()),
+            Statement::Label("_start".into(), (20, 27).into()),
             Statement::Mov(
                 Expression::Register(Register::Q0),
                 Expression::IntegerLiteral(1337),
+                (32, 46).into(),
             ),
-            Statement::Hlt,
+            Statement::Hlt((51, 54).into()),
         ],
     )];
 

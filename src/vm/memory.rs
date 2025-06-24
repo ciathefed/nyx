@@ -1,4 +1,4 @@
-use anyhow::Result;
+use miette::Result;
 
 use crate::{
     parser::ast::{DataSize, Immediate},

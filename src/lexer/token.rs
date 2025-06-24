@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt};
 
 use lazy_static::lazy_static;
+use miette::SourceSpan;
 
 use crate::span::Span;
 
@@ -86,6 +87,11 @@ impl Token {
             literal: literal.to_string(),
             loc: loc.into(),
         }
+    }
+
+    pub fn source_span(&self) -> SourceSpan {
+        let len = self.loc.end - self.loc.start;
+        (self.loc.start, len).into()
     }
 }
 

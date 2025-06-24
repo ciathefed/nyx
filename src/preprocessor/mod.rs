@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::Result;
+use miette::Result;
 
 use crate::parser::ast::{Expression, Statement};
 
@@ -25,15 +25,8 @@ impl PreProcessor {
     pub fn process(&mut self) -> Result<Vec<Statement>> {
         for stmt in std::mem::take(&mut self.cur_program) {
             match stmt {
-                Statement::Define(key_expr @ Expression::Identifier(_), value_expr) => {
-                    self.definitions.insert(
-                        if let Expression::Identifier(name) = key_expr {
-                            name
-                        } else {
-                            unreachable!()
-                        },
-                        value_expr,
-                    );
+                Statement::Define(Expression::Identifier(name), value, _) => {
+                    self.definitions.insert(name, value);
                 }
                 other => self.new_program.push(other),
             }
@@ -44,28 +37,33 @@ impl PreProcessor {
 
         for stmt in std::mem::take(&mut self.cur_program) {
             let new_stmt = match stmt {
-                Statement::Mov(dest, src) => {
-                    Statement::Mov(self.substitute_expr(dest), self.substitute_expr(src))
+                Statement::Mov(dest, src, span) => {
+                    Statement::Mov(self.substitute_expr(dest), self.substitute_expr(src), span)
                 }
-                Statement::Ldr(dest, src) => {
-                    Statement::Ldr(self.substitute_expr(dest), self.substitute_expr(src))
+                Statement::Ldr(dest, src, span) => {
+                    Statement::Ldr(self.substitute_expr(dest), self.substitute_expr(src), span)
                 }
-                Statement::Str(dest, src) => {
-                    Statement::Str(self.substitute_expr(dest), self.substitute_expr(src))
+                Statement::Str(dest, src, span) => {
+                    Statement::Str(self.substitute_expr(dest), self.substitute_expr(src), span)
                 }
-                Statement::Push(opt_dest, src) => Statement::Push(
-                    opt_dest.map(|e| self.substitute_expr(e)),
+                Statement::Push(size, src, span) => Statement::Push(
+                    size.map(|e| self.substitute_expr(e)),
                     self.substitute_expr(src),
+                    span,
                 ),
-                Statement::Pop(opt_dest, src) => Statement::Pop(
-                    opt_dest.map(|e| self.substitute_expr(e)),
-                    self.substitute_expr(src),
+                Statement::Pop(size, dst, span) => Statement::Pop(
+                    size.map(|e| self.substitute_expr(e)),
+                    self.substitute_expr(dst),
+                    span,
                 ),
-                Statement::Define(key, value) => {
-                    Statement::Define(self.substitute_expr(key), self.substitute_expr(value))
+                Statement::Define(key, val, span) => {
+                    Statement::Define(self.substitute_expr(key), self.substitute_expr(val), span)
                 }
-                other => other,
+                Statement::Label(name, span) => Statement::Label(name, span),
+                Statement::Nop(span) => Statement::Nop(span),
+                Statement::Hlt(span) => Statement::Hlt(span),
             };
+
             self.new_program.push(new_stmt);
         }
 

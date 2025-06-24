@@ -6,7 +6,7 @@ pub mod token;
 mod tests;
 
 pub struct Lexer<'a> {
-    input: &'a str,
+    pub(crate) input: &'a str,
     pos: usize,
     read_pos: usize,
     ch: char,

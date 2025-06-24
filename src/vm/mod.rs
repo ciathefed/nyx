@@ -1,4 +1,4 @@
-use anyhow::Result;
+use miette::{Diagnostic, Result, Severity};
 
 use crate::{
     compiler::{ADDRESSING_VARIANT_1, ADDRESSING_VARIANT_2, opcode::Opcode},
@@ -16,24 +16,41 @@ pub mod register;
 mod tests;
 
 #[allow(dead_code)]
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Diagnostic)]
 pub enum Error {
+    #[diagnostic(code(vm::invalid_opcode))]
     #[error("invalid opcode: {0}")]
     InvalidOpcode(u8),
+
+    #[diagnostic(code(vm::unknown_opcode))]
     #[error("unhandled opcode: {0}")]
     UnhandledOpcode(u8),
+
+    #[diagnostic(code(vm::invalid_register))]
     #[error("invalid register: {0}")]
     InvalidRegister(u8),
+
+    #[diagnostic(code(vm::invalid_data_size))]
     #[error("invalid data size: {0}")]
     InvalidDataSize(u8),
+
+    #[diagnostic(code(vm::unknown_addressing_variant))]
     #[error("unknown addressing variant: {0}")]
     UnknownAddressingVariant(u8),
+
+    #[diagnostic(code(vm::instruction_pointer_out_of_bounds))]
     #[error("instruction pointer out of bounds: {0}")]
     InstructionPointerOutOfBounds(usize),
+
+    #[diagnostic(code(vm::stack_overflow))]
     #[error("stack overflow")]
     StackOverflow,
+
+    #[diagnostic(code(vm::stack_underflow))]
     #[error("stack underflow")]
     StackUnderflow,
+
+    #[diagnostic(code(vm::unimplemented))]
     #[error("unimplemented: {0}")]
     Unimplemented(&'static str),
 }
@@ -131,7 +148,6 @@ impl VM {
                     DataSize::Float => Immediate::Float(self.regs.get(src).as_f32()?),
                     DataSize::Double => Immediate::Double(self.regs.get(src).as_f64()?),
                 };
-                dbg!(src, size, imm);
                 self.push(imm)
             }
             Opcode::PushImm => {

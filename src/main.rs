@@ -1,8 +1,8 @@
 use std::fs;
 
-use anyhow::Result;
 use camino::Utf8PathBuf;
 use clap::{Parser as ClapParser, Subcommand};
+use miette::{IntoDiagnostic, Result};
 
 use crate::{compiler::Compiler, lexer::Lexer, parser::Parser, preprocessor::PreProcessor, vm::VM};
 
@@ -89,36 +89,36 @@ fn main() -> Result<()> {
 
     match cli.cmd {
         Command::Build { input, output } => {
-            let source_code = fs::read_to_string(input)?;
+            let source_code = fs::read_to_string(input).into_diagnostic()?;
 
             let lexer = Lexer::new(&source_code);
             let mut parser = Parser::new(lexer);
             let mut preprocessor = PreProcessor::new(parser.parse()?);
-            let mut compiler = Compiler::new(preprocessor.process()?);
+            let mut compiler = Compiler::new(preprocessor.process()?, &source_code);
             let bytecode = compiler.compile()?;
 
-            fs::write(output, bytecode)?;
+            fs::write(output, bytecode).into_diagnostic()?;
         }
         Command::Run {
             input,
             output,
             memory,
         } => {
-            let source_code = fs::read_to_string(input)?;
+            let source_code = fs::read_to_string(input).into_diagnostic()?;
 
             let lexer = Lexer::new(&source_code);
             let mut parser = Parser::new(lexer);
             let mut preprocessor = PreProcessor::new(parser.parse()?);
-            let mut compiler = Compiler::new(preprocessor.process()?);
+            let mut compiler = Compiler::new(preprocessor.process()?, &source_code);
             let bytecode = compiler.compile()?;
 
-            fs::write(output, bytecode)?;
+            fs::write(output, bytecode).into_diagnostic()?;
 
             let mut vm = VM::new(Vec::from(bytecode), memory);
             vm.run()?;
         }
         Command::Execute { input, memory } => {
-            let bytecode = fs::read(input)?;
+            let bytecode = fs::read(input).into_diagnostic()?;
             let mut vm = VM::new(bytecode, memory);
             vm.run()?;
         }

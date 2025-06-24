@@ -1,6 +1,6 @@
 use std::{collections::HashMap, ops::Deref};
 
-use anyhow::Result;
+use miette::{Diagnostic, Result, SourceSpan};
 
 use crate::{
     compiler::{bytecode::Bytecode, opcode::Opcode},
@@ -17,58 +17,127 @@ pub const ADDRESSING_VARIANT_1: u8 = 0x00; // [REGISTER, Option<INTEGER>]
 pub const ADDRESSING_VARIANT_2: u8 = 0x01; // [INTEGER, Option<INTEGER>]
 
 #[allow(dead_code)]
-#[derive(thiserror::Error, Debug)]
+#[derive(Debug, thiserror::Error, Diagnostic)]
 pub enum Error {
-    #[error("Invalid register in {0}")]
-    InvalidRegister(&'static str), // instruction name
-    #[error("Invalid data size in {0}")]
-    InvalidDataSize(&'static str), // instruction name
-    #[error("Invalid operands in {0}: {1}")]
-    InvalidOperands(&'static str, String), // (instruction, details)
-    #[error("Undefined label in {0}: {1}")]
-    UndefinedLabel(&'static str, String), // (instruction, label)
-    #[error("Invalid immediate in {0}")]
-    InvalidImmediate(&'static str), // instruction name
-    #[error("Unsupported operation: {0}")]
-    UnsupportedOperation(String), // instruction name
-    #[error("Fixup failed in {0} for label: {1}")]
-    FixupFailure(&'static str, String), // (instruction, label)
-    #[error("Invalid expression in {0}")]
-    InvalidExpression(&'static str), // instruction name
+    #[diagnostic(code(compiler::invalid_register))]
+    #[error("Invalid register in {inst}")]
+    InvalidRegister {
+        inst: &'static str,
+        #[source_code]
+        src: String,
+        #[label("invalid register used here")]
+        span: SourceSpan,
+    },
+
+    #[diagnostic(code(compiler::invalid_data_size))]
+    #[error("Invalid data size in {inst}")]
+    InvalidDataSize {
+        inst: &'static str,
+        #[source_code]
+        src: String,
+        #[label("bad data size")]
+        span: SourceSpan,
+    },
+
+    #[diagnostic(code(compiler::invalid_operands))]
+    #[error("Invalid operands in {inst}: {details}")]
+    InvalidOperands {
+        inst: &'static str,
+        details: String,
+        #[source_code]
+        src: String,
+        #[label("problematic operands here")]
+        span: SourceSpan,
+    },
+
+    #[diagnostic(code(compiler::undefined_label))]
+    #[error("Undefined label in {inst}: {label}")]
+    UndefinedLabel {
+        inst: &'static str,
+        label: String,
+        #[source_code]
+        src: String,
+        #[label("label used here")]
+        span: SourceSpan,
+    },
+
+    #[diagnostic(code(compiler::unsupported_op))]
+    #[error("Unsupported operation {inst}")]
+    UnsupportedOperation {
+        inst: String,
+        #[source_code]
+        src: String,
+        #[label("unsupported here")]
+        span: SourceSpan,
+    },
+
+    #[diagnostic(code(compiler::fixup_fail))]
+    #[error("Fixup failed in {inst} for label: {label}")]
+    FixupFailure {
+        inst: &'static str,
+        label: String,
+        #[source_code]
+        src: String,
+        #[label("fixup target")]
+        span: SourceSpan,
+    },
+
+    #[diagnostic(code(compiler::invalid_expression))]
+    #[error("Invalid expression in {inst}")]
+    InvalidExpression {
+        inst: &'static str,
+        #[source_code]
+        src: String,
+        #[label("expression here")]
+        span: SourceSpan,
+    },
 }
 
-pub struct Compiler {
+pub struct Compiler<'a> {
     program: Vec<Statement>,
     bytecode: Bytecode,
     labels: HashMap<String, usize>,
     fixups: HashMap<usize, (DataSize, String)>,
+    input: &'a str,
 }
 
-impl Compiler {
-    pub fn new(program: Vec<Statement>) -> Self {
+impl<'a> Compiler<'a> {
+    pub fn new(program: Vec<Statement>, input: &'a str) -> Self {
         let program_len = program.len();
         Self {
             program,
             bytecode: Bytecode::new(Some(4 * program_len)),
             labels: HashMap::with_capacity(4 * program_len),
             fixups: HashMap::with_capacity(4 * program_len),
+            input,
         }
     }
 
     pub fn compile(&mut self) -> Result<&[u8]> {
         for stmt in std::mem::take(&mut self.program) {
             match stmt {
-                Statement::Label(name) => {
+                Statement::Label(name, _) => {
                     self.labels.insert(name, self.bytecode.len());
                 }
-                Statement::Nop => self.bytecode.push(Opcode::Nop),
-                Statement::Mov(lhs, rhs) => self.compile_mov(lhs, rhs)?,
-                Statement::Ldr(lhs, rhs) => self.compile_ldr_or_str(lhs, rhs, Opcode::Ldr)?,
-                Statement::Str(lhs, rhs) => self.compile_ldr_or_str(lhs, rhs, Opcode::Str)?,
-                Statement::Push(ds, expr) => self.compile_push(ds, expr)?,
-                Statement::Pop(ds, expr) => self.compile_pop(ds, expr)?,
-                Statement::Hlt => self.bytecode.push(Opcode::Hlt),
-                other => return Err(Error::UnsupportedOperation(format!("{:?}", other)).into()),
+                Statement::Nop(_) => self.bytecode.push(Opcode::Nop),
+                Statement::Mov(lhs, rhs, span) => self.compile_mov(lhs, rhs, span.into())?,
+                Statement::Ldr(lhs, rhs, span) => {
+                    self.compile_ldr_or_str(lhs, rhs, Opcode::Ldr, span.into())?
+                }
+                Statement::Str(lhs, rhs, span) => {
+                    self.compile_ldr_or_str(lhs, rhs, Opcode::Str, span.into())?
+                }
+                Statement::Push(ds, expr, span) => self.compile_push(ds, expr, span.into())?,
+                Statement::Pop(ds, expr, span) => self.compile_pop(ds, expr, span.into())?,
+                Statement::Hlt(_) => self.bytecode.push(Opcode::Hlt),
+                other => {
+                    let span = other.span().into();
+                    return Err(Error::UnsupportedOperation {
+                        inst: format!("{:?}", other),
+                        src: self.input.to_string(),
+                        span,
+                    })?;
+                }
             }
         }
 
@@ -76,21 +145,32 @@ impl Compiler {
             let label_pos = self
                 .labels
                 .get(&label)
-                .ok_or_else(|| Error::UndefinedLabel("FIXUP", label.clone()))?;
+                .ok_or_else(|| Error::UndefinedLabel {
+                    inst: "FIXUP",
+                    label: label.clone(),
+                    src: self.input.to_string(),
+                    span: SourceSpan::new(offset.into(), 0),
+                })?;
 
             match size {
                 DataSize::Byte => self.bytecode.write_u8_at(offset, *label_pos as u8),
                 DataSize::Word => self.bytecode.write_u16_at(offset, *label_pos as u16),
                 DataSize::DWord => self.bytecode.write_u32_at(offset, *label_pos as u32),
                 DataSize::QWord => self.bytecode.write_u64_at(offset, *label_pos as u64),
-                _ => return Err(Error::InvalidDataSize("FIXUP").into()),
+                _ => {
+                    return Err(Error::InvalidDataSize {
+                        inst: "FIXUP",
+                        src: self.input.to_string(),
+                        span: SourceSpan::new(offset.into(), 0),
+                    })?;
+                }
             }
         }
 
         Ok(&self.bytecode.storage)
     }
 
-    fn compile_mov(&mut self, lhs: Expression, rhs: Expression) -> Result<()> {
+    fn compile_mov(&mut self, lhs: Expression, rhs: Expression, span: SourceSpan) -> Result<()> {
         const INST: &str = "MOV";
 
         match (lhs, rhs) {
@@ -107,7 +187,13 @@ impl Compiler {
                     DataSize::Word => self.bytecode.extend((src as u16).to_le_bytes()),
                     DataSize::DWord => self.bytecode.extend((src as u32).to_le_bytes()),
                     DataSize::QWord => self.bytecode.extend((src as u64).to_le_bytes()),
-                    _ => return Err(Error::InvalidDataSize(INST).into()),
+                    _ => {
+                        return Err(Error::InvalidDataSize {
+                            inst: INST,
+                            src: self.input.to_string(),
+                            span,
+                        })?;
+                    }
                 }
             }
             (Expression::Register(dest), Expression::FloatLiteral(src)) => {
@@ -116,7 +202,13 @@ impl Compiler {
                 match DataSize::from(dest) {
                     DataSize::Float => self.bytecode.extend((src as f32).to_le_bytes()),
                     DataSize::Double => self.bytecode.extend(src.to_le_bytes()),
-                    _ => return Err(Error::InvalidDataSize(INST).into()),
+                    _ => {
+                        return Err(Error::InvalidDataSize {
+                            inst: INST,
+                            src: self.input.to_string(),
+                            span,
+                        })?;
+                    }
                 }
             }
             (Expression::Register(dest), Expression::Identifier(src)) => {
@@ -129,15 +221,22 @@ impl Compiler {
                     DataSize::Word => self.bytecode.extend((0x00 as u16).to_le_bytes()),
                     DataSize::DWord => self.bytecode.extend((0x00 as u32).to_le_bytes()),
                     DataSize::QWord => self.bytecode.extend((0x00 as u64).to_le_bytes()),
-                    _ => return Err(Error::InvalidDataSize(INST).into()),
+                    _ => {
+                        return Err(Error::InvalidDataSize {
+                            inst: INST,
+                            src: self.input.to_string(),
+                            span,
+                        })?;
+                    }
                 }
             }
             (lhs, rhs) => {
-                return Err(Error::InvalidOperands(
-                    INST,
-                    format!("unsupported operands: {:?} -> {:?}", lhs, rhs),
-                )
-                .into());
+                return Err(Error::InvalidOperands {
+                    inst: INST,
+                    details: format!("Unsupported operands: {:?} -> {:?}", lhs, rhs),
+                    src: self.input.to_string(),
+                    span,
+                })?;
             }
         }
         Ok(())
@@ -148,6 +247,7 @@ impl Compiler {
         lhs: Expression,
         rhs: Expression,
         opcode: Opcode,
+        span: SourceSpan,
     ) -> Result<()> {
         const INST: &str = "STR";
 
@@ -204,29 +304,36 @@ impl Compiler {
                         self.bytecode.extend((0x00 as u64).to_le_bytes());
                     }
                     _ => {
-                        return Err(Error::InvalidOperands(
-                            INST,
-                            format!(
-                                "unsupported addressing operands: {:?} -> {:?}",
+                        return Err(Error::InvalidOperands {
+                            inst: INST,
+                            details: format!(
+                                "Unsupported addressing operands: {:?} -> {:?}",
                                 base_expr, offset_expr
                             ),
-                        )
-                        .into());
+                            src: self.input.to_string(),
+                            span,
+                        })?;
                     }
                 }
             }
             (lhs, rhs) => {
-                return Err(Error::InvalidOperands(
-                    INST,
-                    format!("unsupported operands: {:?} -> {:?}", lhs, rhs),
-                )
-                .into());
+                return Err(Error::InvalidOperands {
+                    inst: INST,
+                    details: format!("Unsupported operands: {:?} -> {:?}", lhs, rhs),
+                    src: self.input.to_string(),
+                    span,
+                })?;
             }
         }
         Ok(())
     }
 
-    fn compile_push(&mut self, ds: Option<Expression>, expr: Expression) -> Result<()> {
+    fn compile_push(
+        &mut self,
+        ds: Option<Expression>,
+        expr: Expression,
+        span: SourceSpan,
+    ) -> Result<()> {
         const INST: &str = "PUSH";
 
         match (ds, expr) {
@@ -282,14 +389,15 @@ impl Compiler {
                         self.bytecode.extend((0x00 as u64).to_le_bytes());
                     }
                     _ => {
-                        return Err(Error::InvalidOperands(
-                            INST,
-                            format!(
-                                "unsupported addressing operands: {:?} -> {:?}",
+                        return Err(Error::InvalidOperands {
+                            inst: INST,
+                            details: format!(
+                                "Unsupported addressing operands: {:?} -> {:?}",
                                 base_expr, offset_expr
                             ),
-                        )
-                        .into());
+                            src: self.input.to_string(),
+                            span,
+                        })?;
                     }
                 }
             }
@@ -320,7 +428,7 @@ impl Compiler {
             }
             (Some(Expression::DataSize(size)), Expression::Address(base_expr, offset_expr)) => {
                 self.bytecode.push(Opcode::PushAddr);
-                self.bytecode.push(size); // first byte is the data size
+                self.bytecode.push(size);
 
                 match (base_expr.deref(), offset_expr.as_deref()) {
                     (Expression::Register(base), Some(Expression::IntegerLiteral(offset))) => {
@@ -361,29 +469,36 @@ impl Compiler {
                         self.bytecode.extend((0x00 as u64).to_le_bytes());
                     }
                     _ => {
-                        return Err(Error::InvalidOperands(
-                            INST,
-                            format!(
-                                "unsupported addressing operands with size: {:?} -> {:?}",
+                        return Err(Error::InvalidOperands {
+                            inst: INST,
+                            details: format!(
+                                "Unsupported addressing operands with size: {:?} -> {:?}",
                                 base_expr, offset_expr
                             ),
-                        )
-                        .into());
+                            src: self.input.to_string(),
+                            span,
+                        })?;
                     }
                 }
             }
             (ds, expr) => {
-                return Err(Error::InvalidOperands(
-                    INST,
-                    format!("unsupported data size and operand: {:?} -> {:?}", ds, expr),
-                )
-                .into());
+                return Err(Error::InvalidOperands {
+                    inst: INST,
+                    details: format!("Unsupported data size and operand: {:?} -> {:?}", ds, expr),
+                    src: self.input.to_string(),
+                    span,
+                })?;
             }
         }
         Ok(())
     }
 
-    fn compile_pop(&mut self, ds: Option<Expression>, expr: Expression) -> Result<()> {
+    fn compile_pop(
+        &mut self,
+        ds: Option<Expression>,
+        expr: Expression,
+        span: SourceSpan,
+    ) -> Result<()> {
         const INST: &str = "POP";
 
         match (ds, expr) {
@@ -440,23 +555,25 @@ impl Compiler {
                         self.bytecode.extend((0x00 as u64).to_le_bytes());
                     }
                     _ => {
-                        return Err(Error::InvalidOperands(
-                            INST,
-                            format!(
-                                "unsupported addressing operands: {:?} -> {:?}",
+                        return Err(Error::InvalidOperands {
+                            inst: INST,
+                            details: format!(
+                                "Unsupported addressing operands: {:?} -> {:?}",
                                 base_expr, offset_expr
                             ),
-                        )
-                        .into());
+                            src: self.input.to_string(),
+                            span,
+                        })?;
                     }
                 }
             }
             (ds, expr) => {
-                return Err(Error::InvalidOperands(
-                    INST,
-                    format!("unsupported data size and operand: {:?} -> {:?}", ds, expr),
-                )
-                .into());
+                return Err(Error::InvalidOperands {
+                    inst: INST,
+                    details: format!("Unsupported data size and operand: {:?} -> {:?}", ds, expr),
+                    src: self.input.to_string(),
+                    span,
+                })?;
             }
         }
         Ok(())

@@ -2,7 +2,7 @@ use crate::{compiler::Compiler, lexer::Lexer, parser::Parser};
 
 use super::*;
 
-use anyhow::Result;
+use miette::Result;
 use pretty_assertions::assert_eq;
 
 const TEST_MEM_SIZE: usize = 1024;
@@ -10,7 +10,7 @@ const TEST_MEM_SIZE: usize = 1024;
 fn run(input: &str, data_addr: usize, data_value: Option<Immediate>) -> Result<VM> {
     let lexer = Lexer::new(input);
     let mut parser = Parser::new(lexer);
-    let mut compiler = Compiler::new(parser.parse()?);
+    let mut compiler = Compiler::new(parser.parse()?, input);
     let program_bytes = Vec::from(compiler.compile()?);
 
     let mut vm = VM::new(program_bytes.clone(), TEST_MEM_SIZE);

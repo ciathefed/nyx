@@ -1,11 +1,13 @@
 use crate::{lexer::Lexer, parser::Parser, vm::register::Register};
 
+use miette::Result;
+
 use super::*;
 
 fn compile(input: &str) -> Result<Vec<u8>> {
     let lexer = Lexer::new(input);
     let mut parser = Parser::new(lexer);
-    let mut compiler = Compiler::new(parser.parse()?);
+    let mut compiler = Compiler::new(parser.parse()?, input);
     Ok(Vec::from(compiler.compile()?))
 }
 

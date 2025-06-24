@@ -1,4 +1,4 @@
-use anyhow::Result;
+use miette::{Diagnostic, Result, SourceSpan};
 
 use crate::{
     lexer::{
@@ -15,16 +15,37 @@ mod immediate;
 #[cfg(test)]
 mod tests;
 
-#[derive(thiserror::Error, Debug)]
-pub enum Erorr {
-    #[error("unexpected token: {0}")]
-    UnexpectedToken(Token),
-    #[error("expected {0}, got {1} instead")]
-    Expected(String, Token),
+#[derive(thiserror::Error, Debug, Diagnostic)]
+pub enum Error {
+    #[error("unexpected token: {token}")]
+    #[diagnostic(code(parser::unexpected_token))]
+    UnexpectedToken {
+        token: Token,
+
+        #[label("unexpected token here")]
+        span: SourceSpan,
+
+        #[source_code]
+        src: String,
+    },
+
+    #[error("expected {expected}, got {got} instead")]
+    #[diagnostic(code(parser::expected_token))]
+    Expected {
+        expected: String,
+        got: Token,
+
+        #[label("got this token")]
+        span: SourceSpan,
+
+        #[source_code]
+        src: String,
+    },
 }
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
+    prev_token: Token,
     cur_token: Token,
     peek_token: Token,
 }
@@ -33,6 +54,7 @@ impl<'a> Parser<'a> {
     pub fn new(lexer: Lexer<'a>) -> Self {
         let mut parser = Self {
             lexer,
+            prev_token: Token::BLANK,
             cur_token: Token::BLANK,
             peek_token: Token::BLANK,
         };
@@ -50,27 +72,41 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_statement(&mut self) -> Result<Statement> {
+        let cur_span = self.cur_token.loc;
         match self.cur_token.kind {
             TokenKind::Identifier => {
                 if self.peek_token_is(TokenKind::Colon) {
                     let ident = self.cur_token.literal.clone();
                     self.next_token();
                     self.next_token();
-                    Ok(Statement::Label(ident))
+                    Ok(Statement::Label(
+                        ident,
+                        (cur_span.start, self.prev_token.loc.end).into(),
+                    ))
                 } else {
-                    Err(Erorr::UnexpectedToken(self.cur_token.clone()).into())
+                    Err(Error::UnexpectedToken {
+                        token: self.cur_token.clone(),
+                        span: self.cur_token.source_span(),
+                        src: self.lexer.input.to_string(),
+                    })?
                 }
             }
             TokenKind::KwNop => {
                 self.next_token();
-                Ok(Statement::Nop)
+                Ok(Statement::Nop(cur_span))
             }
             TokenKind::KwMov => {
                 self.next_token();
+
                 let dest = self.parse_expression()?;
                 self.expect_cur(TokenKind::Comma)?;
                 let src = self.parse_expression()?;
-                Ok(Statement::Mov(dest, src))
+
+                Ok(Statement::Mov(
+                    dest,
+                    src,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
             }
             TokenKind::KwLdr => {
                 self.next_token();
@@ -79,7 +115,11 @@ impl<'a> Parser<'a> {
                 self.expect_cur(TokenKind::Comma)?;
                 let src = self.parse_expression()?;
 
-                Ok(Statement::Ldr(dest, src))
+                Ok(Statement::Ldr(
+                    dest,
+                    src,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
             }
             TokenKind::KwStr => {
                 self.next_token();
@@ -88,7 +128,11 @@ impl<'a> Parser<'a> {
                 self.expect_cur(TokenKind::Comma)?;
                 let dest = self.parse_expression()?;
 
-                Ok(Statement::Str(src, dest))
+                Ok(Statement::Str(
+                    src,
+                    dest,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
             }
             TokenKind::KwPush => {
                 self.next_token();
@@ -101,7 +145,11 @@ impl<'a> Parser<'a> {
 
                 let src = self.parse_expression()?;
 
-                Ok(Statement::Push(size, src))
+                Ok(Statement::Push(
+                    size,
+                    src,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
             }
             TokenKind::KwPop => {
                 self.next_token();
@@ -114,11 +162,17 @@ impl<'a> Parser<'a> {
 
                 let dest = self.parse_expression()?;
 
-                Ok(Statement::Pop(size, dest))
+                Ok(Statement::Pop(
+                    size,
+                    dest,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
             }
             TokenKind::KwHlt => {
                 self.next_token();
-                Ok(Statement::Hlt)
+                Ok(Statement::Hlt(
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
             }
             TokenKind::KwDefine => {
                 self.next_token();
@@ -126,9 +180,19 @@ impl<'a> Parser<'a> {
                 let name = self.parse_expression()?;
                 let value = self.parse_expression()?;
 
-                Ok(Statement::Define(name, value))
+                Ok(Statement::Define(
+                    name,
+                    value,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
             }
-            _ => return Err(Erorr::UnexpectedToken(self.cur_token.clone()).into()),
+            _ => {
+                return Err(Error::UnexpectedToken {
+                    token: self.cur_token.clone(),
+                    span: self.cur_token.source_span(),
+                    src: self.lexer.input.to_string(),
+                })?;
+            }
         }
     }
 
@@ -173,7 +237,11 @@ impl<'a> Parser<'a> {
                 self.next_token();
                 match DataSize::try_from(token.literal.as_str()) {
                     Ok(size) => Ok(Expression::DataSize(size)),
-                    Err(_) => Err(Erorr::UnexpectedToken(token).into()),
+                    Err(_) => Err(Error::UnexpectedToken {
+                        token: token.clone(),
+                        span: token.source_span(),
+                        src: self.lexer.input.to_string(),
+                    })?,
                 }
             }
             TokenKind::LBracket => {
@@ -189,7 +257,12 @@ impl<'a> Parser<'a> {
                 };
 
                 if !self.cur_token_is(TokenKind::RBracket) {
-                    return Err(Erorr::Expected("]".to_string(), self.cur_token.clone()).into());
+                    return Err(Error::Expected {
+                        expected: "]".to_string(),
+                        got: self.cur_token.clone(),
+                        span: self.cur_token.source_span(),
+                        src: self.lexer.input.to_string(),
+                    })?;
                 }
 
                 self.next_token();
@@ -201,6 +274,7 @@ impl<'a> Parser<'a> {
     }
 
     fn next_token(&mut self) {
+        self.prev_token = self.cur_token.clone();
         self.cur_token = self.peek_token.clone();
         self.peek_token = self.lexer.next_token();
     }
@@ -218,7 +292,11 @@ impl<'a> Parser<'a> {
             self.next_token();
             Ok(())
         } else {
-            Err(Erorr::UnexpectedToken(self.peek_token.clone()).into())
+            Err(Error::UnexpectedToken {
+                token: self.peek_token.clone(),
+                span: self.peek_token.source_span(),
+                src: self.lexer.input.to_string(),
+            })?
         }
     }
 }
