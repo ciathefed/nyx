@@ -139,7 +139,13 @@ impl Compiler {
                             Expression::StringLiteral(string) => {
                                 self.bytecode.extend(string.bytes());
                             }
-                            _ => todo!(),
+                            _ => {
+                                return Err(Error::InvalidExpression {
+                                    inst: "DB",
+                                    src: self.input.clone(),
+                                    span: span.into(),
+                                })?;
+                            }
                         }
                     }
                 }
