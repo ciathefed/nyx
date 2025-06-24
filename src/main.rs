@@ -4,7 +4,7 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use clap::{Parser as ClapParser, Subcommand};
 
-use crate::{compiler::Compiler, lexer::Lexer, parser::Parser, vm::VM};
+use crate::{compiler::Compiler, lexer::Lexer, parser::Parser, preprocessor::PreProcessor, vm::VM};
 
 mod compiler;
 mod lexer;
@@ -93,7 +93,8 @@ fn main() -> Result<()> {
 
             let lexer = Lexer::new(&source_code);
             let mut parser = Parser::new(lexer);
-            let mut compiler = Compiler::new(parser.parse()?);
+            let mut preprocessor = PreProcessor::new(parser.parse()?);
+            let mut compiler = Compiler::new(preprocessor.process()?);
             let bytecode = compiler.compile()?;
 
             fs::write(output, bytecode)?;
@@ -107,7 +108,8 @@ fn main() -> Result<()> {
 
             let lexer = Lexer::new(&source_code);
             let mut parser = Parser::new(lexer);
-            let mut compiler = Compiler::new(parser.parse()?);
+            let mut preprocessor = PreProcessor::new(parser.parse()?);
+            let mut compiler = Compiler::new(preprocessor.process()?);
             let bytecode = compiler.compile()?;
 
             fs::write(output, bytecode)?;
