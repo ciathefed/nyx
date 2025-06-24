@@ -236,6 +236,14 @@ fn push() {
             ],
         ),
         (
+            "push WORD b0",
+            vec![
+                Opcode::PushReg as u8,
+                DataSize::Word as u8,
+                Register::B0 as u8,
+            ],
+        ),
+        (
             "push DWORD 1337",
             vec![
                 Opcode::PushImm as u8,
@@ -280,6 +288,14 @@ fn pop() {
             vec![
                 Opcode::PopReg as u8,
                 DataSize::Byte as u8,
+                Register::B0 as u8,
+            ],
+        ),
+        (
+            "pop WORD b0",
+            vec![
+                Opcode::PopReg as u8,
+                DataSize::Word as u8,
                 Register::B0 as u8,
             ],
         ),
