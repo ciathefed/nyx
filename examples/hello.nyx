@@ -1,2 +1,7 @@
 _start:
+    mov q0, message
+    mov q1, 14
     hlt
+
+message:
+    db "Hello, World!", 10, 0
