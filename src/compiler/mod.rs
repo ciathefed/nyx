@@ -232,6 +232,12 @@ impl Compiler {
         match (ds, expr) {
             (None, Expression::Register(src)) => {
                 self.bytecode.push(Opcode::PushReg);
+                self.bytecode.push(DataSize::from(src));
+                self.bytecode.push(src);
+            }
+            (Some(Expression::DataSize(size)), Expression::Register(src)) => {
+                self.bytecode.push(Opcode::PushReg);
+                self.bytecode.push(size);
                 self.bytecode.push(src);
             }
             (None, Expression::Address(base_expr, offset_expr)) => {
@@ -383,6 +389,12 @@ impl Compiler {
         match (ds, expr) {
             (None, Expression::Register(dest)) => {
                 self.bytecode.push(Opcode::PopReg);
+                self.bytecode.push(DataSize::from(dest));
+                self.bytecode.push(dest);
+            }
+            (Some(Expression::DataSize(size)), Expression::Register(dest)) => {
+                self.bytecode.push(Opcode::PopReg);
+                self.bytecode.push(size);
                 self.bytecode.push(dest);
             }
             (Some(Expression::DataSize(size)), Expression::Address(base_expr, offset_expr)) => {
