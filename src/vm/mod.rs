@@ -15,7 +15,6 @@ pub mod register;
 #[cfg(test)]
 mod tests;
 
-#[allow(dead_code)]
 #[derive(Debug, thiserror::Error, Diagnostic)]
 enum Error {
     #[diagnostic(code(vm::invalid_opcode))]
@@ -68,8 +67,8 @@ pub struct VM {
 impl VM {
     pub fn new(program: Vec<u8>, mem_size: usize) -> Self {
         let mut regs = Registers::new();
-        regs.sp = mem_size;
-        regs.ip = 0;
+        regs.set_sp(mem_size);
+        regs.set_ip(0);
 
         let mut mem = Memory::new(mem_size);
         mem.storage[..program.len()].copy_from_slice(&program);
@@ -81,7 +80,6 @@ impl VM {
         }
     }
 
-    #[allow(unreachable_patterns)]
     pub fn step(&mut self) -> Result<()> {
         if self.halted {
             return Ok(());
@@ -220,42 +218,42 @@ impl VM {
     }
 
     fn read_byte(&mut self) -> Result<u8> {
-        let ip = self.regs.ip as usize;
+        let ip = self.regs.ip();
         if ip >= self.mem.storage.len() {
             return Err(Error::InstructionPointerOutOfBounds(ip).into());
         }
         let byte = self.mem.storage[ip];
-        self.regs.ip += 1;
+        self.regs.set_ip(ip + 1);
         Ok(byte)
     }
 
     fn read_word(&mut self) -> Result<u16> {
-        let ip = self.regs.ip as usize;
+        let ip = self.regs.ip();
         if ip + 2 > self.mem.storage.len() {
             return Err(Error::InstructionPointerOutOfBounds(ip).into());
         }
         let bytes = &self.mem.storage[ip..ip + 2];
-        self.regs.ip += 2;
+        self.regs.set_ip(ip + 2);
         Ok(u16::from_le_bytes(bytes.try_into().unwrap()))
     }
 
     fn read_dword(&mut self) -> Result<u32> {
-        let ip = self.regs.ip as usize;
+        let ip = self.regs.ip();
         if ip + 4 > self.mem.storage.len() {
             return Err(Error::InstructionPointerOutOfBounds(ip).into());
         }
         let bytes = &self.mem.storage[ip..ip + 4];
-        self.regs.ip += 4;
+        self.regs.set_ip(ip + 4);
         Ok(u32::from_le_bytes(bytes.try_into().unwrap()))
     }
 
     fn read_qword(&mut self) -> Result<u64> {
-        let ip = self.regs.ip as usize;
+        let ip = self.regs.ip();
         if ip + 8 > self.mem.storage.len() {
             return Err(Error::InstructionPointerOutOfBounds(ip).into());
         }
         let bytes = &self.mem.storage[ip..ip + 8];
-        self.regs.ip += 8;
+        self.regs.set_ip(ip + 8);
         Ok(u64::from_le_bytes(bytes.try_into().unwrap()))
     }
 
@@ -282,22 +280,25 @@ impl VM {
     fn push(&mut self, value: Immediate) -> Result<()> {
         let size = value.size();
         let size_bytes = size.size_in_bytes();
+        let current_sp = self.regs.sp();
 
-        if self.regs.sp < size_bytes {
+        if current_sp < size_bytes {
             return Err(Error::StackOverflow.into());
         }
 
-        self.regs.sp -= size_bytes;
-        self.mem.write(self.regs.sp as usize, value, size)
+        let new_sp = current_sp - size_bytes;
+        self.regs.set_sp(new_sp);
+        self.mem.write(new_sp, value, size)
     }
 
     fn pop(&mut self, size: DataSize) -> Result<Immediate> {
-        if (self.regs.sp as usize) + size.size_in_bytes() > self.mem.storage.len() {
+        let current_sp = self.regs.sp();
+        if current_sp + size.size_in_bytes() > self.mem.storage.len() {
             return Err(Error::StackUnderflow.into());
         }
 
-        let value = self.mem.read(self.regs.sp as usize, size)?;
-        self.regs.sp += size.size_in_bytes();
+        let value = self.mem.read(current_sp, size)?;
+        self.regs.set_sp(current_sp + size.size_in_bytes());
         Ok(value)
     }
 }

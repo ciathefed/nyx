@@ -219,7 +219,13 @@ impl Parser {
             TokenKind::Register => {
                 let reg = match Register::try_from(self.cur_token.literal.as_str()) {
                     Ok(v) => v,
-                    Err(_) => todo!(),
+                    Err(_) => {
+                        return Err(Error::UnexpectedToken {
+                            token: self.cur_token.clone(),
+                            span: self.cur_token.source_span(),
+                            src: self.lexer.input.clone(),
+                        })?;
+                    }
                 };
                 self.next_token();
                 Ok(Expression::Register(reg))
@@ -227,7 +233,13 @@ impl Parser {
             TokenKind::Integer => {
                 let int: i64 = match self.cur_token.literal.parse() {
                     Ok(v) => v,
-                    Err(_) => todo!(),
+                    Err(_) => {
+                        return Err(Error::UnexpectedToken {
+                            token: self.cur_token.clone(),
+                            span: self.cur_token.source_span(),
+                            src: self.lexer.input.clone(),
+                        })?;
+                    }
                 };
                 self.next_token();
                 Ok(Expression::IntegerLiteral(int))
@@ -235,7 +247,13 @@ impl Parser {
             TokenKind::Float => {
                 let float: f64 = match self.cur_token.literal.parse() {
                     Ok(v) => v,
-                    Err(_) => todo!(),
+                    Err(_) => {
+                        return Err(Error::UnexpectedToken {
+                            token: self.cur_token.clone(),
+                            span: self.cur_token.source_span(),
+                            src: self.lexer.input.clone(),
+                        })?;
+                    }
                 };
                 self.next_token();
                 Ok(Expression::FloatLiteral(float))
@@ -282,7 +300,13 @@ impl Parser {
 
                 Ok(Expression::Address(Box::new(base), offset))
             }
-            _ => todo!("parse_expression"),
+            _ => {
+                return Err(Error::UnexpectedToken {
+                    token: self.cur_token.clone(),
+                    span: self.cur_token.source_span(),
+                    src: self.lexer.input.clone(),
+                })?;
+            }
         }
     }
 

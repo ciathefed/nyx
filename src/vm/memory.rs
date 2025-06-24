@@ -18,15 +18,14 @@ impl Memory {
     }
 
     pub fn read(&self, addr: usize, size: DataSize) -> Result<Immediate> {
-        use DataSize::*;
         match size {
-            Byte => {
+            DataSize::Byte => {
                 if addr + 1 > self.storage.len() {
                     return Err(Error::InstructionPointerOutOfBounds(addr).into());
                 }
                 Ok(Immediate::Byte(self.storage[addr]))
             }
-            Word => {
+            DataSize::Word => {
                 if addr + 2 > self.storage.len() {
                     return Err(Error::InstructionPointerOutOfBounds(addr).into());
                 }
@@ -34,7 +33,7 @@ impl Memory {
                     self.storage[addr..addr + 2].try_into().unwrap(),
                 )))
             }
-            DWord => {
+            DataSize::DWord => {
                 if addr + 4 > self.storage.len() {
                     return Err(Error::InstructionPointerOutOfBounds(addr).into());
                 }
@@ -42,7 +41,7 @@ impl Memory {
                     self.storage[addr..addr + 4].try_into().unwrap(),
                 )))
             }
-            QWord => {
+            DataSize::QWord => {
                 if addr + 8 > self.storage.len() {
                     return Err(Error::InstructionPointerOutOfBounds(addr).into());
                 }
@@ -50,7 +49,7 @@ impl Memory {
                     self.storage[addr..addr + 8].try_into().unwrap(),
                 )))
             }
-            Float => {
+            DataSize::Float => {
                 if addr + 4 > self.storage.len() {
                     return Err(Error::InstructionPointerOutOfBounds(addr).into());
                 }
@@ -58,7 +57,7 @@ impl Memory {
                     self.storage[addr..addr + 4].try_into().unwrap(),
                 )))
             }
-            Double => {
+            DataSize::Double => {
                 if addr + 8 > self.storage.len() {
                     return Err(Error::InstructionPointerOutOfBounds(addr).into());
                 }
@@ -70,39 +69,38 @@ impl Memory {
     }
 
     pub fn write(&mut self, addr: usize, value: Immediate, size: DataSize) -> Result<()> {
-        use DataSize::*;
         match size {
-            Byte => {
+            DataSize::Byte => {
                 if addr + 1 > self.storage.len() {
                     return Err(Error::InstructionPointerOutOfBounds(addr).into());
                 }
                 self.storage[addr] = value.as_u8()?;
             }
-            Word => {
+            DataSize::Word => {
                 if addr + 2 > self.storage.len() {
                     return Err(Error::InstructionPointerOutOfBounds(addr).into());
                 }
                 self.storage[addr..addr + 2].copy_from_slice(&value.as_u16()?.to_le_bytes());
             }
-            DWord => {
+            DataSize::DWord => {
                 if addr + 4 > self.storage.len() {
                     return Err(Error::InstructionPointerOutOfBounds(addr).into());
                 }
                 self.storage[addr..addr + 4].copy_from_slice(&value.as_u32()?.to_le_bytes());
             }
-            QWord => {
+            DataSize::QWord => {
                 if addr + 8 > self.storage.len() {
                     return Err(Error::InstructionPointerOutOfBounds(addr).into());
                 }
                 self.storage[addr..addr + 8].copy_from_slice(&value.as_u64()?.to_le_bytes());
             }
-            Float => {
+            DataSize::Float => {
                 if addr + 4 > self.storage.len() {
                     return Err(Error::InstructionPointerOutOfBounds(addr).into());
                 }
                 self.storage[addr..addr + 4].copy_from_slice(&value.as_f32()?.to_le_bytes());
             }
-            Double => {
+            DataSize::Double => {
                 if addr + 8 > self.storage.len() {
                     return Err(Error::InstructionPointerOutOfBounds(addr).into());
                 }
