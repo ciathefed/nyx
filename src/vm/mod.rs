@@ -15,15 +15,12 @@ pub mod register;
 #[cfg(test)]
 mod tests;
 
+#[allow(dead_code)]
 #[derive(Debug, thiserror::Error, Diagnostic)]
 enum Error {
     #[diagnostic(code(vm::invalid_opcode))]
     #[error("invalid opcode: {0}")]
     InvalidOpcode(u8),
-
-    #[diagnostic(code(vm::unknown_opcode))]
-    #[error("unknown opcode: {0}")]
-    UnknownOpcode(u8),
 
     #[diagnostic(code(vm::unknown_opcode))]
     #[error("unhandled opcode: {0}")]
@@ -68,6 +65,7 @@ impl VM {
     pub fn new(program: Vec<u8>, mem_size: usize) -> Self {
         let mut regs = Registers::new();
         regs.set_sp(mem_size);
+        regs.set_bp(0);
         regs.set_ip(0);
 
         let mut mem = Memory::new(mem_size);
@@ -80,6 +78,7 @@ impl VM {
         }
     }
 
+    #[allow(unreachable_patterns)]
     pub fn step(&mut self) -> Result<()> {
         if self.halted {
             return Ok(());
