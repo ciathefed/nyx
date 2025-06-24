@@ -120,8 +120,8 @@ impl VM {
                 self.mem.write(addr, value, DataSize::from(src))
             }
             Opcode::PushReg => {
-                let src = self.read_register()?;
                 let size = self.read_data_size()?;
+                let src = self.read_register()?;
                 let imm = match size {
                     DataSize::Byte => Immediate::Byte(self.regs.get(src).as_u8()?),
                     DataSize::Word => Immediate::Word(self.regs.get(src).as_u16()?),
@@ -130,6 +130,7 @@ impl VM {
                     DataSize::Float => Immediate::Float(self.regs.get(src).as_f32()?),
                     DataSize::Double => Immediate::Double(self.regs.get(src).as_f64()?),
                 };
+                dbg!(src, size, imm);
                 self.push(imm)
             }
             Opcode::PushImm => {
@@ -161,8 +162,8 @@ impl VM {
                 self.push(value)
             }
             Opcode::PopReg => {
-                let dest = self.read_register()?;
                 let size = self.read_data_size()?;
+                let dest = self.read_register()?;
                 let value = self.pop(size)?;
                 self.regs.set(dest, value)
             }
