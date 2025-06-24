@@ -33,7 +33,7 @@ pub enum Command {
             long,
             short = 'o',
             help = "Optional path to write the compiled bytecode output",
-            default_value = "out.nb"
+            default_value = "out.nyb"
         )]
         output: Utf8PathBuf,
     },
@@ -50,7 +50,7 @@ pub enum Command {
             long,
             short = 'o',
             help = "Optional path to write the compiled bytecode before running",
-            default_value = "out.nb"
+            default_value = "out.nyb"
         )]
         output: Utf8PathBuf,
 
