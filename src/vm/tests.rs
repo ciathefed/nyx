@@ -41,7 +41,7 @@ fn nop() -> Result<()> {
     let vm = run(input, 0, None)?;
 
     assert_eq!(vm.halted, true);
-    assert_eq!(vm.regs.ip, 2);
+    assert_eq!(vm.regs.ip(), 2);
     Ok(())
 }
 
@@ -55,7 +55,7 @@ fn mov() -> Result<()> {
     let vm = run(input, 0, None)?;
 
     assert_eq!(vm.halted, true);
-    assert_eq!(vm.regs.ip, 14);
+    assert_eq!(vm.regs.ip(), 14);
     assert_eq!(vm.regs.get(Register::Q0), Immediate::QWord(1337));
     assert_eq!(vm.regs.get(Register::D0), Immediate::DWord(1337));
     Ok(())
@@ -74,7 +74,7 @@ fn ldr() -> Result<()> {
     let vm = run(&input, data_addr, Some(Immediate::QWord(1337)))?;
 
     assert_eq!(vm.halted, true);
-    assert_eq!(vm.regs.ip, 19);
+    assert_eq!(vm.regs.ip(), 19);
     assert_eq!(vm.regs.get(Register::Q0), Immediate::QWord(1337));
     Ok(())
 }
@@ -84,16 +84,16 @@ fn str() -> Result<()> {
     let data_addr = 512;
     let input = format!(
         r#"
-            mov d0, {data_addr}
+            mov d1, {data_addr}
             mov q0, 7331
-            str q0, [d0]
+            str q0, [d1]
             hlt
         "#
     );
     let vm = run(&input, data_addr, None)?;
 
     assert_eq!(vm.halted, true);
-    assert_eq!(vm.regs.ip, 29);
+    assert_eq!(vm.regs.ip(), 29);
     assert_eq!(
         vm.mem.read(data_addr, DataSize::QWord)?,
         Immediate::QWord(7331)
@@ -111,8 +111,8 @@ fn push() -> Result<()> {
     let vm = run(input, 0, None)?;
 
     assert!(vm.halted);
-    assert_eq!(vm.regs.sp, vm.mem.storage.len() - 4);
-    let value = vm.mem.read(vm.regs.sp, DataSize::DWord)?;
+    assert_eq!(vm.regs.sp(), vm.mem.storage.len() - 4);
+    let value = vm.mem.read(vm.regs.sp(), DataSize::DWord)?;
     assert_eq!(value, Immediate::DWord(1337));
     Ok(())
 }
@@ -127,7 +127,7 @@ fn pop() -> Result<()> {
     let vm = run(input, 0, None)?;
 
     assert!(vm.halted);
-    assert_eq!(vm.regs.sp, vm.mem.storage.len());
+    assert_eq!(vm.regs.sp(), vm.mem.storage.len());
     assert_eq!(vm.regs.get(Register::D0), Immediate::DWord(1337));
     Ok(())
 }
