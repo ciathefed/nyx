@@ -7,13 +7,17 @@ use pretty_assertions::assert_eq;
 
 const TEST_MEM_SIZE: usize = 1024;
 
-fn run(input: &str) -> Result<VM> {
+fn run(input: &str, data_addr: usize, data_value: Option<Immediate>) -> Result<VM> {
     let lexer = Lexer::new(input);
     let mut parser = Parser::new(lexer);
     let mut compiler = Compiler::new(parser.parse()?);
-    let mut vm = VM::new(Vec::from(compiler.compile()?), TEST_MEM_SIZE);
-    vm.mem
-        .write(0x00, Immediate::QWord(1337), DataSize::QWord)?;
+    let program_bytes = Vec::from(compiler.compile()?);
+
+    let mut vm = VM::new(program_bytes.clone(), TEST_MEM_SIZE);
+    if let Some(data_value) = data_value {
+        let size = data_value.size();
+        vm.mem.write(data_addr, data_value, size)?;
+    }
     vm.run()?;
     Ok(vm)
 }
@@ -21,7 +25,7 @@ fn run(input: &str) -> Result<VM> {
 #[test]
 fn hlt() -> Result<()> {
     let input = r#"hlt"#;
-    let vm = run(input)?;
+    let vm = run(input, 0, None)?;
 
     assert_eq!(vm.halted, true);
     Ok(())
@@ -33,7 +37,7 @@ fn nop() -> Result<()> {
         nop
         hlt
     "#;
-    let vm = run(input)?;
+    let vm = run(input, 0, None)?;
 
     assert_eq!(vm.halted, true);
     assert_eq!(vm.regs.ip, 2);
@@ -47,7 +51,7 @@ fn mov() -> Result<()> {
         mov d0, q0
         hlt
     "#;
-    let vm = run(input)?;
+    let vm = run(input, 0, None)?;
 
     assert_eq!(vm.halted, true);
     assert_eq!(vm.regs.ip, 14);
@@ -58,30 +62,41 @@ fn mov() -> Result<()> {
 
 #[test]
 fn ldr() -> Result<()> {
-    let input = r#"
-        ldr q0, [d0, 0]
-        hlt
-    "#;
-    let vm = run(input)?;
+    let data_addr = 512;
+    let input = format!(
+        r#"
+            mov d0, {data_addr}
+            ldr q0, [d0, 0]
+            hlt
+        "#
+    );
+    let vm = run(&input, data_addr, Some(Immediate::QWord(1337)))?;
 
     assert_eq!(vm.halted, true);
-    assert_eq!(vm.regs.ip, 13);
+    assert_eq!(vm.regs.ip, 19);
     assert_eq!(vm.regs.get(Register::Q0), Immediate::QWord(1337));
     Ok(())
 }
 
 #[test]
 fn str() -> Result<()> {
-    let input = r#"
-        mov q0, 7331
-        str q0, [d0]
-        hlt
-    "#;
-    let vm = run(input)?;
+    let data_addr = 512;
+    let input = format!(
+        r#"
+            mov d0, {data_addr}
+            mov q0, 7331
+            str q0, [d0]
+            hlt
+        "#
+    );
+    let vm = run(&input, data_addr, None)?;
 
     assert_eq!(vm.halted, true);
-    assert_eq!(vm.regs.ip, 23);
-    assert_eq!(vm.mem.read(0x00, DataSize::QWord)?, Immediate::QWord(7331));
+    assert_eq!(vm.regs.ip, 29);
+    assert_eq!(
+        vm.mem.read(data_addr, DataSize::QWord)?,
+        Immediate::QWord(7331)
+    );
     Ok(())
 }
 
@@ -92,7 +107,7 @@ fn push() -> Result<()> {
         push DWORD q0
         hlt
     "#;
-    let vm = run(input)?;
+    let vm = run(input, 0, None)?;
 
     assert!(vm.halted);
     assert_eq!(vm.regs.sp, vm.mem.storage.len() - 4);
@@ -108,7 +123,7 @@ fn pop() -> Result<()> {
         pop QWORD d0
         hlt
     "#;
-    let vm = run(input)?;
+    let vm = run(input, 0, None)?;
 
     assert!(vm.halted);
     assert_eq!(vm.regs.sp, vm.mem.storage.len());
