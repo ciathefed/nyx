@@ -6,13 +6,11 @@ use crate::{
     vm::{
         memory::Memory,
         register::{Register, Registers},
-        stack::Stack,
     },
 };
 
 pub mod memory;
 pub mod register;
-pub mod stack;
 
 #[cfg(test)]
 mod tests;
@@ -43,17 +41,19 @@ pub enum Error {
 pub struct VM {
     pub(crate) regs: Registers,
     pub(crate) mem: Memory,
-    pub(crate) stack: Stack,
+    // pub(crate) stack: Stack,
     pub(crate) program: Vec<u8>,
     pub(crate) halted: bool,
 }
 
 impl VM {
     pub fn new(program: Vec<u8>, mem_size: usize) -> Self {
+        let mut regs = Registers::new();
+        regs.sp = mem_size;
+
         Self {
-            regs: Registers::new(),
+            regs,
             mem: Memory::new(mem_size),
-            stack: Stack::new(),
             program,
             halted: false,
         }
@@ -154,7 +154,7 @@ impl VM {
             }
             Opcode::PopReg => {
                 let dest = self.read_register()?;
-                let value = self.pop()?;
+                let value = self.pop(DataSize::from(dest))?;
                 self.regs.set(dest, value)
             }
             Opcode::PopAddr => {
@@ -170,7 +170,7 @@ impl VM {
                 };
                 let offset = self.read_qword()?;
                 let addr = (base + offset) as usize;
-                let value = self.pop()?;
+                let value = self.pop(size)?;
                 self.mem.write(addr, value, size)
             }
             Opcode::Hlt => {
@@ -249,14 +249,24 @@ impl VM {
     }
 
     fn push(&mut self, value: Immediate) -> Result<()> {
-        self.stack.push(value)?;
-        self.regs.sp += 1;
-        Ok(())
+        let size = value.size();
+        let size_bytes = size.size_in_bytes();
+
+        if self.regs.sp < size_bytes {
+            return Err(Error::StackOverflow.into());
+        }
+
+        self.regs.sp -= size_bytes;
+        self.mem.write(self.regs.sp as usize, value, size)
     }
 
-    fn pop(&mut self) -> Result<Immediate> {
-        let value = self.stack.pop()?;
-        self.regs.sp -= 1;
+    fn pop(&mut self, size: DataSize) -> Result<Immediate> {
+        if (self.regs.sp as usize) + size.size_in_bytes() > self.mem.storage.len() {
+            return Err(Error::StackUnderflow.into());
+        }
+
+        let value = self.mem.read(self.regs.sp as usize, size)?;
+        self.regs.sp += size.size_in_bytes();
         Ok(value)
     }
 }
