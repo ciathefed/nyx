@@ -20,7 +20,7 @@ pub const ADDRESSING_VARIANT_2: u8 = 0x01; // [INTEGER, Option<INTEGER>]
 #[derive(Debug, thiserror::Error, Diagnostic)]
 pub enum Error {
     #[diagnostic(code(compiler::invalid_register))]
-    #[error("Invalid register in {inst}")]
+    #[error("invalid register in {inst}")]
     InvalidRegister {
         inst: &'static str,
         #[source_code]
@@ -30,65 +30,65 @@ pub enum Error {
     },
 
     #[diagnostic(code(compiler::invalid_data_size))]
-    #[error("Invalid data size in {inst}")]
+    #[error("invalid data size in {inst}")]
     InvalidDataSize {
         inst: &'static str,
         #[source_code]
         src: String,
-        #[label("bad data size")]
+        #[label("invalid data size")]
         span: SourceSpan,
     },
 
     #[diagnostic(code(compiler::invalid_operands))]
-    #[error("Invalid operands in {inst}: {details}")]
+    #[error("invalid operands in {inst}: {details}")]
     InvalidOperands {
         inst: &'static str,
         details: String,
         #[source_code]
         src: String,
-        #[label("problematic operands here")]
+        #[label("invalid operands")]
         span: SourceSpan,
     },
 
     #[diagnostic(code(compiler::undefined_label))]
-    #[error("Undefined label in {inst}: {label}")]
+    #[error("undefined label in {inst}: {label}")]
     UndefinedLabel {
         inst: &'static str,
         label: String,
         #[source_code]
         src: String,
-        #[label("label used here")]
+        #[label("undefined label used here")]
         span: SourceSpan,
     },
 
     #[diagnostic(code(compiler::unsupported_op))]
-    #[error("Unsupported operation {inst}")]
+    #[error("unsupported operation {inst}")]
     UnsupportedOperation {
         inst: String,
         #[source_code]
         src: String,
-        #[label("unsupported here")]
+        #[label("unsupported operation")]
         span: SourceSpan,
     },
 
     #[diagnostic(code(compiler::fixup_fail))]
-    #[error("Fixup failed in {inst} for label: {label}")]
+    #[error("fixup failed in {inst} for label: {label}")]
     FixupFailure {
         inst: &'static str,
         label: String,
         #[source_code]
         src: String,
-        #[label("fixup target")]
+        #[label("fixup failure target")]
         span: SourceSpan,
     },
 
     #[diagnostic(code(compiler::invalid_expression))]
-    #[error("Invalid expression in {inst}")]
+    #[error("invalid expression in {inst}")]
     InvalidExpression {
         inst: &'static str,
         #[source_code]
         src: String,
-        #[label("expression here")]
+        #[label("invalid expression")]
         span: SourceSpan,
     },
 }

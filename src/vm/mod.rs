@@ -1,4 +1,4 @@
-use miette::{Diagnostic, Result, Severity};
+use miette::{Diagnostic, Result};
 
 use crate::{
     compiler::{ADDRESSING_VARIANT_1, ADDRESSING_VARIANT_2, opcode::Opcode},
@@ -16,11 +16,15 @@ pub mod register;
 mod tests;
 
 #[allow(dead_code)]
-#[derive(thiserror::Error, Debug, Diagnostic)]
-pub enum Error {
+#[derive(Debug, thiserror::Error, Diagnostic)]
+enum Error {
     #[diagnostic(code(vm::invalid_opcode))]
     #[error("invalid opcode: {0}")]
     InvalidOpcode(u8),
+
+    #[diagnostic(code(vm::unknown_opcode))]
+    #[error("unknown opcode: {0}")]
+    UnknownOpcode(u8),
 
     #[diagnostic(code(vm::unknown_opcode))]
     #[error("unhandled opcode: {0}")]

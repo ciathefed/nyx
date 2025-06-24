@@ -15,31 +15,27 @@ mod immediate;
 #[cfg(test)]
 mod tests;
 
-#[derive(thiserror::Error, Debug, Diagnostic)]
+#[derive(Debug, thiserror::Error, Diagnostic)]
 pub enum Error {
-    #[error("unexpected token: {token}")]
     #[diagnostic(code(parser::unexpected_token))]
+    #[error("unexpected token: {token}")]
     UnexpectedToken {
         token: Token,
-
-        #[label("unexpected token here")]
-        span: SourceSpan,
-
         #[source_code]
         src: String,
+        #[label("unexpected token here")]
+        span: SourceSpan,
     },
 
-    #[error("expected {expected}, got {got} instead")]
     #[diagnostic(code(parser::expected_token))]
+    #[error("expected {expected}, got {got} instead")]
     Expected {
         expected: String,
         got: Token,
-
-        #[label("got this token")]
-        span: SourceSpan,
-
         #[source_code]
         src: String,
+        #[label("unexpected token")]
+        span: SourceSpan,
     },
 }
 
