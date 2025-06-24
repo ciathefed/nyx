@@ -7,7 +7,9 @@ use crate::span::Span;
 
 lazy_static! {
     static ref KEYWORDS: HashMap<&'static str, TokenKind> = HashMap::from([
-        // Keywords
+        // Preprocessor Directives
+        ("#define", TokenKind::KwDefine),
+        // Instructions
         ("nop", TokenKind::KwNop),
         ("mov", TokenKind::KwMov),
         ("ldr", TokenKind::KwLdr),
@@ -15,8 +17,9 @@ lazy_static! {
         ("push", TokenKind::KwPush),
         ("pop", TokenKind::KwPop),
         ("hlt", TokenKind::KwHlt),
-        // Directives
-        ("#define", TokenKind::KwDefine),
+        // Data Declaration Directives
+        ("db", TokenKind::KwDb),
+
         // Registers
         ("b0", TokenKind::Register),
         ("w0", TokenKind::Register),
@@ -56,6 +59,8 @@ pub enum TokenKind {
     LBracket,
     RBracket,
 
+    KwDefine,
+
     KwNop,
     KwMov,
     KwLdr,
@@ -64,7 +69,7 @@ pub enum TokenKind {
     KwPop,
     KwHlt,
 
-    KwDefine,
+    KwDb,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

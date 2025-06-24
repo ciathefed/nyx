@@ -130,6 +130,19 @@ impl Compiler {
                 Statement::Push(ds, expr, span) => self.compile_push(ds, expr, span.into())?,
                 Statement::Pop(ds, expr, span) => self.compile_pop(ds, expr, span.into())?,
                 Statement::Hlt(_) => self.bytecode.push(Opcode::Hlt),
+                Statement::Db(exprs, span) => {
+                    for expr in exprs {
+                        match expr {
+                            Expression::IntegerLiteral(integer) => {
+                                self.bytecode.push(integer as u8);
+                            }
+                            Expression::StringLiteral(string) => {
+                                self.bytecode.extend(string.bytes());
+                            }
+                            _ => todo!(),
+                        }
+                    }
+                }
                 other => {
                     let span = other.span().into();
                     return Err(Error::UnsupportedOperation {

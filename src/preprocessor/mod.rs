@@ -62,6 +62,10 @@ impl PreProcessor {
                 Statement::Label(name, span) => Statement::Label(name, span),
                 Statement::Nop(span) => Statement::Nop(span),
                 Statement::Hlt(span) => Statement::Hlt(span),
+                Statement::Db(exprs, span) => Statement::Db(
+                    exprs.into_iter().map(|e| self.substitute_expr(e)).collect(),
+                    span,
+                ),
             };
 
             self.new_program.push(new_stmt);

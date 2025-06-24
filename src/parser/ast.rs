@@ -5,6 +5,7 @@ pub use crate::parser::immediate::*;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
     Define(Expression, Expression, Span),
+
     Label(String, Span),
     Nop(Span),
     Mov(Expression, Expression, Span),
@@ -13,6 +14,8 @@ pub enum Statement {
     Push(Option<Expression>, Expression, Span),
     Pop(Option<Expression>, Expression, Span),
     Hlt(Span),
+
+    Db(Vec<Expression>, Span),
 }
 
 impl Statement {
@@ -27,6 +30,7 @@ impl Statement {
             Statement::Push(_, _, span) => *span,
             Statement::Pop(_, _, span) => *span,
             Statement::Hlt(span) => *span,
+            Statement::Db(_, span) => *span,
         }
     }
 }

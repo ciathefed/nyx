@@ -70,6 +70,18 @@ impl Parser {
     fn parse_statement(&mut self) -> Result<Statement> {
         let cur_span = self.cur_token.loc;
         match self.cur_token.kind {
+            TokenKind::KwDefine => {
+                self.next_token();
+
+                let name = self.parse_expression()?;
+                let value = self.parse_expression()?;
+
+                Ok(Statement::Define(
+                    name,
+                    value,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
             TokenKind::Identifier => {
                 if self.peek_token_is(TokenKind::Colon) {
                     let ident = self.cur_token.literal.clone();
@@ -170,15 +182,20 @@ impl Parser {
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }
-            TokenKind::KwDefine => {
+            TokenKind::KwDb => {
                 self.next_token();
+                let mut exprs = vec![];
+                loop {
+                    exprs.push(self.parse_expression()?);
+                    if self.cur_token_is(TokenKind::Comma) {
+                        self.next_token();
+                        continue;
+                    }
+                    break;
+                }
 
-                let name = self.parse_expression()?;
-                let value = self.parse_expression()?;
-
-                Ok(Statement::Define(
-                    name,
-                    value,
+                Ok(Statement::Db(
+                    exprs,
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }
