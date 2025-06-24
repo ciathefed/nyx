@@ -12,6 +12,19 @@ pub enum DataSize {
     Double,
 }
 
+impl DataSize {
+    pub fn bytes(&self) -> usize {
+        match self {
+            DataSize::Byte => 1,
+            DataSize::Word => 2,
+            DataSize::DWord => 4,
+            DataSize::QWord => 8,
+            DataSize::Float => 4,
+            DataSize::Double => 8,
+        }
+    }
+}
+
 impl From<Register> for DataSize {
     fn from(value: Register) -> Self {
         match value {
@@ -39,6 +52,22 @@ impl TryFrom<&str> for DataSize {
             "qword" => Ok(Self::QWord),
             "float" => Ok(Self::Float),
             "double" => Ok(Self::Double),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<u8> for DataSize {
+    type Error = ();
+
+    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
+        match value {
+            0x00 => Ok(Self::Byte),
+            0x01 => Ok(Self::Word),
+            0x02 => Ok(Self::DWord),
+            0x03 => Ok(Self::QWord),
+            0x04 => Ok(Self::Float),
+            0x05 => Ok(Self::Double),
             _ => Err(()),
         }
     }
@@ -135,6 +164,17 @@ impl Immediate {
             Immediate::QWord(v) => Ok(v as usize),
             Immediate::Float(v) => Ok(v as usize),
             Immediate::Double(v) => Ok(v as usize),
+        }
+    }
+
+    pub fn data_size(&self) -> DataSize {
+        match self {
+            Immediate::Byte(_) => DataSize::Byte,
+            Immediate::Word(_) => DataSize::Word,
+            Immediate::DWord(_) => DataSize::DWord,
+            Immediate::QWord(_) => DataSize::QWord,
+            Immediate::Float(_) => DataSize::Float,
+            Immediate::Double(_) => DataSize::Double,
         }
     }
 }

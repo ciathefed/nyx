@@ -25,6 +25,8 @@ pub enum Error {
     UnhandledOpcode(u8),
     #[error("invalid register: {0}")]
     InvalidRegister(u8),
+    #[error("invalid data size: {0}")]
+    InvalidDataSize(u8),
     #[error("unknown addressing variant: {0}")]
     UnknownAddressingVariant(u8),
     #[error("instruction pointer out of bounds: {0}")]
@@ -73,7 +75,7 @@ impl VM {
             }
             Opcode::MovRegImm => {
                 let dest = self.read_register()?;
-                let imm = match DataSize::from(dest) {
+                let src = match DataSize::from(dest) {
                     DataSize::Byte => Immediate::Byte(self.read_byte()?),
                     DataSize::Word => Immediate::Word(self.read_word()?),
                     DataSize::DWord => Immediate::DWord(self.read_dword()?),
@@ -81,7 +83,7 @@ impl VM {
                     DataSize::Float => Immediate::Float(self.read_float()?),
                     DataSize::Double => Immediate::Double(self.read_double()?),
                 };
-                self.regs.set(dest, imm)
+                self.regs.set(dest, src)
             }
             Opcode::Ldr => {
                 let dest = self.read_register()?;
@@ -115,57 +117,66 @@ impl VM {
                 let addr = (base + offset) as usize;
                 self.mem.write(addr, value, DataSize::from(src))
             }
+            Opcode::PushReg => {
+                let src = self.read_register()?;
+                let imm = self.regs.get(src);
+                self.push(imm)
+            }
+            Opcode::PushImm => {
+                let size = self.read_data_size()?;
+                let imm = match size {
+                    DataSize::Byte => Immediate::Byte(self.read_byte()?),
+                    DataSize::Word => Immediate::Word(self.read_word()?),
+                    DataSize::DWord => Immediate::DWord(self.read_dword()?),
+                    DataSize::QWord => Immediate::QWord(self.read_qword()?),
+                    DataSize::Float => Immediate::Float(self.read_float()?),
+                    DataSize::Double => Immediate::Double(self.read_double()?),
+                };
+                self.push(imm)
+            }
+            Opcode::PushAddr => {
+                let size = self.read_data_size()?;
+                let variant = self.read_byte()?;
+                let base = match variant {
+                    ADDRESSING_VARIANT_1 => {
+                        let reg = self.read_register()?;
+                        self.regs.get(reg).as_u64()?
+                    }
+                    ADDRESSING_VARIANT_2 => self.read_qword()?,
+                    _ => return Err(Error::UnknownAddressingVariant(variant).into()),
+                };
+                let offset = self.read_qword()?;
+                let addr = (base + offset) as usize;
+                let value = self.mem.read(addr, size)?;
+                self.push(value)
+            }
+            Opcode::PopReg => {
+                let dest = self.read_register()?;
+                let value = self.pop()?;
+                self.regs.set(dest, value)
+            }
+            Opcode::PopAddr => {
+                let size = self.read_data_size()?;
+                let variant = self.read_byte()?;
+                let base = match variant {
+                    ADDRESSING_VARIANT_1 => {
+                        let reg = self.read_register()?;
+                        self.regs.get(reg).as_u64()?
+                    }
+                    ADDRESSING_VARIANT_2 => self.read_qword()?,
+                    _ => return Err(Error::UnknownAddressingVariant(variant).into()),
+                };
+                let offset = self.read_qword()?;
+                let addr = (base + offset) as usize;
+                let value = self.pop()?;
+                self.mem.write(addr, value, size)
+            }
             Opcode::Hlt => {
                 self.halted = true;
                 Ok(())
             }
             _ => Err(Error::UnhandledOpcode(byte).into()),
         }
-
-        // match instr {
-        //     Instruction::Hlt => self.halted = true,
-        //     Instruction::MovRegReg(dst, src) => {
-        //         let value = self.regs.get(*src);
-        //         self.regs.set(*dst, value)?;
-        //     }
-        //     Instruction::MovRegImm(dst, imm) => {
-        //         self.regs.set(*dst, *imm)?;
-        //     }
-        //     Instruction::Ldr(size, dst, addr) => {
-        //         let value = self.mem.read(*addr, *size)?;
-        //         self.regs.set(*dst, value)?;
-        //     }
-        //     Instruction::Str(size, src, addr) => {
-        //         let value = self.regs.get(*src);
-        //         self.mem.write(*addr, value, *size)?;
-        //     }
-        //     Instruction::PushImm(imm) => {
-        //         self.stack.push(*imm)?;
-        //         self.regs.sp += 1;
-        //     }
-        //     Instruction::PushReg(reg) => {
-        //         let val = self.regs.get(*reg);
-        //         self.stack.push(val)?;
-        //         self.regs.sp += 1;
-        //     }
-        //     Instruction::PushAddr(addr, size) => {
-        //         let val = self.mem.read(*addr, *size)?;
-        //         self.stack.push(val)?;
-        //         self.regs.sp += 1;
-        //     }
-        //     Instruction::PopReg(dst) => {
-        //         let val = self.stack.pop()?;
-        //         self.regs.set(*dst, val)?;
-        //         self.regs.sp = self.regs.sp.saturating_sub(1);
-        //     }
-        //     Instruction::PopAddr(addr, size) => {
-        //         let val = self.stack.pop()?;
-        //         self.mem.write(*addr, val, *size)?;
-        //         self.regs.sp = self.regs.sp.saturating_sub(1);
-        //     }
-        // }
-
-        // Ok(())
     }
 
     pub fn run(&mut self) -> Result<()> {
@@ -228,5 +239,22 @@ impl VM {
     fn read_register(&mut self) -> Result<Register> {
         let byte = self.read_byte()?;
         Ok(Register::try_from(byte).map_err(|_| Error::InvalidRegister(byte))?)
+    }
+
+    fn read_data_size(&mut self) -> Result<DataSize> {
+        let byte = self.read_byte()?;
+        Ok(DataSize::try_from(byte).map_err(|_| Error::InvalidDataSize(byte))?)
+    }
+
+    fn push(&mut self, value: Immediate) -> Result<()> {
+        self.stack.push(value)?;
+        self.regs.sp += 1;
+        Ok(())
+    }
+
+    fn pop(&mut self) -> Result<Immediate> {
+        let value = self.stack.pop()?;
+        self.regs.sp -= 1;
+        Ok(value)
     }
 }
