@@ -372,7 +372,6 @@ impl Compiler {
                 .into());
             }
         }
-
         Ok(())
     }
 
@@ -384,9 +383,9 @@ impl Compiler {
                 self.bytecode.push(Opcode::PopReg);
                 self.bytecode.push(dest);
             }
-            (None, Expression::Address(base_expr, offset_expr)) => {
+            (Some(Expression::DataSize(size)), Expression::Address(base_expr, offset_expr)) => {
                 self.bytecode.push(Opcode::PopAddr);
-                self.bytecode.push(DataSize::QWord); // default size for pop address
+                self.bytecode.push(size);
 
                 match (base_expr.deref(), offset_expr.as_deref()) {
                     (Expression::Register(base), Some(Expression::IntegerLiteral(offset))) => {
@@ -446,7 +445,6 @@ impl Compiler {
                 .into());
             }
         }
-
         Ok(())
     }
 }
