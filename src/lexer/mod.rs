@@ -30,14 +30,15 @@ impl<'a> Lexer<'a> {
         let start = self.pos;
 
         let token = match self.ch {
+            '\0' => Token::new(TokenKind::Eof, "", (start, self.read_pos)),
             ',' => Token::new(TokenKind::Comma, self.ch, (start, self.read_pos)),
             ':' => Token::new(TokenKind::Colon, self.ch, (start, self.read_pos)),
             '+' => Token::new(TokenKind::Plus, self.ch, (start, self.read_pos)),
             '-' => Token::new(TokenKind::Minus, self.ch, (start, self.read_pos)),
             '[' => Token::new(TokenKind::LBracket, self.ch, (start, self.read_pos)),
             ']' => Token::new(TokenKind::RBracket, self.ch, (start, self.read_pos)),
+            '#' => self.read_directive(),
             '"' => self.read_string(),
-            '\0' => Token::new(TokenKind::Eof, "", (start, self.read_pos)),
             _ => {
                 if self.ch.is_digit(10) {
                     return self.read_number();
@@ -84,6 +85,19 @@ impl<'a> Lexer<'a> {
 
     fn read_identifier(&mut self) -> Token {
         let start = self.pos;
+        while self.ch.is_alphanumeric() || self.ch == '_' {
+            self.read_char();
+        }
+
+        let literal = &self.input[start..self.pos];
+        let kind = lookup_ident(literal);
+
+        Token::new(kind, literal, (start, self.pos))
+    }
+
+    fn read_directive(&mut self) -> Token {
+        let start = self.pos;
+        self.read_char();
         while self.ch.is_alphanumeric() || self.ch == '_' {
             self.read_char();
         }
