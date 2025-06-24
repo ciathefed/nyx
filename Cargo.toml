@@ -1,5 +1,6 @@
 [package]
 name = "nyx"
+description = "A compiler and virtual machine for the Nyx programming language"
 version = "0.1.0"
 edition = "2024"
 
