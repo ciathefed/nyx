@@ -84,3 +84,33 @@ fn str() -> Result<()> {
     assert_eq!(vm.mem.read(0x00, DataSize::QWord)?, Immediate::QWord(7331));
     Ok(())
 }
+
+#[test]
+fn push() -> Result<()> {
+    let input = r#"
+        mov q0, 1337
+        push q0
+        hlt
+    "#;
+    let vm = run(input)?;
+
+    assert_eq!(vm.halted, true);
+    assert_eq!(vm.regs.sp, 1);
+    assert_eq!(vm.stack.storage.last(), Some(&Immediate::QWord(1337)));
+    Ok(())
+}
+
+#[test]
+fn pop() -> Result<()> {
+    let input = r#"
+        push QWORD 1337
+        pop q0
+        hlt
+    "#;
+    let vm = run(input)?;
+
+    assert_eq!(vm.halted, true);
+    assert_eq!(vm.regs.sp, 0);
+    assert_eq!(vm.regs.get(Register::Q0), Immediate::QWord(1337));
+    Ok(())
+}
