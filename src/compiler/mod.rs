@@ -16,6 +16,7 @@ mod tests;
 pub const ADDRESSING_VARIANT_1: u8 = 0x00; // [REGISTER, Option<INTEGER>]
 pub const ADDRESSING_VARIANT_2: u8 = 0x01; // [INTEGER, Option<INTEGER>]
 
+#[allow(dead_code)]
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Invalid register in {0}")]
@@ -48,7 +49,7 @@ impl Compiler {
         let program_len = program.len();
         Self {
             program,
-            bytecode: Bytecode::new(),
+            bytecode: Bytecode::new(Some(4 * program_len)),
             labels: HashMap::with_capacity(4 * program_len),
             fixups: HashMap::with_capacity(4 * program_len),
         }

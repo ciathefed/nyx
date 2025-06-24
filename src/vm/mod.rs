@@ -17,6 +17,7 @@ pub mod stack;
 #[cfg(test)]
 mod tests;
 
+#[allow(dead_code)]
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("invalid opcode: {0}")]
@@ -58,6 +59,7 @@ impl VM {
         }
     }
 
+    #[allow(unreachable_patterns)]
     pub fn step(&mut self) -> Result<()> {
         if self.halted {
             return Ok(());

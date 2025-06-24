@@ -1,6 +1,6 @@
 use crate::vm::register::Register;
 
-pub use crate::parser::{immediate::*, instruction::*};
+pub use crate::parser::immediate::*;
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {

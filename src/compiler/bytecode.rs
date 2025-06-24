@@ -3,16 +3,13 @@ pub struct Bytecode {
 }
 
 impl Bytecode {
-    pub fn new() -> Self {
-        Self {
-            storage: Vec::new(),
-        }
-    }
-
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self {
-            storage: Vec::with_capacity(capacity),
-        }
+    pub fn new(capacity: Option<usize>) -> Self {
+        let storage = if let Some(capacity) = capacity {
+            Vec::with_capacity(capacity)
+        } else {
+            Vec::new()
+        };
+        Self { storage }
     }
 
     pub fn len(&self) -> usize {

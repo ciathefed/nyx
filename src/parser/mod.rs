@@ -11,7 +11,6 @@ use crate::{
 
 pub mod ast;
 mod immediate;
-mod instruction;
 
 #[cfg(test)]
 mod tests;
@@ -208,15 +207,6 @@ impl<'a> Parser<'a> {
 
     fn expect_cur(&mut self, kind: TokenKind) -> Result<()> {
         if self.cur_token_is(kind) {
-            self.next_token();
-            Ok(())
-        } else {
-            Err(Erorr::UnexpectedToken(self.peek_token.clone()).into())
-        }
-    }
-
-    fn expect_peek(&mut self, kind: TokenKind) -> Result<()> {
-        if self.peek_token_is(kind) {
             self.next_token();
             Ok(())
         } else {

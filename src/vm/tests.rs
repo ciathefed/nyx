@@ -3,7 +3,7 @@ use crate::{compiler::Compiler, lexer::Lexer, parser::Parser};
 use super::*;
 
 use anyhow::Result;
-use pretty_assertions::{assert_eq, assert_ne};
+use pretty_assertions::assert_eq;
 
 const TEST_MEM_SIZE: usize = 1024;
 

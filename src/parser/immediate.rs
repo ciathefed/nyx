@@ -12,19 +12,6 @@ pub enum DataSize {
     Double,
 }
 
-impl DataSize {
-    pub fn bytes(&self) -> usize {
-        match self {
-            DataSize::Byte => 1,
-            DataSize::Word => 2,
-            DataSize::DWord => 4,
-            DataSize::QWord => 8,
-            DataSize::Float => 4,
-            DataSize::Double => 8,
-        }
-    }
-}
-
 impl From<Register> for DataSize {
     fn from(value: Register) -> Self {
         match value {
@@ -164,17 +151,6 @@ impl Immediate {
             Immediate::QWord(v) => Ok(v as usize),
             Immediate::Float(v) => Ok(v as usize),
             Immediate::Double(v) => Ok(v as usize),
-        }
-    }
-
-    pub fn data_size(&self) -> DataSize {
-        match self {
-            Immediate::Byte(_) => DataSize::Byte,
-            Immediate::Word(_) => DataSize::Word,
-            Immediate::DWord(_) => DataSize::DWord,
-            Immediate::QWord(_) => DataSize::QWord,
-            Immediate::Float(_) => DataSize::Float,
-            Immediate::Double(_) => DataSize::Double,
         }
     }
 }
