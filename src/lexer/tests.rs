@@ -64,6 +64,22 @@ fn identifier() {
 }
 
 #[test]
+fn keyword() {
+    let tests = vec![
+        ("mov", vec![Token::new(TokenKind::KwMov, "mov", (0, 3))]),
+        ("ldr", vec![Token::new(TokenKind::KwLdr, "ldr", (0, 3))]),
+        ("str", vec![Token::new(TokenKind::KwStr, "str", (0, 3))]),
+        ("push", vec![Token::new(TokenKind::KwPush, "push", (0, 4))]),
+        ("pop", vec![Token::new(TokenKind::KwPop, "pop", (0, 3))]),
+    ];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
 fn string() {
     let tests = vec![
         (
