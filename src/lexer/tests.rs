@@ -41,7 +41,7 @@ fn numbers() {
 }
 
 #[test]
-fn identifier() {
+fn identifiers() {
     let tests = vec![
         (
             "variable_name",
@@ -64,13 +64,15 @@ fn identifier() {
 }
 
 #[test]
-fn keyword() {
+fn keywords() {
     let tests = vec![
+        ("nop", vec![Token::new(TokenKind::KwNop, "nop", (0, 3))]),
         ("mov", vec![Token::new(TokenKind::KwMov, "mov", (0, 3))]),
         ("ldr", vec![Token::new(TokenKind::KwLdr, "ldr", (0, 3))]),
         ("str", vec![Token::new(TokenKind::KwStr, "str", (0, 3))]),
         ("push", vec![Token::new(TokenKind::KwPush, "push", (0, 4))]),
         ("pop", vec![Token::new(TokenKind::KwPop, "pop", (0, 3))]),
+        ("hlt", vec![Token::new(TokenKind::KwHlt, "hlt", (0, 3))]),
     ];
 
     for (input, expected) in tests {
@@ -80,7 +82,20 @@ fn keyword() {
 }
 
 #[test]
-fn string() {
+fn directives() {
+    let tests = vec![(
+        "#define",
+        vec![Token::new(TokenKind::KwDefine, "#define", (0, 7))],
+    )];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
+fn strings() {
     let tests = vec![
         (
             r#""this is a string!""#,
