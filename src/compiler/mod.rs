@@ -1,6 +1,6 @@
 use std::{collections::HashMap, ops::Deref};
 
-use miette::{Diagnostic, Result, SourceSpan};
+use miette::{Diagnostic, NamedSource, Result, SourceSpan};
 
 use crate::{
     compiler::{bytecode::Bytecode, opcode::Opcode},
@@ -24,7 +24,7 @@ pub enum Error {
     InvalidRegister {
         inst: &'static str,
         #[source_code]
-        src: String,
+        src: NamedSource<String>,
         #[label("invalid register used here")]
         span: SourceSpan,
     },
@@ -34,7 +34,7 @@ pub enum Error {
     InvalidDataSize {
         inst: &'static str,
         #[source_code]
-        src: String,
+        src: NamedSource<String>,
         #[label("invalid data size")]
         span: SourceSpan,
     },
@@ -45,7 +45,7 @@ pub enum Error {
         inst: &'static str,
         details: String,
         #[source_code]
-        src: String,
+        src: NamedSource<String>,
         #[label("invalid operands")]
         span: SourceSpan,
     },
@@ -56,7 +56,7 @@ pub enum Error {
         inst: &'static str,
         label: String,
         #[source_code]
-        src: String,
+        src: NamedSource<String>,
         #[label("undefined label used here")]
         span: SourceSpan,
     },
@@ -66,7 +66,7 @@ pub enum Error {
     UnsupportedOperation {
         inst: String,
         #[source_code]
-        src: String,
+        src: NamedSource<String>,
         #[label("unsupported operation")]
         span: SourceSpan,
     },
@@ -77,7 +77,7 @@ pub enum Error {
         inst: &'static str,
         label: String,
         #[source_code]
-        src: String,
+        src: NamedSource<String>,
         #[label("fixup failure target")]
         span: SourceSpan,
     },
@@ -87,22 +87,22 @@ pub enum Error {
     InvalidExpression {
         inst: &'static str,
         #[source_code]
-        src: String,
+        src: NamedSource<String>,
         #[label("invalid expression")]
         span: SourceSpan,
     },
 }
 
-pub struct Compiler<'a> {
+pub struct Compiler {
     program: Vec<Statement>,
     bytecode: Bytecode,
     labels: HashMap<String, usize>,
     fixups: HashMap<usize, (DataSize, String)>,
-    input: &'a str,
+    input: NamedSource<String>,
 }
 
-impl<'a> Compiler<'a> {
-    pub fn new(program: Vec<Statement>, input: &'a str) -> Self {
+impl Compiler {
+    pub fn new(program: Vec<Statement>, input: NamedSource<String>) -> Self {
         let program_len = program.len();
         Self {
             program,
@@ -134,7 +134,7 @@ impl<'a> Compiler<'a> {
                     let span = other.span().into();
                     return Err(Error::UnsupportedOperation {
                         inst: format!("{:?}", other),
-                        src: self.input.to_string(),
+                        src: self.input.clone(),
                         span,
                     })?;
                 }
@@ -148,7 +148,7 @@ impl<'a> Compiler<'a> {
                 .ok_or_else(|| Error::UndefinedLabel {
                     inst: "FIXUP",
                     label: label.clone(),
-                    src: self.input.to_string(),
+                    src: self.input.clone(),
                     span: SourceSpan::new(offset.into(), 0),
                 })?;
 
@@ -160,7 +160,7 @@ impl<'a> Compiler<'a> {
                 _ => {
                     return Err(Error::InvalidDataSize {
                         inst: "FIXUP",
-                        src: self.input.to_string(),
+                        src: self.input.clone(),
                         span: SourceSpan::new(offset.into(), 0),
                     })?;
                 }
@@ -190,7 +190,7 @@ impl<'a> Compiler<'a> {
                     _ => {
                         return Err(Error::InvalidDataSize {
                             inst: INST,
-                            src: self.input.to_string(),
+                            src: self.input.clone(),
                             span,
                         })?;
                     }
@@ -205,7 +205,7 @@ impl<'a> Compiler<'a> {
                     _ => {
                         return Err(Error::InvalidDataSize {
                             inst: INST,
-                            src: self.input.to_string(),
+                            src: self.input.clone(),
                             span,
                         })?;
                     }
@@ -224,7 +224,7 @@ impl<'a> Compiler<'a> {
                     _ => {
                         return Err(Error::InvalidDataSize {
                             inst: INST,
-                            src: self.input.to_string(),
+                            src: self.input.clone(),
                             span,
                         })?;
                     }
@@ -234,7 +234,7 @@ impl<'a> Compiler<'a> {
                 return Err(Error::InvalidOperands {
                     inst: INST,
                     details: format!("Unsupported operands: {:?} -> {:?}", lhs, rhs),
-                    src: self.input.to_string(),
+                    src: self.input.clone(),
                     span,
                 })?;
             }
@@ -310,7 +310,7 @@ impl<'a> Compiler<'a> {
                                 "Unsupported addressing operands: {:?} -> {:?}",
                                 base_expr, offset_expr
                             ),
-                            src: self.input.to_string(),
+                            src: self.input.clone(),
                             span,
                         })?;
                     }
@@ -320,7 +320,7 @@ impl<'a> Compiler<'a> {
                 return Err(Error::InvalidOperands {
                     inst: INST,
                     details: format!("Unsupported operands: {:?} -> {:?}", lhs, rhs),
-                    src: self.input.to_string(),
+                    src: self.input.clone(),
                     span,
                 })?;
             }
@@ -395,7 +395,7 @@ impl<'a> Compiler<'a> {
                                 "Unsupported addressing operands: {:?} -> {:?}",
                                 base_expr, offset_expr
                             ),
-                            src: self.input.to_string(),
+                            src: self.input.clone(),
                             span,
                         })?;
                     }
@@ -475,7 +475,7 @@ impl<'a> Compiler<'a> {
                                 "Unsupported addressing operands with size: {:?} -> {:?}",
                                 base_expr, offset_expr
                             ),
-                            src: self.input.to_string(),
+                            src: self.input.clone(),
                             span,
                         })?;
                     }
@@ -485,7 +485,7 @@ impl<'a> Compiler<'a> {
                 return Err(Error::InvalidOperands {
                     inst: INST,
                     details: format!("Unsupported data size and operand: {:?} -> {:?}", ds, expr),
-                    src: self.input.to_string(),
+                    src: self.input.clone(),
                     span,
                 })?;
             }
@@ -561,7 +561,7 @@ impl<'a> Compiler<'a> {
                                 "Unsupported addressing operands: {:?} -> {:?}",
                                 base_expr, offset_expr
                             ),
-                            src: self.input.to_string(),
+                            src: self.input.clone(),
                             span,
                         })?;
                     }
@@ -571,7 +571,7 @@ impl<'a> Compiler<'a> {
                 return Err(Error::InvalidOperands {
                     inst: INST,
                     details: format!("Unsupported data size and operand: {:?} -> {:?}", ds, expr),
-                    src: self.input.to_string(),
+                    src: self.input.clone(),
                     span,
                 })?;
             }

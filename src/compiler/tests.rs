@@ -1,13 +1,15 @@
 use crate::{lexer::Lexer, parser::Parser, vm::register::Register};
 
-use miette::Result;
+use miette::{NamedSource, Result};
 
 use super::*;
 
 fn compile(input: &str) -> Result<Vec<u8>> {
-    let lexer = Lexer::new(input);
+    let named_source = NamedSource::new("compiler_tests.nyx", input.to_string());
+
+    let lexer = Lexer::new(named_source.clone());
     let mut parser = Parser::new(lexer);
-    let mut compiler = Compiler::new(parser.parse()?, input);
+    let mut compiler = Compiler::new(parser.parse()?, named_source);
     Ok(Vec::from(compiler.compile()?))
 }
 

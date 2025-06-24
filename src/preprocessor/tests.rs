@@ -1,11 +1,14 @@
-use miette::Result;
+use miette::{NamedSource, Result};
 
 use crate::{lexer::Lexer, parser::Parser, vm::register::Register};
 
 use super::*;
 
 fn preprocess(input: &str) -> Result<Vec<Statement>> {
-    let lexer = Lexer::new(input);
+    let lexer = Lexer::new(NamedSource::new(
+        "preprocessor_tests.nyx",
+        input.to_string(),
+    ));
     let mut parser = Parser::new(lexer);
     let mut program = PreProcessor::new(parser.parse()?);
     program.process()

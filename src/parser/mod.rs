@@ -1,4 +1,4 @@
-use miette::{Diagnostic, Result, SourceSpan};
+use miette::{Diagnostic, NamedSource, Result, SourceSpan};
 
 use crate::{
     lexer::{
@@ -22,7 +22,7 @@ pub enum Error {
     UnexpectedToken {
         token: Token,
         #[source_code]
-        src: String,
+        src: NamedSource<String>,
         #[label("unexpected token here")]
         span: SourceSpan,
     },
@@ -33,21 +33,21 @@ pub enum Error {
         expected: String,
         got: Token,
         #[source_code]
-        src: String,
+        src: NamedSource<String>,
         #[label("unexpected token")]
         span: SourceSpan,
     },
 }
 
-pub struct Parser<'a> {
-    lexer: Lexer<'a>,
+pub struct Parser {
+    lexer: Lexer,
     prev_token: Token,
     cur_token: Token,
     peek_token: Token,
 }
 
-impl<'a> Parser<'a> {
-    pub fn new(lexer: Lexer<'a>) -> Self {
+impl Parser {
+    pub fn new(lexer: Lexer) -> Self {
         let mut parser = Self {
             lexer,
             prev_token: Token::BLANK,
@@ -83,7 +83,7 @@ impl<'a> Parser<'a> {
                     Err(Error::UnexpectedToken {
                         token: self.cur_token.clone(),
                         span: self.cur_token.source_span(),
-                        src: self.lexer.input.to_string(),
+                        src: self.lexer.input.clone(),
                     })?
                 }
             }
@@ -186,7 +186,7 @@ impl<'a> Parser<'a> {
                 return Err(Error::UnexpectedToken {
                     token: self.cur_token.clone(),
                     span: self.cur_token.source_span(),
-                    src: self.lexer.input.to_string(),
+                    src: self.lexer.input.clone(),
                 })?;
             }
         }
@@ -236,7 +236,7 @@ impl<'a> Parser<'a> {
                     Err(_) => Err(Error::UnexpectedToken {
                         token: token.clone(),
                         span: token.source_span(),
-                        src: self.lexer.input.to_string(),
+                        src: self.lexer.input.clone(),
                     })?,
                 }
             }
@@ -257,7 +257,7 @@ impl<'a> Parser<'a> {
                         expected: "]".to_string(),
                         got: self.cur_token.clone(),
                         span: self.cur_token.source_span(),
-                        src: self.lexer.input.to_string(),
+                        src: self.lexer.input.clone(),
                     })?;
                 }
 
@@ -291,7 +291,7 @@ impl<'a> Parser<'a> {
             Err(Error::UnexpectedToken {
                 token: self.peek_token.clone(),
                 span: self.peek_token.source_span(),
-                src: self.lexer.input.to_string(),
+                src: self.lexer.input.clone(),
             })?
         }
     }

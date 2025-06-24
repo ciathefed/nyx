@@ -1,3 +1,5 @@
+use miette::NamedSource;
+
 use crate::lexer::token::{Token, TokenKind, lookup_ident};
 
 pub mod token;
@@ -5,15 +7,15 @@ pub mod token;
 #[cfg(test)]
 mod tests;
 
-pub struct Lexer<'a> {
-    pub(crate) input: &'a str,
+pub struct Lexer {
+    pub(crate) input: NamedSource<String>,
     pos: usize,
     read_pos: usize,
     ch: char,
 }
 
-impl<'a> Lexer<'a> {
-    pub fn new(input: &'a str) -> Self {
+impl Lexer {
+    pub fn new(input: NamedSource<String>) -> Self {
         let mut lexer = Self {
             input,
             pos: 0,
@@ -57,7 +59,12 @@ impl<'a> Lexer<'a> {
     }
 
     fn read_char(&mut self) {
-        self.ch = self.input.chars().nth(self.read_pos).unwrap_or('\0');
+        self.ch = self
+            .input
+            .inner()
+            .chars()
+            .nth(self.read_pos)
+            .unwrap_or('\0');
         self.pos = self.read_pos;
         self.read_pos += 1;
     }
@@ -75,10 +82,10 @@ impl<'a> Lexer<'a> {
                 self.read_char();
             }
 
-            let literal = &self.input[start..self.pos];
+            let literal = &self.input.inner()[start..self.pos];
             Token::new(TokenKind::Float, literal, (start, self.pos))
         } else {
-            let literal = &self.input[start..self.pos];
+            let literal = &self.input.inner()[start..self.pos];
             Token::new(TokenKind::Integer, literal, (start, self.pos))
         }
     }
@@ -89,7 +96,7 @@ impl<'a> Lexer<'a> {
             self.read_char();
         }
 
-        let literal = &self.input[start..self.pos];
+        let literal = &self.input.inner()[start..self.pos];
         let kind = lookup_ident(literal);
 
         Token::new(kind, literal, (start, self.pos))
@@ -102,7 +109,7 @@ impl<'a> Lexer<'a> {
             self.read_char();
         }
 
-        let literal = &self.input[start..self.pos];
+        let literal = &self.input.inner()[start..self.pos];
         let kind = lookup_ident(literal);
 
         Token::new(kind, literal, (start, self.pos))
@@ -120,13 +127,17 @@ impl<'a> Lexer<'a> {
 
         return Token::new(
             TokenKind::String,
-            &self.input[start..self.pos],
+            &self.input.inner()[start..self.pos],
             (start - 1, self.pos + 1),
         );
     }
 
     fn peek_char(&mut self) -> char {
-        self.input.chars().nth(self.read_pos).unwrap_or('\0')
+        self.input
+            .inner()
+            .chars()
+            .nth(self.read_pos)
+            .unwrap_or('\0')
     }
 
     fn skip_whitespace(&mut self) {
@@ -136,7 +147,7 @@ impl<'a> Lexer<'a> {
     }
 }
 
-impl<'a> Iterator for Lexer<'a> {
+impl Iterator for Lexer {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {

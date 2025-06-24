@@ -1,10 +1,10 @@
 use super::*;
 
-use miette::Result;
+use miette::{NamedSource, Result};
 use pretty_assertions::assert_eq;
 
 fn parse(input: &str) -> Result<Vec<Statement>> {
-    let lexer = Lexer::new(input);
+    let lexer = Lexer::new(NamedSource::new("parser_tests.nyx", input.to_string()));
     let mut parser = Parser::new(lexer);
     parser.parse()
 }

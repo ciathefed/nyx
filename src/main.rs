@@ -2,7 +2,7 @@ use std::fs;
 
 use camino::Utf8PathBuf;
 use clap::{Parser as ClapParser, Subcommand};
-use miette::{IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, NamedSource, Result};
 
 use crate::{compiler::Compiler, lexer::Lexer, parser::Parser, preprocessor::PreProcessor, vm::VM};
 
@@ -89,12 +89,13 @@ fn main() -> Result<()> {
 
     match cli.cmd {
         Command::Build { input, output } => {
-            let source_code = fs::read_to_string(input).into_diagnostic()?;
+            let source_code = fs::read_to_string(&input).into_diagnostic()?;
+            let named_source = NamedSource::new(input, source_code);
 
-            let lexer = Lexer::new(&source_code);
+            let lexer = Lexer::new(named_source.clone());
             let mut parser = Parser::new(lexer);
             let mut preprocessor = PreProcessor::new(parser.parse()?);
-            let mut compiler = Compiler::new(preprocessor.process()?, &source_code);
+            let mut compiler = Compiler::new(preprocessor.process()?, named_source);
             let bytecode = compiler.compile()?;
 
             fs::write(output, bytecode).into_diagnostic()?;
@@ -104,12 +105,13 @@ fn main() -> Result<()> {
             output,
             memory,
         } => {
-            let source_code = fs::read_to_string(input).into_diagnostic()?;
+            let source_code = fs::read_to_string(&input).into_diagnostic()?;
+            let named_source = NamedSource::new(input, source_code);
 
-            let lexer = Lexer::new(&source_code);
+            let lexer = Lexer::new(named_source.clone());
             let mut parser = Parser::new(lexer);
             let mut preprocessor = PreProcessor::new(parser.parse()?);
-            let mut compiler = Compiler::new(preprocessor.process()?, &source_code);
+            let mut compiler = Compiler::new(preprocessor.process()?, named_source);
             let bytecode = compiler.compile()?;
 
             fs::write(output, bytecode).into_diagnostic()?;
