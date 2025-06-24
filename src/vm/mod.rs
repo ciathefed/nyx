@@ -41,8 +41,6 @@ pub enum Error {
 pub struct VM {
     pub(crate) regs: Registers,
     pub(crate) mem: Memory,
-    // pub(crate) stack: Stack,
-    pub(crate) program: Vec<u8>,
     pub(crate) halted: bool,
 }
 
@@ -50,11 +48,14 @@ impl VM {
     pub fn new(program: Vec<u8>, mem_size: usize) -> Self {
         let mut regs = Registers::new();
         regs.sp = mem_size;
+        regs.ip = 0;
+
+        let mut mem = Memory::new(mem_size);
+        mem.storage[..program.len()].copy_from_slice(&program);
 
         Self {
             regs,
-            mem: Memory::new(mem_size),
-            program,
+            mem,
             halted: false,
         }
     }
@@ -199,41 +200,41 @@ impl VM {
     }
 
     fn read_byte(&mut self) -> Result<u8> {
-        let ip = self.regs.ip;
-        let byte = *self
-            .program
-            .get(ip)
-            .ok_or(Error::InstructionPointerOutOfBounds(ip))?;
+        let ip = self.regs.ip as usize;
+        if ip >= self.mem.storage.len() {
+            return Err(Error::InstructionPointerOutOfBounds(ip).into());
+        }
+        let byte = self.mem.storage[ip];
         self.regs.ip += 1;
         Ok(byte)
     }
 
     fn read_word(&mut self) -> Result<u16> {
-        let ip = self.regs.ip;
-        let bytes = self
-            .program
-            .get(ip..ip + 2)
-            .ok_or(Error::InstructionPointerOutOfBounds(ip))?;
+        let ip = self.regs.ip as usize;
+        if ip + 2 > self.mem.storage.len() {
+            return Err(Error::InstructionPointerOutOfBounds(ip).into());
+        }
+        let bytes = &self.mem.storage[ip..ip + 2];
         self.regs.ip += 2;
         Ok(u16::from_le_bytes(bytes.try_into().unwrap()))
     }
 
     fn read_dword(&mut self) -> Result<u32> {
-        let ip = self.regs.ip;
-        let bytes = self
-            .program
-            .get(ip..ip + 4)
-            .ok_or(Error::InstructionPointerOutOfBounds(ip))?;
+        let ip = self.regs.ip as usize;
+        if ip + 4 > self.mem.storage.len() {
+            return Err(Error::InstructionPointerOutOfBounds(ip).into());
+        }
+        let bytes = &self.mem.storage[ip..ip + 4];
         self.regs.ip += 4;
         Ok(u32::from_le_bytes(bytes.try_into().unwrap()))
     }
 
     fn read_qword(&mut self) -> Result<u64> {
-        let ip = self.regs.ip;
-        let bytes = self
-            .program
-            .get(ip..ip + 8)
-            .ok_or(Error::InstructionPointerOutOfBounds(ip))?;
+        let ip = self.regs.ip as usize;
+        if ip + 8 > self.mem.storage.len() {
+            return Err(Error::InstructionPointerOutOfBounds(ip).into());
+        }
+        let bytes = &self.mem.storage[ip..ip + 8];
         self.regs.ip += 8;
         Ok(u64::from_le_bytes(bytes.try_into().unwrap()))
     }
