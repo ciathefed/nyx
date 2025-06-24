@@ -229,7 +229,7 @@ fn push() {
     let tests = vec![
         ("push b0", vec![Opcode::PushReg as u8, Register::B0 as u8]),
         (
-            "push dword 1337",
+            "push DWORD 1337",
             vec![
                 Opcode::PushImm as u8,
                 DataSize::DWord as u8,
@@ -240,7 +240,7 @@ fn push() {
             ],
         ),
         (
-            "push qword [q0, 8]",
+            "push QWORD [q0, 8]",
             vec![
                 Opcode::PushAddr as u8,
                 DataSize::QWord as u8,
@@ -270,7 +270,7 @@ fn pop() {
     let tests = vec![
         ("pop b0", vec![Opcode::PopReg as u8, Register::B0 as u8]),
         (
-            "pop [q0, 8]",
+            "pop QWORD [q0, 8]",
             vec![
                 Opcode::PopAddr as u8,
                 DataSize::QWord as u8,
@@ -287,10 +287,10 @@ fn pop() {
             ],
         ),
         (
-            "pop [1000, 16]",
+            "pop BYTE [1000, 16]",
             vec![
                 Opcode::PopAddr as u8,
-                DataSize::QWord as u8,
+                DataSize::Byte as u8,
                 ADDRESSING_VARIANT_2,
                 0xE8,
                 0x03,
