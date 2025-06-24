@@ -89,15 +89,15 @@ fn str() -> Result<()> {
 fn push() -> Result<()> {
     let input = r#"
         mov q0, 1337
-        push q0
+        push DWORD q0
         hlt
     "#;
     let vm = run(input)?;
 
     assert!(vm.halted);
-    assert_eq!(vm.regs.sp, vm.mem.storage.len() - 8);
-    let value = vm.mem.read(vm.regs.sp as usize, DataSize::QWord)?;
-    assert_eq!(value, Immediate::QWord(1337));
+    assert_eq!(vm.regs.sp, vm.mem.storage.len() - 4);
+    let value = vm.mem.read(vm.regs.sp, DataSize::DWord)?;
+    assert_eq!(value, Immediate::DWord(1337));
     Ok(())
 }
 
@@ -105,13 +105,13 @@ fn push() -> Result<()> {
 fn pop() -> Result<()> {
     let input = r#"
         push QWORD 1337
-        pop q0
+        pop QWORD d0
         hlt
     "#;
     let vm = run(input)?;
 
     assert!(vm.halted);
     assert_eq!(vm.regs.sp, vm.mem.storage.len());
-    assert_eq!(vm.regs.get(Register::Q0), Immediate::QWord(1337));
+    assert_eq!(vm.regs.get(Register::D0), Immediate::DWord(1337));
     Ok(())
 }
