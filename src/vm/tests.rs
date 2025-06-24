@@ -94,9 +94,10 @@ fn push() -> Result<()> {
     "#;
     let vm = run(input)?;
 
-    assert_eq!(vm.halted, true);
-    assert_eq!(vm.regs.sp, 1);
-    assert_eq!(vm.stack.storage.last(), Some(&Immediate::QWord(1337)));
+    assert!(vm.halted);
+    assert_eq!(vm.regs.sp, vm.mem.storage.len() - 8);
+    let value = vm.mem.read(vm.regs.sp as usize, DataSize::QWord)?;
+    assert_eq!(value, Immediate::QWord(1337));
     Ok(())
 }
 
@@ -109,8 +110,8 @@ fn pop() -> Result<()> {
     "#;
     let vm = run(input)?;
 
-    assert_eq!(vm.halted, true);
-    assert_eq!(vm.regs.sp, 0);
+    assert!(vm.halted);
+    assert_eq!(vm.regs.sp, vm.mem.storage.len());
     assert_eq!(vm.regs.get(Register::Q0), Immediate::QWord(1337));
     Ok(())
 }
