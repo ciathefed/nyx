@@ -4,7 +4,7 @@ use camino::Utf8PathBuf;
 use clap::{Parser as ClapParser, Subcommand};
 use miette::{IntoDiagnostic, NamedSource, Result};
 
-use crate::{compiler::Compiler, lexer::Lexer, parser::Parser, preprocessor::PreProcessor, vm::VM};
+use crate::{compiler::Compiler, lexer::Lexer, parser::Parser, preprocessor::Preprocessor, vm::VM};
 
 mod compiler;
 mod lexer;
@@ -94,7 +94,7 @@ fn main() -> Result<()> {
 
             let lexer = Lexer::new(named_source.clone());
             let mut parser = Parser::new(lexer);
-            let mut preprocessor = PreProcessor::new(parser.parse()?);
+            let mut preprocessor = Preprocessor::new(parser.parse()?);
             let mut compiler = Compiler::new(preprocessor.process()?, named_source);
             let bytecode = compiler.compile()?;
 
@@ -110,7 +110,7 @@ fn main() -> Result<()> {
 
             let lexer = Lexer::new(named_source.clone());
             let mut parser = Parser::new(lexer);
-            let mut preprocessor = PreProcessor::new(parser.parse()?);
+            let mut preprocessor = Preprocessor::new(parser.parse()?);
             let mut compiler = Compiler::new(preprocessor.process()?, named_source);
             let bytecode = compiler.compile()?;
 

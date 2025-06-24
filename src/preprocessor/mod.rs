@@ -7,13 +7,13 @@ use crate::parser::ast::{Expression, Statement};
 #[cfg(test)]
 mod tests;
 
-pub struct PreProcessor {
+pub struct Preprocessor {
     cur_program: Vec<Statement>,
     new_program: Vec<Statement>,
     definitions: HashMap<String, Expression>,
 }
 
-impl PreProcessor {
+impl Preprocessor {
     pub fn new(program: Vec<Statement>) -> Self {
         Self {
             cur_program: program,

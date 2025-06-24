@@ -10,7 +10,7 @@ fn preprocess(input: &str) -> Result<Vec<Statement>> {
         input.to_string(),
     ));
     let mut parser = Parser::new(lexer);
-    let mut program = PreProcessor::new(parser.parse()?);
+    let mut program = Preprocessor::new(parser.parse()?);
     program.process()
 }
 
