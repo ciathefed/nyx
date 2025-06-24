@@ -227,7 +227,14 @@ fn ldr() {
 #[test]
 fn push() {
     let tests = vec![
-        ("push b0", vec![Opcode::PushReg as u8, Register::B0 as u8]),
+        (
+            "push b0",
+            vec![
+                Opcode::PushReg as u8,
+                DataSize::Byte as u8,
+                Register::B0 as u8,
+            ],
+        ),
         (
             "push DWORD 1337",
             vec![
@@ -268,7 +275,14 @@ fn push() {
 #[test]
 fn pop() {
     let tests = vec![
-        ("pop b0", vec![Opcode::PopReg as u8, Register::B0 as u8]),
+        (
+            "pop b0",
+            vec![
+                Opcode::PopReg as u8,
+                DataSize::Byte as u8,
+                Register::B0 as u8,
+            ],
+        ),
         (
             "pop QWORD [q0, 8]",
             vec![
