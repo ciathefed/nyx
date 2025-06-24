@@ -2,8 +2,9 @@ use crate::vm::register::Register;
 
 pub use crate::parser::immediate::*;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
+    Define(Expression, Expression),
     Label(String),
     Nop,
     Mov(Expression, Expression),

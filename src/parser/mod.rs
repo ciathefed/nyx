@@ -120,6 +120,14 @@ impl<'a> Parser<'a> {
                 self.next_token();
                 Ok(Statement::Hlt)
             }
+            TokenKind::KwDefine => {
+                self.next_token();
+
+                let name = self.parse_expression()?;
+                let value = self.parse_expression()?;
+
+                Ok(Statement::Define(name, value))
+            }
             _ => return Err(Erorr::UnexpectedToken(self.cur_token.clone()).into()),
         }
     }
