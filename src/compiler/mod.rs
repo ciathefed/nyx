@@ -30,7 +30,7 @@ pub enum Error {
     #[error("Invalid immediate in {0}")]
     InvalidImmediate(&'static str), // instruction name
     #[error("Unsupported operation: {0}")]
-    UnsupportedOperation(&'static str), // instruction name
+    UnsupportedOperation(String), // instruction name
     #[error("Fixup failed in {0} for label: {1}")]
     FixupFailure(&'static str, String), // (instruction, label)
     #[error("Invalid expression in {0}")]
@@ -68,6 +68,7 @@ impl Compiler {
                 Statement::Push(ds, expr) => self.compile_push(ds, expr)?,
                 Statement::Pop(ds, expr) => self.compile_pop(ds, expr)?,
                 Statement::Hlt => self.bytecode.push(Opcode::Hlt),
+                other => return Err(Error::UnsupportedOperation(format!("{:?}", other)).into()),
             }
         }
 
