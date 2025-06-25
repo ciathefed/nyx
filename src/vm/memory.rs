@@ -17,6 +17,10 @@ impl Memory {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.storage.len()
+    }
+
     pub fn read(&self, addr: usize, size: DataSize) -> Result<Immediate> {
         match size {
             DataSize::Byte => {

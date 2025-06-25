@@ -265,6 +265,7 @@ dependencies = [
  "camino",
  "clap",
  "lazy_static",
+ "libc",
  "miette",
  "pretty_assertions",
  "thiserror",
