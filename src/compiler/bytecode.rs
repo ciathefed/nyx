@@ -4,11 +4,7 @@ pub struct Bytecode {
 
 impl Bytecode {
     pub fn new(capacity: Option<usize>) -> Self {
-        let storage = if let Some(capacity) = capacity {
-            Vec::with_capacity(capacity)
-        } else {
-            Vec::new()
-        };
+        let storage = Vec::with_capacity(capacity.unwrap_or(1024));
         Self { storage }
     }
 
@@ -16,30 +12,33 @@ impl Bytecode {
         self.storage.len()
     }
 
+    #[inline]
     pub fn push<T: Into<u8>>(&mut self, value: T) {
         self.storage.push(value.into());
     }
 
+    #[inline]
     pub fn extend<T: IntoIterator<Item = u8>>(&mut self, iter: T) {
         self.storage.extend(iter);
     }
 
+    #[inline]
     pub fn write_u8_at(&mut self, offset: usize, value: u8) {
         self.storage[offset] = value;
     }
 
+    #[inline]
     pub fn write_u16_at(&mut self, offset: usize, value: u16) {
-        let bytes = value.to_le_bytes();
-        self.storage[offset..offset + 2].copy_from_slice(&bytes);
+        self.storage[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
     }
 
+    #[inline]
     pub fn write_u32_at(&mut self, offset: usize, value: u32) {
-        let bytes = value.to_le_bytes();
-        self.storage[offset..offset + 4].copy_from_slice(&bytes);
+        self.storage[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
     }
 
+    #[inline]
     pub fn write_u64_at(&mut self, offset: usize, value: u64) {
-        let bytes = value.to_le_bytes();
-        self.storage[offset..offset + 8].copy_from_slice(&bytes);
+        self.storage[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
     }
 }
