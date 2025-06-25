@@ -9,6 +9,8 @@ lazy_static! {
     static ref KEYWORDS: HashMap<&'static str, TokenKind> = HashMap::from([
         // Preprocessor Directives
         ("#define", TokenKind::KwDefine),
+        // Assembler Directives
+        (".section", TokenKind::KwSection),
         // Instructions
         ("nop", TokenKind::KwNop),
         ("mov", TokenKind::KwMov),
@@ -19,6 +21,9 @@ lazy_static! {
         ("hlt", TokenKind::KwHlt),
         // Data Declaration Directives
         ("db", TokenKind::KwDb),
+        // Section Names
+        ("text", TokenKind::SectionName),
+        ("data", TokenKind::SectionName),
         // Registers
         ("b0", TokenKind::Register),
         ("w0", TokenKind::Register),
@@ -57,6 +62,7 @@ pub enum TokenKind {
     Float,
     String,
     DataSize,
+    SectionName,
 
     Colon,
     Comma,
@@ -66,6 +72,7 @@ pub enum TokenKind {
     RBracket,
 
     KwDefine,
+    KwSection,
 
     KwNop,
     KwMov,

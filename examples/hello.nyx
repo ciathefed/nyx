@@ -1,7 +1,8 @@
+.section text
 _start:
     mov q0, message
     mov q1, 14
     hlt
 
-message:
-    db "Hello, World!", 0x0A, 0x00
+.section data
+message:    db "Hello, World!", 0x0A, 0x00

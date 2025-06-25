@@ -5,7 +5,7 @@ use crate::{
         Lexer,
         token::{Token, TokenKind},
     },
-    parser::ast::{DataSize, Expression, Statement},
+    parser::ast::{DataSize, Expression, SectionType, Statement},
     vm::register::Register,
 };
 
@@ -79,6 +79,38 @@ impl Parser {
                 Ok(Statement::Define(
                     name,
                     value,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwSection => {
+                self.next_token();
+
+                let section_type = match self.cur_token.kind {
+                    TokenKind::SectionName => match self.cur_token.literal.as_ref() {
+                        "text" => SectionType::Text,
+                        "data" => SectionType::Data,
+                        _ => {
+                            return Err(Error::UnexpectedToken {
+                                token: self.cur_token.clone(),
+                                span: self.cur_token.source_span(),
+                                src: self.lexer.input.clone(),
+                            })?;
+                        }
+                    },
+                    _ => {
+                        return Err(Error::Expected {
+                            expected: "section name (text or data)".to_string(),
+                            got: self.cur_token.clone(),
+                            span: self.cur_token.source_span(),
+                            src: self.lexer.input.clone(),
+                        })?;
+                    }
+                };
+
+                self.next_token();
+
+                Ok(Statement::Section(
+                    section_type,
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }
