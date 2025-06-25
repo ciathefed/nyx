@@ -65,6 +65,7 @@ impl Preprocessor {
                 Statement::Label(name, span) => Statement::Label(name, span),
                 Statement::Nop(span) => Statement::Nop(span),
                 Statement::Hlt(span) => Statement::Hlt(span),
+                Statement::Syscall(span) => Statement::Syscall(span),
                 Statement::Section(section_type, span) => Statement::Section(section_type, span),
             };
 

@@ -6,11 +6,13 @@ use crate::{
     vm::{
         memory::Memory,
         register::{Register, Registers},
+        syscall::{SyscallFn, Syscalls, collect_syscalls},
     },
 };
 
 pub mod memory;
 pub mod register;
+pub mod syscall;
 
 #[cfg(test)]
 mod tests;
@@ -50,6 +52,10 @@ enum Error {
     #[error("stack underflow")]
     StackUnderflow,
 
+    #[diagnostic(code(vm::unknown_syscall))]
+    #[error("unknown syscall: {0}")]
+    UnknownSyscall(usize),
+
     #[diagnostic(code(vm::unimplemented))]
     #[error("unimplemented: {0}")]
     Unimplemented(&'static str),
@@ -58,6 +64,7 @@ enum Error {
 pub struct VM {
     pub(crate) regs: Registers,
     pub(crate) mem: Memory,
+    pub(crate) syscalls: Syscalls,
     pub(crate) halted: bool,
 }
 
@@ -74,6 +81,7 @@ impl VM {
         Self {
             regs,
             mem,
+            syscalls: collect_syscalls(),
             halted: false,
         }
     }
@@ -200,6 +208,16 @@ impl VM {
                 let addr = (base + offset) as usize;
                 let value = self.pop(size)?;
                 self.mem.write(addr, value, size)
+            }
+            Opcode::Syscall => {
+                let index = self.regs.get(Register::Q15).as_usize()?;
+                let syscall = if let Some(syscall) = self.syscalls.get(&index) {
+                    syscall
+                } else {
+                    return Err(Error::UnknownSyscall(index))?;
+                };
+                syscall(self)?;
+                Ok(())
             }
             Opcode::Hlt => {
                 self.halted = true;

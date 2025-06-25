@@ -18,6 +18,7 @@ lazy_static! {
         ("str", TokenKind::KwStr),
         ("push", TokenKind::KwPush),
         ("pop", TokenKind::KwPop),
+        ("syscall", TokenKind::KwSyscall),
         ("hlt", TokenKind::KwHlt),
         // Data Declaration Directives
         ("db", TokenKind::KwDb),
@@ -100,6 +101,7 @@ pub enum TokenKind {
     KwStr,
     KwPush,
     KwPop,
+    KwSyscall,
     KwHlt,
 
     KwDb,
