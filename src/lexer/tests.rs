@@ -142,6 +142,10 @@ fn instructions() {
         ("str", vec![Token::new(TokenKind::KwStr, "str", (0, 3))]),
         ("push", vec![Token::new(TokenKind::KwPush, "push", (0, 4))]),
         ("pop", vec![Token::new(TokenKind::KwPop, "pop", (0, 3))]),
+        (
+            "syscall",
+            vec![Token::new(TokenKind::KwSyscall, "syscall", (0, 7))],
+        ),
         ("hlt", vec![Token::new(TokenKind::KwHlt, "hlt", (0, 3))]),
     ];
 
