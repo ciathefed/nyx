@@ -84,7 +84,7 @@ impl Parser {
             }
             TokenKind::Identifier => {
                 if self.peek_token_is(TokenKind::Colon) {
-                    let ident = self.cur_token.literal.clone();
+                    let ident = self.cur_token.literal.to_string();
                     self.next_token();
                     self.next_token();
                     Ok(Statement::Label(
@@ -212,12 +212,12 @@ impl Parser {
     fn parse_expression(&mut self) -> Result<Expression> {
         match self.cur_token.kind {
             TokenKind::Identifier => {
-                let ident = self.cur_token.literal.clone();
+                let ident = self.cur_token.literal.to_string();
                 self.next_token();
                 Ok(Expression::Identifier(ident))
             }
             TokenKind::Register => {
-                let reg = match Register::try_from(self.cur_token.literal.as_str()) {
+                let reg = match Register::try_from(self.cur_token.literal.as_ref()) {
                     Ok(v) => v,
                     Err(_) => {
                         return Err(Error::UnexpectedToken {
@@ -259,18 +259,20 @@ impl Parser {
                 Ok(Expression::FloatLiteral(float))
             }
             TokenKind::String => {
-                let string = self.cur_token.literal.clone();
+                let string = self.cur_token.literal.to_string();
                 self.next_token();
                 Ok(Expression::StringLiteral(string))
             }
             TokenKind::DataSize => {
+                let literal = self.cur_token.literal.to_string();
+                let span = self.cur_token.source_span();
                 let token = self.cur_token.clone();
                 self.next_token();
-                match DataSize::try_from(token.literal.as_str()) {
+                match DataSize::try_from(literal.as_str()) {
                     Ok(size) => Ok(Expression::DataSize(size)),
                     Err(_) => Err(Error::UnexpectedToken {
-                        token: token.clone(),
-                        span: token.source_span(),
+                        token,
+                        span,
                         src: self.lexer.input.clone(),
                     })?,
                 }
@@ -311,8 +313,8 @@ impl Parser {
     }
 
     fn next_token(&mut self) {
-        self.prev_token = self.cur_token.clone();
-        self.cur_token = self.peek_token.clone();
+        std::mem::swap(&mut self.prev_token, &mut self.cur_token);
+        std::mem::swap(&mut self.cur_token, &mut self.peek_token);
         self.peek_token = self.lexer.next_token();
     }
 
