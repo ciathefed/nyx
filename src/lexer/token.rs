@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt};
+use std::{borrow::Cow, collections::HashMap, fmt};
 
 use lazy_static::lazy_static;
 use miette::SourceSpan;
@@ -19,7 +19,6 @@ lazy_static! {
         ("hlt", TokenKind::KwHlt),
         // Data Declaration Directives
         ("db", TokenKind::KwDb),
-
         // Registers
         ("b0", TokenKind::Register),
         ("w0", TokenKind::Register),
@@ -79,21 +78,37 @@ pub enum TokenKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     pub(crate) kind: TokenKind,
-    pub(crate) literal: String,
+    pub(crate) literal: Cow<'static, str>,
     pub(crate) loc: Span,
 }
 
 impl Token {
     pub const BLANK: Self = Self {
         kind: TokenKind::Eof,
-        literal: String::new(),
+        literal: Cow::Borrowed(""),
         loc: Span { start: 0, end: 0 },
     };
 
-    pub fn new<T: ToString, L: Into<Span>>(kind: TokenKind, literal: T, loc: L) -> Self {
+    pub fn new<L: Into<Span>>(kind: TokenKind, literal: &str, loc: L) -> Self {
         Token {
             kind,
-            literal: literal.to_string(),
+            literal: Cow::Owned(literal.to_string()),
+            loc: loc.into(),
+        }
+    }
+
+    pub fn new_static<L: Into<Span>>(kind: TokenKind, literal: &'static str, loc: L) -> Self {
+        Token {
+            kind,
+            literal: Cow::Borrowed(literal),
+            loc: loc.into(),
+        }
+    }
+
+    pub fn new_owned<L: Into<Span>>(kind: TokenKind, literal: String, loc: L) -> Self {
+        Token {
+            kind,
+            literal: Cow::Owned(literal),
             loc: loc.into(),
         }
     }

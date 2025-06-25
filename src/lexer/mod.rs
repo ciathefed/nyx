@@ -32,17 +32,17 @@ impl Lexer {
         let start = self.pos;
 
         let token = match self.ch {
-            '\0' => Token::new(TokenKind::Eof, "", (start, self.read_pos)),
-            ',' => Token::new(TokenKind::Comma, self.ch, (start, self.read_pos)),
-            ':' => Token::new(TokenKind::Colon, self.ch, (start, self.read_pos)),
-            '+' => Token::new(TokenKind::Plus, self.ch, (start, self.read_pos)),
-            '-' => Token::new(TokenKind::Minus, self.ch, (start, self.read_pos)),
-            '[' => Token::new(TokenKind::LBracket, self.ch, (start, self.read_pos)),
-            ']' => Token::new(TokenKind::RBracket, self.ch, (start, self.read_pos)),
-            '#' => self.read_directive(),
-            '"' => self.read_string(),
+            '\0' => Token::new_static(TokenKind::Eof, "", (start, self.read_pos)),
+            ',' => Token::new_static(TokenKind::Comma, ",", (start, self.read_pos)),
+            ':' => Token::new_static(TokenKind::Colon, ":", (start, self.read_pos)),
+            '+' => Token::new_static(TokenKind::Plus, "+", (start, self.read_pos)),
+            '-' => Token::new_static(TokenKind::Minus, "-", (start, self.read_pos)),
+            '[' => Token::new_static(TokenKind::LBracket, "[", (start, self.read_pos)),
+            ']' => Token::new_static(TokenKind::RBracket, "]", (start, self.read_pos)),
+            '#' => return self.read_directive(),
+            '"' => return self.read_string(),
             _ => {
-                if self.ch.is_digit(10) {
+                if self.ch.is_ascii_digit() {
                     return self.read_number();
                 }
 
@@ -50,7 +50,11 @@ impl Lexer {
                     return self.read_identifier();
                 }
 
-                Token::new(TokenKind::Illegal, self.ch, (start, self.read_pos))
+                Token::new_owned(
+                    TokenKind::Illegal,
+                    self.ch.to_string(),
+                    (start, self.read_pos),
+                )
             }
         };
 
@@ -72,13 +76,13 @@ impl Lexer {
     fn read_number(&mut self) -> Token {
         let start = self.pos;
 
-        while self.ch.is_digit(10) {
+        while self.ch.is_ascii_digit() {
             self.read_char();
         }
 
-        if self.ch == '.' && self.peek_char().is_digit(10) {
+        if self.ch == '.' && self.peek_char().is_ascii_digit() {
             self.read_char();
-            while self.ch.is_digit(10) {
+            while self.ch.is_ascii_digit() {
                 self.read_char();
             }
 
@@ -125,14 +129,20 @@ impl Lexer {
             }
         }
 
-        return Token::new(
+        let token = Token::new(
             TokenKind::String,
             &self.input.inner()[start..self.pos],
             (start - 1, self.pos + 1),
         );
+
+        if self.ch == '"' {
+            self.read_char();
+        }
+
+        token
     }
 
-    fn peek_char(&mut self) -> char {
+    fn peek_char(&self) -> char {
         self.input
             .inner()
             .chars()
