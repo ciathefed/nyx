@@ -41,6 +41,41 @@ fn numbers() {
 }
 
 #[test]
+fn hexadecimal_numbers() {
+    let tests = vec![
+        (
+            "0x42",
+            vec![Token::new(TokenKind::Hexadecimal, "0x42", (0, 4))],
+        ),
+        (
+            "0xFF",
+            vec![Token::new(TokenKind::Hexadecimal, "0xFF", (0, 4))],
+        ),
+        (
+            "0xDEADBEEF",
+            vec![Token::new(TokenKind::Hexadecimal, "0xDEADBEEF", (0, 10))],
+        ),
+        (
+            "0x0",
+            vec![Token::new(TokenKind::Hexadecimal, "0x0", (0, 3))],
+        ),
+        (
+            "0X123ABC",
+            vec![Token::new(TokenKind::Hexadecimal, "0X123ABC", (0, 8))],
+        ),
+        (
+            "0xabcdef",
+            vec![Token::new(TokenKind::Hexadecimal, "0xabcdef", (0, 8))],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
 fn identifiers() {
     let tests = vec![
         (

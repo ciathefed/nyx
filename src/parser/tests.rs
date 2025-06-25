@@ -92,3 +92,42 @@ fn instructions() {
         assert_eq!(expected, ast);
     }
 }
+
+
+#[test]
+fn hexadecimal_numbers() {
+    let tests = vec![
+        (
+            "mov q0, 0x1337",
+            vec![Statement::Mov(
+                Expression::Register(Register::Q0),
+                Expression::IntegerLiteral(0x1337),
+                (0, 14).into(),
+            )],
+        ),
+        (
+            "mov d0, 0xFF",
+            vec![Statement::Mov(
+                Expression::Register(Register::D0),
+                Expression::IntegerLiteral(0xFF),
+                (0, 12).into(),
+            )],
+        ),
+        (
+            "db 0x48, 0x65, 0x6C",
+            vec![Statement::Db(
+                vec![
+                    Expression::IntegerLiteral(0x48),
+                    Expression::IntegerLiteral(0x65),
+                    Expression::IntegerLiteral(0x6C),
+                ],
+                (0, 19).into(),
+            )],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let ast = parse(input).unwrap();
+        assert_eq!(expected, ast);
+    }
+}
