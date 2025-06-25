@@ -40,6 +40,7 @@ impl Lexer {
             '[' => Token::new_static(TokenKind::LBracket, "[", (start, self.read_pos)),
             ']' => Token::new_static(TokenKind::RBracket, "]", (start, self.read_pos)),
             '#' => return self.read_directive(),
+            '.' => return self.read_dot_directive(),
             '"' => return self.read_string(),
             _ => {
                 if self.ch.is_ascii_digit() {
@@ -163,6 +164,19 @@ impl Lexer {
     }
 
     fn read_directive(&mut self) -> Token {
+        let start = self.pos;
+        self.read_char();
+        while self.ch.is_alphanumeric() || self.ch == '_' {
+            self.read_char();
+        }
+
+        let literal = &self.input.inner()[start..self.pos];
+        let kind = lookup_ident(literal);
+
+        Token::new(kind, literal, (start, self.pos))
+    }
+
+    fn read_dot_directive(&mut self) -> Token {
         let start = self.pos;
         self.read_char();
         while self.ch.is_alphanumeric() || self.ch == '_' {

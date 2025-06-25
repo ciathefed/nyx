@@ -65,6 +65,7 @@ impl Preprocessor {
                 Statement::Label(name, span) => Statement::Label(name, span),
                 Statement::Nop(span) => Statement::Nop(span),
                 Statement::Hlt(span) => Statement::Hlt(span),
+                Statement::Section(section_type, span) => Statement::Section(section_type, span),
             };
 
             final_statements.push(new_stmt);

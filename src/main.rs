@@ -114,9 +114,9 @@ fn main() -> Result<()> {
             let mut compiler = Compiler::new(preprocessor.process()?, named_source);
             let bytecode = compiler.compile()?;
 
-            fs::write(output, bytecode).into_diagnostic()?;
+            fs::write(output, &bytecode).into_diagnostic()?;
 
-            let mut vm = VM::new(Vec::from(bytecode), memory);
+            let mut vm = VM::new(bytecode, memory);
             vm.run()?;
         }
         Command::Execute { input, memory } => {

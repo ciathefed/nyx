@@ -6,6 +6,7 @@ pub use crate::parser::immediate::*;
 pub enum Statement {
     Define(Expression, Expression, Span),
 
+    Section(SectionType, Span),
     Label(String, Span),
     Nop(Span),
     Mov(Expression, Expression, Span),
@@ -22,6 +23,7 @@ impl Statement {
     pub fn span(&self) -> Span {
         match self {
             Statement::Define(_, _, span) => *span,
+            Statement::Section(_, span) => *span,
             Statement::Label(_, span) => *span,
             Statement::Nop(span) => *span,
             Statement::Mov(_, _, span) => *span,
@@ -44,4 +46,10 @@ pub enum Expression {
     StringLiteral(String),
     DataSize(DataSize),
     Address(Box<Expression>, Option<Box<Expression>>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SectionType {
+    Text,
+    Data,
 }
