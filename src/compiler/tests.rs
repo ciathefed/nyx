@@ -382,3 +382,96 @@ fn hlt() {
         assert_eq!(expected, bytecode.unwrap());
     }
 }
+
+#[test]
+fn sections() {
+    let input = r#"
+.section text
+start:
+    mov q0, 42
+    nop
+
+.section data
+value:
+    db 0x12, 0x34
+
+.section text
+end:
+    hlt
+"#;
+
+    let source = NamedSource::new("test.asm", input.to_string());
+    let lexer = Lexer::new(source.clone());
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse().expect("Failed to parse");
+
+    let mut compiler = Compiler::new(program, source);
+    let bytecode = compiler.compile().expect("Failed to compile");
+
+    assert!(!bytecode.is_empty());
+
+    assert!(bytecode.len() > 10);
+}
+
+#[test]
+fn section_label_resolution() {
+    let input = r#"
+.section text
+start:
+    mov q0, data_value
+
+.section data
+data_value:
+    db 42
+
+.section text
+end:
+    mov q1, data_value
+    hlt
+"#;
+
+    let source = NamedSource::new("test.asm", input.to_string());
+    let lexer = Lexer::new(source.clone());
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse().expect("Failed to parse");
+
+    let mut compiler = Compiler::new(program, source);
+    let result = compiler.compile();
+
+    assert!(result.is_ok());
+}
+
+#[test]
+fn multiple_section_switches() {
+    let input = r#"
+.section text
+func1:
+    mov q0, 1
+
+.section data
+var1:
+    db 1
+
+.section text
+func2:
+    mov q1, 2
+
+.section data
+var2:
+    db 2
+
+.section text
+main:
+    hlt
+"#;
+
+    let source = NamedSource::new("test.asm", input.to_string());
+    let lexer = Lexer::new(source.clone());
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse().expect("Failed to parse");
+
+    let mut compiler = Compiler::new(program, source);
+    let result = compiler.compile();
+
+    assert!(result.is_ok());
+}
