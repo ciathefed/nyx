@@ -6,7 +6,7 @@ use crate::{
     vm::{
         memory::Memory,
         register::{Register, Registers},
-        syscall::{SyscallFn, Syscalls, collect_syscalls},
+        syscall::{Syscalls, collect_syscalls},
     },
 };
 
@@ -59,6 +59,10 @@ enum Error {
     #[diagnostic(code(vm::unimplemented))]
     #[error("unimplemented: {0}")]
     Unimplemented(&'static str),
+
+    #[diagnostic(code(vm::io_error))]
+    #[error("I/O error: {0}")]
+    IoError(#[from] std::io::Error),
 }
 
 pub struct VM {
