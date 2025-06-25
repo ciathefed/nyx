@@ -192,20 +192,20 @@ impl Compiler {
     fn compile_mov(&mut self, lhs: Expression, rhs: Expression, span: SourceSpan) -> Result<()> {
         const INST: &str = "MOV";
 
-        match (lhs, rhs) {
+        match (&lhs, &rhs) {
             (Expression::Register(dest), Expression::Register(src)) => {
                 self.bytecode.push(Opcode::MovRegReg);
-                self.bytecode.push(dest);
-                self.bytecode.push(src);
+                self.bytecode.push(*dest);
+                self.bytecode.push(*src);
             }
             (Expression::Register(dest), Expression::IntegerLiteral(src)) => {
                 self.bytecode.push(Opcode::MovRegImm);
-                self.bytecode.push(dest);
-                match DataSize::from(dest) {
-                    DataSize::Byte => self.bytecode.push(src as u8),
-                    DataSize::Word => self.bytecode.extend((src as u16).to_le_bytes()),
-                    DataSize::DWord => self.bytecode.extend((src as u32).to_le_bytes()),
-                    DataSize::QWord => self.bytecode.extend((src as u64).to_le_bytes()),
+                self.bytecode.push(*dest);
+                match DataSize::from(*dest) {
+                    DataSize::Byte => self.bytecode.push(*src as u8),
+                    DataSize::Word => self.bytecode.extend((*src as u16).to_le_bytes()),
+                    DataSize::DWord => self.bytecode.extend((*src as u32).to_le_bytes()),
+                    DataSize::QWord => self.bytecode.extend((*src as u64).to_le_bytes()),
                     _ => {
                         return Err(Error::InvalidDataSize {
                             inst: INST,
@@ -217,9 +217,9 @@ impl Compiler {
             }
             (Expression::Register(dest), Expression::FloatLiteral(src)) => {
                 self.bytecode.push(Opcode::MovRegImm);
-                self.bytecode.push(dest);
-                match DataSize::from(dest) {
-                    DataSize::Float => self.bytecode.extend((src as f32).to_le_bytes()),
+                self.bytecode.push(*dest);
+                match DataSize::from(*dest) {
+                    DataSize::Float => self.bytecode.extend((*src as f32).to_le_bytes()),
                     DataSize::Double => self.bytecode.extend(src.to_le_bytes()),
                     _ => {
                         return Err(Error::InvalidDataSize {
@@ -232,14 +232,14 @@ impl Compiler {
             }
             (Expression::Register(dest), Expression::Identifier(src)) => {
                 self.bytecode.push(Opcode::MovRegImm);
-                self.bytecode.push(dest);
-                let size = DataSize::from(dest);
-                self.fixups.insert(self.bytecode.len(), (size, src));
-                match DataSize::from(dest) {
+                self.bytecode.push(*dest);
+                let size = DataSize::from(*dest);
+                self.fixups.insert(self.bytecode.len(), (size, src.clone()));
+                match DataSize::from(*dest) {
                     DataSize::Byte => self.bytecode.push(0x00),
-                    DataSize::Word => self.bytecode.extend((0x00 as u16).to_le_bytes()),
-                    DataSize::DWord => self.bytecode.extend((0x00 as u32).to_le_bytes()),
-                    DataSize::QWord => self.bytecode.extend((0x00 as u64).to_le_bytes()),
+                    DataSize::Word => self.bytecode.extend((0x00_u16).to_le_bytes()),
+                    DataSize::DWord => self.bytecode.extend((0x00_u32).to_le_bytes()),
+                    DataSize::QWord => self.bytecode.extend((0x00_u64).to_le_bytes()),
                     _ => {
                         return Err(Error::InvalidDataSize {
                             inst: INST,
@@ -270,56 +270,68 @@ impl Compiler {
     ) -> Result<()> {
         const INST: &str = "STR";
 
-        match (lhs, rhs) {
+        match (&lhs, &rhs) {
             (Expression::Register(reg), Expression::Address(base_expr, offset_expr)) => {
-                match (base_expr.deref(), offset_expr.as_deref()) {
-                    (Expression::Register(base), Some(Expression::IntegerLiteral(offset))) => {
+                match (base_expr.as_ref(), offset_expr.as_ref()) {
+                    (Expression::Register(base), Some(offset_box))
+                        if matches!(offset_box.as_ref(), Expression::IntegerLiteral(_)) =>
+                    {
+                        let Expression::IntegerLiteral(offset) = offset_box.as_ref() else {
+                            unreachable!()
+                        };
                         self.bytecode.push(opcode);
-                        self.bytecode.push(reg);
+                        self.bytecode.push(*reg);
                         self.bytecode.push(ADDRESSING_VARIANT_1);
                         self.bytecode.push(*base);
                         self.bytecode.extend(offset.to_le_bytes());
                     }
-                    (
-                        Expression::IntegerLiteral(base),
-                        Some(Expression::IntegerLiteral(offset)),
-                    ) => {
+                    (Expression::IntegerLiteral(base), Some(offset_box))
+                        if matches!(offset_box.as_ref(), Expression::IntegerLiteral(_)) =>
+                    {
+                        let Expression::IntegerLiteral(offset) = offset_box.as_ref() else {
+                            unreachable!()
+                        };
                         self.bytecode.push(opcode);
-                        self.bytecode.push(reg);
+                        self.bytecode.push(*reg);
                         self.bytecode.push(ADDRESSING_VARIANT_2);
                         self.bytecode.extend(base.to_le_bytes());
                         self.bytecode.extend(offset.to_le_bytes());
                     }
-                    (Expression::Identifier(base), Some(Expression::IntegerLiteral(offset))) => {
+                    (Expression::Identifier(base), Some(offset_box))
+                        if matches!(offset_box.as_ref(), Expression::IntegerLiteral(_)) =>
+                    {
+                        let Expression::IntegerLiteral(offset) = offset_box.as_ref() else {
+                            unreachable!()
+                        };
                         self.bytecode.push(opcode);
-                        self.bytecode.push(reg);
+                        self.bytecode.push(*reg);
                         self.bytecode.push(ADDRESSING_VARIANT_2);
                         self.bytecode.extend((0x00 as i64).to_le_bytes());
                         self.fixups
-                            .insert(self.bytecode.len(), (DataSize::QWord, base.clone()));
+                            .insert(self.bytecode.len() - 8, (DataSize::QWord, base.clone()));
                         self.bytecode.extend(offset.to_le_bytes());
                     }
                     (Expression::Register(base), None) => {
                         self.bytecode.push(opcode);
-                        self.bytecode.push(reg);
+                        self.bytecode.push(*reg);
                         self.bytecode.push(ADDRESSING_VARIANT_1);
                         self.bytecode.push(*base);
                         self.bytecode.extend((0x00 as u64).to_le_bytes());
                     }
                     (Expression::IntegerLiteral(base), None) => {
                         self.bytecode.push(opcode);
-                        self.bytecode.push(reg);
-                        self.bytecode.push(ADDRESSING_VARIANT_1);
+                        self.bytecode.push(*reg);
+                        self.bytecode.push(ADDRESSING_VARIANT_2);
                         self.bytecode.extend(base.to_le_bytes());
                         self.bytecode.extend((0x00 as u64).to_le_bytes());
                     }
                     (Expression::Identifier(base), None) => {
                         self.bytecode.push(opcode);
-                        self.bytecode.push(reg);
+                        self.bytecode.push(*reg);
                         self.bytecode.push(ADDRESSING_VARIANT_2);
                         self.bytecode.extend((0x00 as i64).to_le_bytes());
                         self.fixups
-                            .insert(self.bytecode.len(), (DataSize::QWord, base.clone()));
+                            .insert(self.bytecode.len() - 8, (DataSize::QWord, base.clone()));
                         self.bytecode.extend((0x00 as u64).to_le_bytes());
                     }
                     _ => {
