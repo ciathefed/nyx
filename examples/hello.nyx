@@ -1,7 +1,10 @@
 .section text
 _start:
-    mov q0, message
-    mov q1, 14
+    mov q0, 1
+    mov q1, message
+    mov q2, 14
+    mov q15, 3
+    syscall
     hlt
 
 .section data
