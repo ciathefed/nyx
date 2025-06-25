@@ -13,6 +13,7 @@ pub enum Opcode {
     PushAddr,
     PopReg,
     PopAddr,
+    Syscall,
     Hlt,
 }
 
@@ -37,7 +38,8 @@ impl TryFrom<u8> for Opcode {
             0x07 => Ok(Self::PushAddr),
             0x08 => Ok(Self::PopReg),
             0x09 => Ok(Self::PopAddr),
-            0x0A => Ok(Self::Hlt),
+            0x0A => Ok(Self::Syscall),
+            0x0B => Ok(Self::Hlt),
             _ => Err(()),
         }
     }
@@ -56,6 +58,7 @@ impl fmt::Display for Opcode {
             Opcode::PushAddr => write!(f, "push"),
             Opcode::PopReg => write!(f, "pop"),
             Opcode::PopAddr => write!(f, "pop"),
+            Opcode::Syscall => write!(f, "syscall"),
             Opcode::Hlt => write!(f, "hlt"),
         }
     }

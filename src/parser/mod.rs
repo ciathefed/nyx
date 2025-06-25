@@ -208,6 +208,12 @@ impl Parser {
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }
+            TokenKind::KwSyscall => {
+                self.next_token();
+                Ok(Statement::Syscall(
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
             TokenKind::KwHlt => {
                 self.next_token();
                 Ok(Statement::Hlt(

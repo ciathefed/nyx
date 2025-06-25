@@ -140,6 +140,7 @@ impl Compiler {
                 }
                 Statement::Push(ds, expr, span) => self.compile_push(ds, expr, span.into())?,
                 Statement::Pop(ds, expr, span) => self.compile_pop(ds, expr, span.into())?,
+                Statement::Syscall(_) => self.bytecode.push(self.current_section, Opcode::Syscall),
                 Statement::Hlt(_) => self.bytecode.push(self.current_section, Opcode::Hlt),
                 Statement::Db(exprs, span) => {
                     for expr in exprs {

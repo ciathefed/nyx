@@ -7,6 +7,7 @@ pub enum Statement {
     Define(Expression, Expression, Span),
 
     Section(SectionType, Span),
+
     Label(String, Span),
     Nop(Span),
     Mov(Expression, Expression, Span),
@@ -14,6 +15,7 @@ pub enum Statement {
     Str(Expression, Expression, Span),
     Push(Option<Expression>, Expression, Span),
     Pop(Option<Expression>, Expression, Span),
+    Syscall(Span),
     Hlt(Span),
 
     Db(Vec<Expression>, Span),
@@ -32,6 +34,7 @@ impl Statement {
             Statement::Push(_, _, span) => *span,
             Statement::Pop(_, _, span) => *span,
             Statement::Hlt(span) => *span,
+            Statement::Syscall(span) => *span,
             Statement::Db(_, span) => *span,
         }
     }
