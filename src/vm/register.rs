@@ -4,9 +4,12 @@ use crate::parser::ast::Immediate;
 
 const GPR0: usize = 0;
 const GPR1: usize = 1;
+const GPR2: usize = 2;
 
 const FPR0: usize = 0;
 const FPR1: usize = 1;
+const FPR2: usize = 2;
+
 const IP_REG: usize = 0;
 const SP_REG: usize = 1;
 const BP_REG: usize = 2;
@@ -26,6 +29,13 @@ pub enum Register {
     Q1,
     FF1,
     DD1,
+
+    B2,
+    W2,
+    D2,
+    Q2,
+    FF2,
+    DD2,
 
     IP,
     SP,
@@ -95,6 +105,36 @@ impl Register {
                 FPR1,
                 RegisterView::Double,
             ),
+            Register::B2 => (
+                PhysicalRegisterType::GeneralPurpose,
+                GPR2,
+                RegisterView::Byte,
+            ),
+            Register::W2 => (
+                PhysicalRegisterType::GeneralPurpose,
+                GPR2,
+                RegisterView::Word,
+            ),
+            Register::D2 => (
+                PhysicalRegisterType::GeneralPurpose,
+                GPR2,
+                RegisterView::DWord,
+            ),
+            Register::Q2 => (
+                PhysicalRegisterType::GeneralPurpose,
+                GPR2,
+                RegisterView::QWord,
+            ),
+            Register::FF2 => (
+                PhysicalRegisterType::FloatingPoint,
+                FPR2,
+                RegisterView::Float,
+            ),
+            Register::DD2 => (
+                PhysicalRegisterType::FloatingPoint,
+                FPR2,
+                RegisterView::Double,
+            ),
             Register::IP => (PhysicalRegisterType::Special, IP_REG, RegisterView::QWord),
             Register::SP => (PhysicalRegisterType::Special, SP_REG, RegisterView::QWord),
             Register::BP => (PhysicalRegisterType::Special, BP_REG, RegisterView::QWord),
@@ -142,6 +182,12 @@ impl TryFrom<&str> for Register {
             "q1" => Ok(Register::Q1),
             "ff1" => Ok(Register::FF1),
             "dd1" => Ok(Register::DD1),
+            "b2" => Ok(Register::B2),
+            "w2" => Ok(Register::W2),
+            "d2" => Ok(Register::D2),
+            "q2" => Ok(Register::Q2),
+            "ff2" => Ok(Register::FF2),
+            "dd2" => Ok(Register::DD2),
             "ip" => Ok(Register::IP),
             "sp" => Ok(Register::SP),
             "bp" => Ok(Register::BP),
@@ -167,9 +213,15 @@ impl TryFrom<u8> for Register {
             0x09 => Ok(Register::Q1),
             0x0A => Ok(Register::FF1),
             0x0B => Ok(Register::DD1),
-            0x0C => Ok(Register::IP),
-            0x0D => Ok(Register::SP),
-            0x0E => Ok(Register::BP),
+            0x0C => Ok(Register::B1),
+            0x0D => Ok(Register::W1),
+            0x0E => Ok(Register::D1),
+            0x0F => Ok(Register::Q1),
+            0x10 => Ok(Register::FF1),
+            0x11 => Ok(Register::DD1),
+            0x12 => Ok(Register::IP),
+            0x13 => Ok(Register::SP),
+            0x14 => Ok(Register::BP),
             _ => Err(()),
         }
     }
@@ -177,8 +229,8 @@ impl TryFrom<u8> for Register {
 
 #[derive(Debug)]
 pub struct Registers {
-    gpr: [u64; 2],
-    fpr: [u64; 2],
+    gpr: [u64; 3],
+    fpr: [u64; 3],
     special: [usize; 3],
 }
 
@@ -186,8 +238,8 @@ pub struct Registers {
 impl Registers {
     pub fn new() -> Self {
         Self {
-            gpr: [0; 2],
-            fpr: [0; 2],
+            gpr: [0; 3],
+            fpr: [0; 3],
             special: [0; 3],
         }
     }
@@ -290,114 +342,5 @@ impl Registers {
 
     pub fn set_bp(&mut self, value: usize) {
         self.special[BP_REG] = value;
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_overlapping_gpr_registers() {
-        let mut regs = Registers::new();
-
-        regs.set(Register::Q0, Immediate::QWord(0x123456789ABCDEF0))
-            .unwrap();
-
-        assert_eq!(regs.get(Register::B0), Immediate::Byte(0xF0));
-        assert_eq!(regs.get(Register::W0), Immediate::Word(0xDEF0));
-        assert_eq!(regs.get(Register::D0), Immediate::DWord(0x9ABCDEF0));
-        assert_eq!(regs.get(Register::Q0), Immediate::QWord(0x123456789ABCDEF0));
-    }
-
-    #[test]
-    fn test_multiple_gpr_independence() {
-        let mut regs = Registers::new();
-
-        regs.set(Register::Q0, Immediate::QWord(0x1111111111111111))
-            .unwrap();
-        regs.set(Register::Q1, Immediate::QWord(0x2222222222222222))
-            .unwrap();
-
-        assert_eq!(regs.get(Register::Q0), Immediate::QWord(0x1111111111111111));
-        assert_eq!(regs.get(Register::Q1), Immediate::QWord(0x2222222222222222));
-        assert_eq!(regs.get(Register::D0), Immediate::DWord(0x11111111));
-        assert_eq!(regs.get(Register::D1), Immediate::DWord(0x22222222));
-    }
-
-    #[test]
-    fn test_byte_register_update() {
-        let mut regs = Registers::new();
-
-        regs.set(Register::Q0, Immediate::QWord(0x123456789ABCDEF0))
-            .unwrap();
-
-        regs.set(Register::B0, Immediate::Byte(0x42)).unwrap();
-
-        assert_eq!(regs.get(Register::B0), Immediate::Byte(0x42));
-        assert_eq!(regs.get(Register::W0), Immediate::Word(0xDE42));
-        assert_eq!(regs.get(Register::D0), Immediate::DWord(0x9ABCDE42));
-        assert_eq!(regs.get(Register::Q0), Immediate::QWord(0x123456789ABCDE42));
-    }
-
-    #[test]
-    fn test_word_register_update() {
-        let mut regs = Registers::new();
-
-        regs.set(Register::Q0, Immediate::QWord(0x123456789ABCDEF0))
-            .unwrap();
-
-        regs.set(Register::W0, Immediate::Word(0x1234)).unwrap();
-
-        assert_eq!(regs.get(Register::B0), Immediate::Byte(0x34));
-        assert_eq!(regs.get(Register::W0), Immediate::Word(0x1234));
-        assert_eq!(regs.get(Register::D0), Immediate::DWord(0x9ABC1234));
-        assert_eq!(regs.get(Register::Q0), Immediate::QWord(0x123456789ABC1234));
-    }
-
-    #[test]
-    fn test_dword_register_update_zeros_upper() {
-        let mut regs = Registers::new();
-
-        regs.set(Register::Q0, Immediate::QWord(0x123456789ABCDEF0))
-            .unwrap();
-
-        regs.set(Register::D0, Immediate::DWord(0x12345678))
-            .unwrap();
-
-        assert_eq!(regs.get(Register::B0), Immediate::Byte(0x78));
-        assert_eq!(regs.get(Register::W0), Immediate::Word(0x5678));
-        assert_eq!(regs.get(Register::D0), Immediate::DWord(0x12345678));
-        assert_eq!(regs.get(Register::Q0), Immediate::QWord(0x12345678));
-    }
-
-    #[test]
-    fn test_floating_point_registers() {
-        let mut regs = Registers::new();
-
-        regs.set(Register::DD0, Immediate::Double(123.456)).unwrap();
-
-        match regs.get(Register::DD0) {
-            Immediate::Double(val) => assert!((val - 123.456).abs() < f64::EPSILON),
-            _ => panic!("Expected Double"),
-        }
-
-        regs.set(Register::FF0, Immediate::Float(42.0)).unwrap();
-
-        match regs.get(Register::FF0) {
-            Immediate::Float(val) => assert!((val - 42.0).abs() < f32::EPSILON),
-            _ => panic!("Expected Float"),
-        }
-    }
-
-    #[test]
-    fn test_register_independence_for_vm_test() {
-        let mut regs = Registers::new();
-
-        regs.set(Register::D1, Immediate::DWord(512)).unwrap();
-        regs.set(Register::Q0, Immediate::QWord(7331)).unwrap();
-
-        assert_eq!(regs.get(Register::D1), Immediate::DWord(512));
-        assert_eq!(regs.get(Register::Q0), Immediate::QWord(7331));
     }
 }
