@@ -185,7 +185,7 @@ impl Compiler {
 
             let absolute_pos = match label_section {
                 Section::Text => *label_pos,
-                section => self.bytecode.len(*section) + *label_pos,
+                Section::Data => self.bytecode.len(Section::Text) + *label_pos,
             };
 
             match size {
