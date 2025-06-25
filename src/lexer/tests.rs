@@ -55,18 +55,40 @@ fn hexadecimal_numbers() {
             "0xDEADBEEF",
             vec![Token::new(TokenKind::Hexadecimal, "0xDEADBEEF", (0, 10))],
         ),
+    ];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
+fn binary_numbers() {
+    let tests = vec![
+        ("0b0", vec![Token::new(TokenKind::Binary, "0b0", (0, 3))]),
         (
-            "0x0",
-            vec![Token::new(TokenKind::Hexadecimal, "0x0", (0, 3))],
+            "0b1010",
+            vec![Token::new(TokenKind::Binary, "0b1010", (0, 6))],
         ),
         (
-            "0X123ABC",
-            vec![Token::new(TokenKind::Hexadecimal, "0X123ABC", (0, 8))],
+            "0B1101",
+            vec![Token::new(TokenKind::Binary, "0B1101", (0, 6))],
         ),
-        (
-            "0xabcdef",
-            vec![Token::new(TokenKind::Hexadecimal, "0xabcdef", (0, 8))],
-        ),
+    ];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
+fn octal_numbers() {
+    let tests = vec![
+        ("0o0", vec![Token::new(TokenKind::Octal, "0o0", (0, 3))]),
+        ("0o123", vec![Token::new(TokenKind::Octal, "0o123", (0, 5))]),
+        ("0O777", vec![Token::new(TokenKind::Octal, "0O777", (0, 5))]),
     ];
 
     for (input, expected) in tests {
