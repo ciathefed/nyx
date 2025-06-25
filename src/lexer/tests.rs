@@ -176,6 +176,22 @@ fn strings() {
                 (0, 49),
             )],
         ),
+        (
+            r#""escaped quote: \"""#,
+            vec![Token::new(
+                TokenKind::String,
+                r#"escaped quote: ""#,
+                (0, 19),
+            )],
+        ),
+        (
+            r#""newline:\n tab:\t backslash:\\ quote:\"""#,
+            vec![Token::new(
+                TokenKind::String,
+                "newline:\n tab:\t backslash:\\ quote:\"",
+                (0, 41),
+            )],
+        ),
     ];
 
     for (input, expected) in tests {
