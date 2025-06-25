@@ -52,6 +52,8 @@ pub enum TokenKind {
     Register,
     Integer,
     Hexadecimal,
+    Binary,
+    Octal,
     Float,
     String,
     DataSize,
