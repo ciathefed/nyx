@@ -40,7 +40,7 @@ impl Lexer {
             '[' => Token::new_static(TokenKind::LBracket, "[", (start, self.read_pos)),
             ']' => Token::new_static(TokenKind::RBracket, "]", (start, self.read_pos)),
             '#' => return self.read_directive(),
-            '.' => return self.read_dot_directive(),
+            '.' => return self.read_directive(),
             '"' => return self.read_string(),
             _ => {
                 if self.ch.is_ascii_digit() {
@@ -176,40 +176,49 @@ impl Lexer {
         Token::new(kind, literal, (start, self.pos))
     }
 
-    fn read_dot_directive(&mut self) -> Token {
-        let start = self.pos;
-        self.read_char();
-        while self.ch.is_alphanumeric() || self.ch == '_' {
-            self.read_char();
-        }
-
-        let literal = &self.input.inner()[start..self.pos];
-        let kind = lookup_ident(literal);
-
-        Token::new(kind, literal, (start, self.pos))
-    }
-
     fn read_string(&mut self) -> Token {
-        let start = self.pos + 1;
-        loop {
-            self.read_char();
+        let start = self.pos;
+        self.read_char(); // Skip opening quote
 
-            if self.ch == '"' || self.ch == '\0' {
+        let mut result = String::new();
+        let mut escaped = false;
+
+        loop {
+            if self.ch == '\0' {
                 break;
             }
+
+            if escaped {
+                match self.ch {
+                    'n' => result.push('\n'),
+                    'r' => result.push('\r'),
+                    't' => result.push('\t'),
+                    '\\' => result.push('\\'),
+                    '"' => result.push('"'),
+                    other => {
+                        result.push('\\');
+                        result.push(other);
+                    }
+                }
+                escaped = false;
+            } else if self.ch == '\\' {
+                escaped = true;
+            } else if self.ch == '"' {
+                break;
+            } else {
+                result.push(self.ch);
+            }
+
+            self.read_char();
         }
 
-        let token = Token::new(
-            TokenKind::String,
-            &self.input.inner()[start..self.pos],
-            (start - 1, self.pos + 1),
-        );
+        let end = self.read_pos;
 
         if self.ch == '"' {
             self.read_char();
         }
 
-        token
+        Token::new(TokenKind::String, &result, (start, end))
     }
 
     fn peek_char(&self) -> char {
