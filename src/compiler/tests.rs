@@ -200,7 +200,7 @@ fn ldr() {
             vec![
                 Opcode::Ldr as u8,
                 Register::B0 as u8,
-                ADDRESSING_VARIANT_1,
+                ADDRESSING_VARIANT_2,
                 0xE8,
                 0x03,
                 0x00,
