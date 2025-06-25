@@ -244,6 +244,20 @@ impl Parser {
                 self.next_token();
                 Ok(Expression::IntegerLiteral(int))
             }
+            TokenKind::Hexadecimal => {
+                let int: i64 = match i64::from_str_radix(&self.cur_token.literal[2..], 16) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        return Err(Error::UnexpectedToken {
+                            token: self.cur_token.clone(),
+                            span: self.cur_token.source_span(),
+                            src: self.lexer.input.clone(),
+                        })?;
+                    }
+                };
+                self.next_token();
+                Ok(Expression::IntegerLiteral(int))
+            }
             TokenKind::Float => {
                 let float: f64 = match self.cur_token.literal.parse() {
                     Ok(v) => v,
