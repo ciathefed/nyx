@@ -216,44 +216,71 @@ impl VM {
         Ok(())
     }
 
+    #[inline]
     fn read_byte(&mut self) -> Result<u8> {
         let ip = self.regs.ip();
         if ip >= self.mem.storage.len() {
             return Err(Error::InstructionPointerOutOfBounds(ip).into());
         }
-        let byte = self.mem.storage[ip];
+        let byte = unsafe { *self.mem.storage.get_unchecked(ip) };
         self.regs.set_ip(ip + 1);
         Ok(byte)
     }
 
+    #[inline]
     fn read_word(&mut self) -> Result<u16> {
         let ip = self.regs.ip();
         if ip + 2 > self.mem.storage.len() {
             return Err(Error::InstructionPointerOutOfBounds(ip).into());
         }
-        let bytes = &self.mem.storage[ip..ip + 2];
+        let bytes = unsafe {
+            [
+                *self.mem.storage.get_unchecked(ip),
+                *self.mem.storage.get_unchecked(ip + 1),
+            ]
+        };
         self.regs.set_ip(ip + 2);
-        Ok(u16::from_le_bytes(bytes.try_into().unwrap()))
+        Ok(u16::from_le_bytes(bytes))
     }
 
+    #[inline]
     fn read_dword(&mut self) -> Result<u32> {
         let ip = self.regs.ip();
         if ip + 4 > self.mem.storage.len() {
             return Err(Error::InstructionPointerOutOfBounds(ip).into());
         }
-        let bytes = &self.mem.storage[ip..ip + 4];
+        let bytes = unsafe {
+            [
+                *self.mem.storage.get_unchecked(ip),
+                *self.mem.storage.get_unchecked(ip + 1),
+                *self.mem.storage.get_unchecked(ip + 2),
+                *self.mem.storage.get_unchecked(ip + 3),
+            ]
+        };
         self.regs.set_ip(ip + 4);
-        Ok(u32::from_le_bytes(bytes.try_into().unwrap()))
+        Ok(u32::from_le_bytes(bytes))
     }
 
+    #[inline]
     fn read_qword(&mut self) -> Result<u64> {
         let ip = self.regs.ip();
         if ip + 8 > self.mem.storage.len() {
             return Err(Error::InstructionPointerOutOfBounds(ip).into());
         }
-        let bytes = &self.mem.storage[ip..ip + 8];
+        let bytes = unsafe {
+            [
+                *self.mem.storage.get_unchecked(ip),
+                *self.mem.storage.get_unchecked(ip + 1),
+                *self.mem.storage.get_unchecked(ip + 2),
+                *self.mem.storage.get_unchecked(ip + 3),
+                *self.mem.storage.get_unchecked(ip + 4),
+                *self.mem.storage.get_unchecked(ip + 5),
+                *self.mem.storage.get_unchecked(ip + 6),
+                *self.mem.storage.get_unchecked(ip + 7),
+            ]
+        };
         self.regs.set_ip(ip + 8);
-        Ok(u64::from_le_bytes(bytes.try_into().unwrap()))
+        Ok(u64::from_le_bytes(bytes))
     }
 
     fn read_float(&mut self) -> Result<f32> {
@@ -266,14 +293,16 @@ impl VM {
         Ok(f64::from_bits(bits))
     }
 
+    #[inline]
     fn read_register(&mut self) -> Result<Register> {
         let byte = self.read_byte()?;
-        Ok(Register::try_from(byte).map_err(|_| Error::InvalidRegister(byte))?)
+        Register::try_from(byte).map_err(|_| Error::InvalidRegister(byte).into())
     }
 
+    #[inline]
     fn read_data_size(&mut self) -> Result<DataSize> {
         let byte = self.read_byte()?;
-        Ok(DataSize::try_from(byte).map_err(|_| Error::InvalidDataSize(byte))?)
+        DataSize::try_from(byte).map_err(|_| Error::InvalidDataSize(byte).into())
     }
 
     fn push(&mut self, value: Immediate) -> Result<()> {
