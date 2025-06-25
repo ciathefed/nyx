@@ -76,16 +76,60 @@ impl Lexer {
     fn read_number(&mut self) -> Token {
         let start = self.pos;
 
-        if self.ch == '0' && (self.peek_char() == 'x' || self.peek_char() == 'X') {
-            self.read_char();
-            self.read_char();
+        if self.ch == '0' {
+            match self.peek_char() {
+                'x' | 'X' => {
+                    self.read_char();
+                    self.read_char();
 
-            while self.ch.is_ascii_hexdigit() {
-                self.read_char();
+                    while self.ch.is_ascii_hexdigit() {
+                        self.read_char();
+                    }
+
+                    let literal = &self.input.inner()[start..self.pos];
+                    Token::new(TokenKind::Hexadecimal, literal, (start, self.pos))
+                }
+                'b' | 'B' => {
+                    self.read_char();
+                    self.read_char();
+
+                    while self.ch == '0' || self.ch == '1' {
+                        self.read_char();
+                    }
+
+                    let literal = &self.input.inner()[start..self.pos];
+                    Token::new(TokenKind::Binary, literal, (start, self.pos))
+                }
+                'o' | 'O' => {
+                    self.read_char();
+                    self.read_char();
+
+                    while self.ch >= '0' && self.ch <= '7' {
+                        self.read_char();
+                    }
+
+                    let literal = &self.input.inner()[start..self.pos];
+                    Token::new(TokenKind::Octal, literal, (start, self.pos))
+                }
+                _ => {
+                    while self.ch.is_ascii_digit() {
+                        self.read_char();
+                    }
+
+                    if self.ch == '.' && self.peek_char().is_ascii_digit() {
+                        self.read_char();
+                        while self.ch.is_ascii_digit() {
+                            self.read_char();
+                        }
+
+                        let literal = &self.input.inner()[start..self.pos];
+                        Token::new(TokenKind::Float, literal, (start, self.pos))
+                    } else {
+                        let literal = &self.input.inner()[start..self.pos];
+                        Token::new(TokenKind::Integer, literal, (start, self.pos))
+                    }
+                }
             }
-
-            let literal = &self.input.inner()[start..self.pos];
-            Token::new(TokenKind::Hexadecimal, literal, (start, self.pos))
         } else {
             while self.ch.is_ascii_digit() {
                 self.read_char();
