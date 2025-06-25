@@ -8,34 +8,33 @@ use crate::parser::ast::{Expression, Statement};
 mod tests;
 
 pub struct Preprocessor {
-    cur_program: Vec<Statement>,
-    new_program: Vec<Statement>,
+    program: Vec<Statement>,
     definitions: HashMap<String, Expression>,
 }
 
 impl Preprocessor {
     pub fn new(program: Vec<Statement>) -> Self {
         Self {
-            cur_program: program,
-            new_program: Vec::new(),
+            program,
             definitions: HashMap::new(),
         }
     }
 
     pub fn process(&mut self) -> Result<Vec<Statement>> {
-        for stmt in std::mem::take(&mut self.cur_program) {
+        let mut processed_statements = Vec::new();
+
+        for stmt in std::mem::take(&mut self.program) {
             match stmt {
                 Statement::Define(Expression::Identifier(name), value, _) => {
                     self.definitions.insert(name, value);
                 }
-                other => self.new_program.push(other),
+                other => processed_statements.push(other),
             }
         }
 
-        self.cur_program = std::mem::take(&mut self.new_program);
-        self.new_program = Vec::new();
+        let mut final_statements = Vec::with_capacity(processed_statements.len());
 
-        for stmt in std::mem::take(&mut self.cur_program) {
+        for stmt in processed_statements {
             let new_stmt = match stmt {
                 Statement::Mov(dest, src, span) => {
                     Statement::Mov(self.substitute_expr(dest), self.substitute_expr(src), span)
@@ -59,19 +58,19 @@ impl Preprocessor {
                 Statement::Define(key, val, span) => {
                     Statement::Define(self.substitute_expr(key), self.substitute_expr(val), span)
                 }
-                Statement::Label(name, span) => Statement::Label(name, span),
-                Statement::Nop(span) => Statement::Nop(span),
-                Statement::Hlt(span) => Statement::Hlt(span),
                 Statement::Db(exprs, span) => Statement::Db(
                     exprs.into_iter().map(|e| self.substitute_expr(e)).collect(),
                     span,
                 ),
+                Statement::Label(name, span) => Statement::Label(name, span),
+                Statement::Nop(span) => Statement::Nop(span),
+                Statement::Hlt(span) => Statement::Hlt(span),
             };
 
-            self.new_program.push(new_stmt);
+            final_statements.push(new_stmt);
         }
 
-        Ok(self.new_program.clone())
+        Ok(final_statements)
     }
 
     fn substitute_expr(&self, expr: Expression) -> Expression {
@@ -88,7 +87,11 @@ impl Preprocessor {
                 let new_offset = offset_opt.map(|offset| Box::new(self.substitute_expr(*offset)));
                 Expression::Address(new_base, new_offset)
             }
-            other => other,
+            Expression::Register(reg) => Expression::Register(reg),
+            Expression::IntegerLiteral(val) => Expression::IntegerLiteral(val),
+            Expression::FloatLiteral(val) => Expression::FloatLiteral(val),
+            Expression::StringLiteral(val) => Expression::StringLiteral(val),
+            Expression::DataSize(size) => Expression::DataSize(size),
         }
     }
 }
