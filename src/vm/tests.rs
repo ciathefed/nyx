@@ -49,15 +49,19 @@ fn nop() -> Result<()> {
 fn mov() -> Result<()> {
     let input = r#"
         mov q0, 1337
-        mov d0, q0
+        mov d1, q0
+        mov dd0, 4.20
+        mov ff1, dd0
         hlt
     "#;
     let vm = run(input, 0, None)?;
 
     assert_eq!(vm.halted, true);
-    assert_eq!(vm.regs.ip(), 14);
+    assert_eq!(vm.regs.ip(), 27);
     assert_eq!(vm.regs.get(Register::Q0), Immediate::QWord(1337));
-    assert_eq!(vm.regs.get(Register::D0), Immediate::DWord(1337));
+    assert_eq!(vm.regs.get(Register::D1), Immediate::DWord(1337));
+    assert_eq!(vm.regs.get(Register::DD0), Immediate::Double(4.20));
+    assert_eq!(vm.regs.get(Register::FF1), Immediate::Float(4.20));
     Ok(())
 }
 
@@ -121,14 +125,14 @@ fn push() -> Result<()> {
 fn pop() -> Result<()> {
     let input = r#"
         push QWORD 1337
-        pop QWORD d0
+        pop QWORD q0
         hlt
     "#;
     let vm = run(input, 0, None)?;
 
     assert!(vm.halted);
     assert_eq!(vm.regs.sp(), vm.mem.storage.len());
-    assert_eq!(vm.regs.get(Register::D0), Immediate::DWord(1337));
+    assert_eq!(vm.regs.get(Register::Q0), Immediate::QWord(1337));
     Ok(())
 }
 
@@ -226,7 +230,7 @@ fn floating_point_registers() {
 }
 
 #[test]
-fn register_independence_for_vm_test() {
+fn register_independence() {
     let mut regs = Registers::new();
 
     regs.set(Register::D1, Immediate::DWord(512)).unwrap();

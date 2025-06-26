@@ -21,15 +21,15 @@ pub fn collect_syscalls() -> Syscalls {
     syscalls
 }
 
-fn sys_open(vm: &mut VM) -> Result<()> {
+fn sys_open(_: &mut VM) -> Result<()> {
     Ok(())
 }
 
-fn sys_close(vm: &mut VM) -> Result<()> {
+fn sys_close(_: &mut VM) -> Result<()> {
     Ok(())
 }
 
-fn sys_read(vm: &mut VM) -> Result<()> {
+fn sys_read(_: &mut VM) -> Result<()> {
     Ok(())
 }
 
