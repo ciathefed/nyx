@@ -42,6 +42,7 @@ impl Lexer {
             '#' => return self.read_directive(),
             '.' => return self.read_directive(),
             '"' => return self.read_string(),
+            ';' => return self.skip_comment(),
             _ => {
                 if self.ch.is_ascii_digit() {
                     return self.read_number();
@@ -233,6 +234,19 @@ impl Lexer {
         while self.ch.is_whitespace() {
             self.read_char();
         }
+    }
+
+    fn skip_comment(&mut self) -> Token {
+        // Skip the semicolon
+        self.read_char();
+
+        // Skip until end of line or end of file
+        while self.ch != '\n' && self.ch != '\0' {
+            self.read_char();
+        }
+
+        // Return the next token after the comment
+        self.next_token()
     }
 }
 
