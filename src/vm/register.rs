@@ -36,6 +36,23 @@ const FPR13: usize = 0x0D;
 const FPR14: usize = 0x0E;
 const FPR15: usize = 0x0F;
 
+const DPR0: usize = 0x10;
+const DPR1: usize = 0x11;
+const DPR2: usize = 0x12;
+const DPR3: usize = 0x13;
+const DPR4: usize = 0x14;
+const DPR5: usize = 0x15;
+const DPR6: usize = 0x16;
+const DPR7: usize = 0x17;
+const DPR8: usize = 0x18;
+const DPR9: usize = 0x19;
+const DPR10: usize = 0x1A;
+const DPR11: usize = 0x1B;
+const DPR12: usize = 0x1C;
+const DPR13: usize = 0x1D;
+const DPR14: usize = 0x1E;
+const DPR15: usize = 0x1F;
+
 const IP_REG: usize = 0;
 const SP_REG: usize = 1;
 const BP_REG: usize = 2;
@@ -74,112 +91,112 @@ impl Register {
             Register::D0 => (PhysicalRegisterType::GeneralPurpose, GPR0, RegisterView::DWord),
             Register::Q0 => (PhysicalRegisterType::GeneralPurpose, GPR0, RegisterView::QWord),
             Register::FF0 => (PhysicalRegisterType::FloatingPoint, FPR0, RegisterView::Float),
-            Register::DD0 => (PhysicalRegisterType::FloatingPoint, FPR0, RegisterView::Double),
+            Register::DD0 => (PhysicalRegisterType::FloatingPoint, DPR0, RegisterView::Double),
 
             Register::B1 => (PhysicalRegisterType::GeneralPurpose, GPR1, RegisterView::Byte),
             Register::W1 => (PhysicalRegisterType::GeneralPurpose, GPR1, RegisterView::Word),
             Register::D1 => (PhysicalRegisterType::GeneralPurpose, GPR1, RegisterView::DWord),
             Register::Q1 => (PhysicalRegisterType::GeneralPurpose, GPR1, RegisterView::QWord),
             Register::FF1 => (PhysicalRegisterType::FloatingPoint, FPR1, RegisterView::Float),
-            Register::DD1 => (PhysicalRegisterType::FloatingPoint, FPR1, RegisterView::Double),
+            Register::DD1 => (PhysicalRegisterType::FloatingPoint, DPR1, RegisterView::Double),
 
             Register::B2 => (PhysicalRegisterType::GeneralPurpose, GPR2, RegisterView::Byte),
             Register::W2 => (PhysicalRegisterType::GeneralPurpose, GPR2, RegisterView::Word),
             Register::D2 => (PhysicalRegisterType::GeneralPurpose, GPR2, RegisterView::DWord),
             Register::Q2 => (PhysicalRegisterType::GeneralPurpose, GPR2, RegisterView::QWord),
             Register::FF2 => (PhysicalRegisterType::FloatingPoint, FPR2, RegisterView::Float),
-            Register::DD2 => (PhysicalRegisterType::FloatingPoint, FPR2, RegisterView::Double),
+            Register::DD2 => (PhysicalRegisterType::FloatingPoint, DPR2, RegisterView::Double),
 
             Register::B3 => (PhysicalRegisterType::GeneralPurpose, GPR3, RegisterView::Byte),
             Register::W3 => (PhysicalRegisterType::GeneralPurpose, GPR3, RegisterView::Word),
             Register::D3 => (PhysicalRegisterType::GeneralPurpose, GPR3, RegisterView::DWord),
             Register::Q3 => (PhysicalRegisterType::GeneralPurpose, GPR3, RegisterView::QWord),
             Register::FF3 => (PhysicalRegisterType::FloatingPoint, FPR3, RegisterView::Float),
-            Register::DD3 => (PhysicalRegisterType::FloatingPoint, FPR3, RegisterView::Double),
+            Register::DD3 => (PhysicalRegisterType::FloatingPoint, DPR3, RegisterView::Double),
 
             Register::B4 => (PhysicalRegisterType::GeneralPurpose, GPR4, RegisterView::Byte),
             Register::W4 => (PhysicalRegisterType::GeneralPurpose, GPR4, RegisterView::Word),
             Register::D4 => (PhysicalRegisterType::GeneralPurpose, GPR4, RegisterView::DWord),
             Register::Q4 => (PhysicalRegisterType::GeneralPurpose, GPR4, RegisterView::QWord),
             Register::FF4 => (PhysicalRegisterType::FloatingPoint, FPR4, RegisterView::Float),
-            Register::DD4 => (PhysicalRegisterType::FloatingPoint, FPR4, RegisterView::Double),
+            Register::DD4 => (PhysicalRegisterType::FloatingPoint, DPR4, RegisterView::Double),
 
             Register::B5 => (PhysicalRegisterType::GeneralPurpose, GPR5, RegisterView::Byte),
             Register::W5 => (PhysicalRegisterType::GeneralPurpose, GPR5, RegisterView::Word),
             Register::D5 => (PhysicalRegisterType::GeneralPurpose, GPR5, RegisterView::DWord),
             Register::Q5 => (PhysicalRegisterType::GeneralPurpose, GPR5, RegisterView::QWord),
             Register::FF5 => (PhysicalRegisterType::FloatingPoint, FPR5, RegisterView::Float),
-            Register::DD5 => (PhysicalRegisterType::FloatingPoint, FPR5, RegisterView::Double),
+            Register::DD5 => (PhysicalRegisterType::FloatingPoint, DPR5, RegisterView::Double),
 
             Register::B6 => (PhysicalRegisterType::GeneralPurpose, GPR6, RegisterView::Byte),
             Register::W6 => (PhysicalRegisterType::GeneralPurpose, GPR6, RegisterView::Word),
             Register::D6 => (PhysicalRegisterType::GeneralPurpose, GPR6, RegisterView::DWord),
             Register::Q6 => (PhysicalRegisterType::GeneralPurpose, GPR6, RegisterView::QWord),
             Register::FF6 => (PhysicalRegisterType::FloatingPoint, FPR6, RegisterView::Float),
-            Register::DD6 => (PhysicalRegisterType::FloatingPoint, FPR6, RegisterView::Double),
+            Register::DD6 => (PhysicalRegisterType::FloatingPoint, DPR6, RegisterView::Double),
 
             Register::B7 => (PhysicalRegisterType::GeneralPurpose, GPR7, RegisterView::Byte),
             Register::W7 => (PhysicalRegisterType::GeneralPurpose, GPR7, RegisterView::Word),
             Register::D7 => (PhysicalRegisterType::GeneralPurpose, GPR7, RegisterView::DWord),
             Register::Q7 => (PhysicalRegisterType::GeneralPurpose, GPR7, RegisterView::QWord),
             Register::FF7 => (PhysicalRegisterType::FloatingPoint, FPR7, RegisterView::Float),
-            Register::DD7 => (PhysicalRegisterType::FloatingPoint, FPR7, RegisterView::Double),
+            Register::DD7 => (PhysicalRegisterType::FloatingPoint, DPR7, RegisterView::Double),
 
             Register::B8 => (PhysicalRegisterType::GeneralPurpose, GPR8, RegisterView::Byte),
             Register::W8 => (PhysicalRegisterType::GeneralPurpose, GPR8, RegisterView::Word),
             Register::D8 => (PhysicalRegisterType::GeneralPurpose, GPR8, RegisterView::DWord),
             Register::Q8 => (PhysicalRegisterType::GeneralPurpose, GPR8, RegisterView::QWord),
             Register::FF8 => (PhysicalRegisterType::FloatingPoint, FPR8, RegisterView::Float),
-            Register::DD8 => (PhysicalRegisterType::FloatingPoint, FPR8, RegisterView::Double),
+            Register::DD8 => (PhysicalRegisterType::FloatingPoint, DPR8, RegisterView::Double),
 
             Register::B9 => (PhysicalRegisterType::GeneralPurpose, GPR9, RegisterView::Byte),
             Register::W9 => (PhysicalRegisterType::GeneralPurpose, GPR9, RegisterView::Word),
             Register::D9 => (PhysicalRegisterType::GeneralPurpose, GPR9, RegisterView::DWord),
             Register::Q9 => (PhysicalRegisterType::GeneralPurpose, GPR9, RegisterView::QWord),
             Register::FF9 => (PhysicalRegisterType::FloatingPoint, FPR9, RegisterView::Float),
-            Register::DD9 => (PhysicalRegisterType::FloatingPoint, FPR9, RegisterView::Double),
+            Register::DD9 => (PhysicalRegisterType::FloatingPoint, DPR9, RegisterView::Double),
 
             Register::B10 => (PhysicalRegisterType::GeneralPurpose, GPR10, RegisterView::Byte),
             Register::W10 => (PhysicalRegisterType::GeneralPurpose, GPR10, RegisterView::Word),
             Register::D10 => (PhysicalRegisterType::GeneralPurpose, GPR10, RegisterView::DWord),
             Register::Q10 => (PhysicalRegisterType::GeneralPurpose, GPR10, RegisterView::QWord),
             Register::FF10 => (PhysicalRegisterType::FloatingPoint, FPR10, RegisterView::Float),
-            Register::DD10 => (PhysicalRegisterType::FloatingPoint, FPR10, RegisterView::Double),
+            Register::DD10 => (PhysicalRegisterType::FloatingPoint, DPR10, RegisterView::Double),
 
             Register::B11 => (PhysicalRegisterType::GeneralPurpose, GPR11, RegisterView::Byte),
             Register::W11 => (PhysicalRegisterType::GeneralPurpose, GPR11, RegisterView::Word),
             Register::D11 => (PhysicalRegisterType::GeneralPurpose, GPR11, RegisterView::DWord),
             Register::Q11 => (PhysicalRegisterType::GeneralPurpose, GPR11, RegisterView::QWord),
             Register::FF11 => (PhysicalRegisterType::FloatingPoint, FPR11, RegisterView::Float),
-            Register::DD11 => (PhysicalRegisterType::FloatingPoint, FPR11, RegisterView::Double),
+            Register::DD11 => (PhysicalRegisterType::FloatingPoint, DPR11, RegisterView::Double),
 
             Register::B12 => (PhysicalRegisterType::GeneralPurpose, GPR12, RegisterView::Byte),
             Register::W12 => (PhysicalRegisterType::GeneralPurpose, GPR12, RegisterView::Word),
             Register::D12 => (PhysicalRegisterType::GeneralPurpose, GPR12, RegisterView::DWord),
             Register::Q12 => (PhysicalRegisterType::GeneralPurpose, GPR12, RegisterView::QWord),
             Register::FF12 => (PhysicalRegisterType::FloatingPoint, FPR12, RegisterView::Float),
-            Register::DD12 => (PhysicalRegisterType::FloatingPoint, FPR12, RegisterView::Double),
+            Register::DD12 => (PhysicalRegisterType::FloatingPoint, DPR12, RegisterView::Double),
 
             Register::B13 => (PhysicalRegisterType::GeneralPurpose, GPR13, RegisterView::Byte),
             Register::W13 => (PhysicalRegisterType::GeneralPurpose, GPR13, RegisterView::Word),
             Register::D13 => (PhysicalRegisterType::GeneralPurpose, GPR13, RegisterView::DWord),
             Register::Q13 => (PhysicalRegisterType::GeneralPurpose, GPR13, RegisterView::QWord),
             Register::FF13 => (PhysicalRegisterType::FloatingPoint, FPR13, RegisterView::Float),
-            Register::DD13 => (PhysicalRegisterType::FloatingPoint, FPR13, RegisterView::Double),
+            Register::DD13 => (PhysicalRegisterType::FloatingPoint, DPR13, RegisterView::Double),
 
             Register::B14 => (PhysicalRegisterType::GeneralPurpose, GPR14, RegisterView::Byte),
             Register::W14 => (PhysicalRegisterType::GeneralPurpose, GPR14, RegisterView::Word),
             Register::D14 => (PhysicalRegisterType::GeneralPurpose, GPR14, RegisterView::DWord),
             Register::Q14 => (PhysicalRegisterType::GeneralPurpose, GPR14, RegisterView::QWord),
             Register::FF14 => (PhysicalRegisterType::FloatingPoint, FPR14, RegisterView::Float),
-            Register::DD14 => (PhysicalRegisterType::FloatingPoint, FPR14, RegisterView::Double),
+            Register::DD14 => (PhysicalRegisterType::FloatingPoint, DPR14, RegisterView::Double),
 
             Register::B15 => (PhysicalRegisterType::GeneralPurpose, GPR15, RegisterView::Byte),
             Register::W15 => (PhysicalRegisterType::GeneralPurpose, GPR15, RegisterView::Word),
             Register::D15 => (PhysicalRegisterType::GeneralPurpose, GPR15, RegisterView::DWord),
             Register::Q15 => (PhysicalRegisterType::GeneralPurpose, GPR15, RegisterView::QWord),
             Register::FF15 => (PhysicalRegisterType::FloatingPoint, FPR15, RegisterView::Float),
-            Register::DD15 => (PhysicalRegisterType::FloatingPoint, FPR15, RegisterView::Double),
+            Register::DD15 => (PhysicalRegisterType::FloatingPoint, DPR15, RegisterView::Double),
 
             Register::IP => (PhysicalRegisterType::Special, IP_REG, RegisterView::QWord),
             Register::SP => (PhysicalRegisterType::Special, SP_REG, RegisterView::QWord),
@@ -276,7 +293,7 @@ impl TryFrom<u8> for Register {
 #[derive(Debug)]
 pub struct Registers {
     gpr: [u64; 16],
-    fpr: [u64; 16],
+    fpr: [u64; 32],
     special: [usize; 3],
 }
 
@@ -285,7 +302,7 @@ impl Registers {
     pub fn new() -> Self {
         Self {
             gpr: [0; 16],
-            fpr: [0; 16],
+            fpr: [0; 32],
             special: [0; 3],
         }
     }
@@ -347,8 +364,7 @@ impl Registers {
             PhysicalRegisterType::FloatingPoint => match view {
                 RegisterView::Float => {
                     let new_value = imm.as_f32()?;
-                    let f32_bits = new_value.to_bits() as u64;
-                    self.fpr[index] = (self.fpr[index] & 0xFFFFFFFF00000000) | f32_bits;
+                    self.fpr[index] = new_value.to_bits() as u64;
                 }
                 RegisterView::Double => {
                     let new_value = imm.as_f64()?;

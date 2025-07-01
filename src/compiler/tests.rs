@@ -525,6 +525,172 @@ end:
 }
 
 #[test]
+fn float_arithmetic_operations() {
+    let tests = vec![
+        (
+            "add ff0, ff1, ff2",
+            vec![
+                Opcode::AddRegRegReg as u8,
+                Register::FF0 as u8,
+                Register::FF1 as u8,
+                Register::FF2 as u8,
+            ],
+        ),
+        (
+            "sub dd0, dd1, 3.14",
+            vec![
+                Opcode::SubRegRegImm as u8,
+                Register::DD0 as u8,
+                Register::DD1 as u8,
+                0x1f,
+                0x85,
+                0xeb,
+                0x51,
+                0xb8,
+                0x1e,
+                0x09,
+                0x40,
+            ],
+        ),
+        (
+            "mul ff0, ff1, 2.5",
+            vec![
+                Opcode::MulRegRegImm as u8,
+                Register::FF0 as u8,
+                Register::FF1 as u8,
+                0x00,
+                0x00,
+                0x20,
+                0x40,
+            ],
+        ),
+        (
+            "div dd0, dd1, dd2",
+            vec![
+                Opcode::DivRegRegReg as u8,
+                Register::DD0 as u8,
+                Register::DD1 as u8,
+                Register::DD2 as u8,
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
+fn float_comparison_operations() {
+    let tests = vec![
+        (
+            "cmp ff0, 1.5",
+            vec![
+                Opcode::CmpRegImm as u8,
+                Register::FF0 as u8,
+                0x00,
+                0x00,
+                0xc0,
+                0x3f,
+            ],
+        ),
+        (
+            "cmp dd0, 3.14159",
+            vec![
+                Opcode::CmpRegImm as u8,
+                Register::DD0 as u8,
+                0x6E,
+                0x86,
+                0x1B,
+                0xF0,
+                0xF9,
+                0x21,
+                0x09,
+                0x40,
+            ],
+        ),
+        (
+            "cmp ff0, ff1",
+            vec![
+                Opcode::CmpRegReg as u8,
+                Register::FF0 as u8,
+                Register::FF1 as u8,
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
+fn float_bitwise_operations_should_fail() {
+    let tests = vec![
+        "and ff0, ff1, ff2",
+        "or dd0, dd1, dd2",
+        "xor ff0, ff1, 42",
+        "shl dd0, dd1, 2",
+        "shr ff0, ff1, ff2",
+        "and q0, ff1, q2",
+        "or ff0, q1, ff2",
+    ];
+
+    for input in tests {
+        let bytecode = compile(input);
+        assert!(
+            bytecode.is_err(),
+            "Expected error for float bitwise operation: {}",
+            input
+        );
+    }
+}
+
+#[test]
+fn mixed_integer_float_arithmetic() {
+    let tests = vec![
+        (
+            "add dd0, dd1, 42",
+            vec![
+                Opcode::AddRegRegImm as u8,
+                Register::DD0 as u8,
+                Register::DD1 as u8,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x45,
+                0x40,
+            ],
+        ),
+        (
+            "mul ff0, ff1, 10",
+            vec![
+                Opcode::MulRegRegImm as u8,
+                Register::FF0 as u8,
+                Register::FF1 as u8,
+                0x00,
+                0x00,
+                0x20,
+                0x41,
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
 fn section_label_resolution() {
     let input = r#"
 .section text

@@ -412,3 +412,273 @@ fn overflow_wrapping() -> Result<()> {
     assert_eq!(vm.regs.get(Register::W1), Immediate::Word(0));
     Ok(())
 }
+
+#[test]
+fn float_arithmetic_with_literals() -> Result<()> {
+    let input = r#"
+        mov ff0, 10.5
+        add ff1, ff0, 2.5
+        sub ff2, ff0, 1.5
+        mul ff3, ff0, 2.0
+        div ff4, ff0, 3.0
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+
+    match vm.regs.get(Register::FF0) {
+        Immediate::Float(val) => assert!((val - 10.5).abs() < f32::EPSILON),
+        _ => panic!("Expected float"),
+    }
+
+    match vm.regs.get(Register::FF1) {
+        Immediate::Float(val) => assert!((val - 13.0).abs() < f32::EPSILON),
+        _ => panic!("Expected float"),
+    }
+
+    match vm.regs.get(Register::FF2) {
+        Immediate::Float(val) => assert!((val - 9.0).abs() < f32::EPSILON),
+        _ => panic!("Expected float"),
+    }
+
+    match vm.regs.get(Register::FF3) {
+        Immediate::Float(val) => assert!((val - 21.0).abs() < f32::EPSILON),
+        _ => panic!("Expected float"),
+    }
+
+    match vm.regs.get(Register::FF4) {
+        Immediate::Float(val) => assert!((val - 3.5).abs() < f32::EPSILON),
+        _ => panic!("Expected float"),
+    }
+
+    Ok(())
+}
+
+#[test]
+fn double_precision_arithmetic() -> Result<()> {
+    let input = r#"
+        mov dd0, 123.456789012345
+        add dd1, dd0, 0.000000987654
+        sub dd2, dd0, 0.456789012345
+        mul dd3, dd0, 2.0
+        div dd4, dd0, 3.0
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+
+    match vm.regs.get(Register::DD0) {
+        Immediate::Double(val) => assert!((val - 123.456789012345).abs() < f64::EPSILON),
+        _ => panic!("Expected double"),
+    }
+
+    match vm.regs.get(Register::DD1) {
+        Immediate::Double(val) => assert!((val - 123.456789999999).abs() < 1e-10),
+        _ => panic!("Expected double"),
+    }
+
+    match vm.regs.get(Register::DD2) {
+        Immediate::Double(val) => assert!((val - 123.0).abs() < f64::EPSILON),
+        _ => panic!("Expected double"),
+    }
+
+    match vm.regs.get(Register::DD3) {
+        Immediate::Double(val) => assert!((val - 246.91357802469).abs() < 1e-10),
+        _ => panic!("Expected double"),
+    }
+
+    match vm.regs.get(Register::DD4) {
+        Immediate::Double(val) => assert!((val - 41.152263004115).abs() < 1e-10),
+        _ => panic!("Expected double"),
+    }
+
+    Ok(())
+}
+
+#[test]
+fn float_comparison() -> Result<()> {
+    let input = r#"
+        mov ff0, 3.14
+        cmp ff0, 3.14
+        mov ff1, 2.71
+        cmp ff1, 3.14
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+    assert!(vm.flags.lt);
+    assert!(!vm.flags.eq); // 2.71 != 3.14
+
+    Ok(())
+}
+
+#[test]
+fn mixed_float_integer_arithmetic() -> Result<()> {
+    let input = r#"
+        mov ff0, 10.0
+        add ff1, ff0, 5
+        mov dd0, 20.0
+        mul dd1, dd0, 3
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+
+    match vm.regs.get(Register::FF1) {
+        Immediate::Float(val) => assert!((val - 15.0).abs() < f32::EPSILON),
+        _ => panic!("Expected float"),
+    }
+
+    match vm.regs.get(Register::DD1) {
+        Immediate::Double(val) => assert!((val - 60.0).abs() < f64::EPSILON),
+        _ => panic!("Expected double"),
+    }
+
+    Ok(())
+}
+
+#[test]
+fn float_stack_operations() -> Result<()> {
+    let input = r#"
+        mov ff0, 42.5
+        push FLOAT ff0
+        mov ff0, 0.0
+        pop FLOAT ff1
+
+        mov dd0, 123.456
+        push DOUBLE dd0
+        mov dd0, 0.0
+        pop DOUBLE dd1
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+
+    match vm.regs.get(Register::FF1) {
+        Immediate::Float(val) => assert!((val - 42.5).abs() < f32::EPSILON),
+        _ => panic!("Expected float"),
+    }
+
+    match vm.regs.get(Register::DD1) {
+        Immediate::Double(val) => assert!((val - 123.456).abs() < f64::EPSILON),
+        _ => panic!("Expected double"),
+    }
+
+    Ok(())
+}
+
+#[test]
+fn float_memory_operations() -> Result<()> {
+    let data_addr = 512;
+    let input = format!(
+        r#"
+            mov d0, {data_addr}
+            mov ff0, 3.14159
+            str ff0, [d0]
+            mov ff0, 0.0
+            ldr ff1, [d0]
+
+            mov dd0, 2.71828
+            str dd0, [d0, 8]
+            mov dd0, 0.0
+            ldr dd1, [d0, 8]
+            hlt
+        "#
+    );
+    let vm = run(&input, data_addr, None)?;
+
+    assert!(vm.halted);
+
+    match vm.regs.get(Register::FF1) {
+        Immediate::Float(val) => assert!((val - 3.14159).abs() < f32::EPSILON),
+        _ => panic!("Expected float"),
+    }
+
+    match vm.regs.get(Register::DD1) {
+        Immediate::Double(val) => assert!((val - 2.71828).abs() < f64::EPSILON),
+        _ => panic!("Expected double"),
+    }
+
+    Ok(())
+}
+
+#[test]
+fn float_register_independence() -> Result<()> {
+    let input = r#"
+        mov ff0, 1.5
+        mov dd0, 2.5
+        mov ff1, 3.5
+        mov dd1, 4.5
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+
+    // Debug all register values
+    println!("FF0: {:?}", vm.regs.get(Register::FF0));
+    println!("DD0: {:?}", vm.regs.get(Register::DD0));
+    println!("FF1: {:?}", vm.regs.get(Register::FF1));
+    println!("DD1: {:?}", vm.regs.get(Register::DD1));
+
+    // Also check if there's any interference with GPRs
+    println!("Q0: {:?}", vm.regs.get(Register::Q0));
+    println!("Q1: {:?}", vm.regs.get(Register::Q1));
+
+    // Verify each register maintains its independent value
+    match vm.regs.get(Register::FF0) {
+        Immediate::Float(val) => {
+            println!(
+                "FF0 actual value: {}, expected: 1.5, diff: {}",
+                val,
+                (val - 1.5).abs()
+            );
+            assert!((val - 1.5).abs() < f32::EPSILON);
+        }
+        other => panic!("Expected float, got {:?}", other),
+    }
+
+    match vm.regs.get(Register::DD0) {
+        Immediate::Double(val) => assert!((val - 2.5).abs() < f64::EPSILON),
+        _ => panic!("Expected double"),
+    }
+
+    match vm.regs.get(Register::FF1) {
+        Immediate::Float(val) => assert!((val - 3.5).abs() < f32::EPSILON),
+        _ => panic!("Expected float"),
+    }
+
+    match vm.regs.get(Register::DD1) {
+        Immediate::Double(val) => assert!((val - 4.5).abs() < f64::EPSILON),
+        _ => panic!("Expected double"),
+    }
+
+    Ok(())
+}
+
+#[test]
+fn debug_simple_float_mov() -> Result<()> {
+    let input = r#"
+        mov ff0, 1.5
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+    println!("FF0 register value: {:?}", vm.regs.get(Register::FF0));
+
+    match vm.regs.get(Register::FF0) {
+        Immediate::Float(val) => {
+            println!("FF0 actual value: {}, expected: 1.5", val);
+            assert!((val - 1.5).abs() < f32::EPSILON);
+        }
+        other => panic!("Expected float, got {:?}", other),
+    }
+
+    Ok(())
+}

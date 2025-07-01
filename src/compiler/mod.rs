@@ -574,6 +574,25 @@ impl Compiler {
                         .extend(self.current_section, (src as f64).to_le_bytes()),
                 }
             }
+            (Some(Expression::DataSize(size)), Expression::FloatLiteral(src)) => {
+                self.bytecode.push(self.current_section, Opcode::PushImm);
+                self.bytecode.push(self.current_section, size);
+                match size {
+                    DataSize::Float => self
+                        .bytecode
+                        .extend(self.current_section, (src as f32).to_le_bytes()),
+                    DataSize::Double => self
+                        .bytecode
+                        .extend(self.current_section, (src as f64).to_le_bytes()),
+                    _ => {
+                        return Err(Error::InvalidDataSize {
+                            inst: INST,
+                            src: self.input.clone(),
+                            span,
+                        })?;
+                    }
+                }
+            }
             (Some(Expression::DataSize(size)), Expression::Identifier(src)) => {
                 self.bytecode.push(self.current_section, Opcode::PushImm);
                 self.bytecode.push(self.current_section, size);
@@ -846,6 +865,32 @@ impl Compiler {
                     DataSize::QWord => self
                         .bytecode
                         .extend(self.current_section, (*rhs_val as u64).to_le_bytes()),
+                    DataSize::Float => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_val as f32).to_le_bytes()),
+                    DataSize::Double => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_val as f64).to_le_bytes()),
+                }
+            }
+            (Expression::Register(lhs_reg), Expression::FloatLiteral(rhs_val)) => {
+                let opcode = match op {
+                    "ADD" => Opcode::AddRegRegImm,
+                    "SUB" => Opcode::SubRegRegImm,
+                    "MUL" => Opcode::MulRegRegImm,
+                    "DIV" => Opcode::DivRegRegImm,
+                    _ => unreachable!(),
+                };
+                self.bytecode.push(self.current_section, opcode);
+                self.bytecode.push(self.current_section, dest_reg);
+                self.bytecode.push(self.current_section, *lhs_reg);
+                match DataSize::from(dest_reg) {
+                    DataSize::Float => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_val as f32).to_le_bytes()),
+                    DataSize::Double => self
+                        .bytecode
+                        .extend(self.current_section, rhs_val.to_le_bytes()),
                     _ => {
                         return Err(Error::InvalidDataSize {
                             inst: op,
@@ -887,8 +932,37 @@ impl Compiler {
             }
         };
 
+        match DataSize::from(dest_reg) {
+            DataSize::Float | DataSize::Double => {
+                return Err(Error::InvalidOperands {
+                    inst: op,
+                    details: "Bitwise operations not supported on floating-point registers"
+                        .to_string(),
+                    src: self.input.clone(),
+                    span,
+                })?;
+            }
+            _ => {}
+        }
+
         match (&lhs, &rhs) {
             (Expression::Register(lhs_reg), Expression::Register(rhs_reg)) => {
+                match (DataSize::from(*lhs_reg), DataSize::from(*rhs_reg)) {
+                    (DataSize::Float, _)
+                    | (DataSize::Double, _)
+                    | (_, DataSize::Float)
+                    | (_, DataSize::Double) => {
+                        return Err(Error::InvalidOperands {
+                            inst: op,
+                            details: "Bitwise operations not supported on floating-point registers"
+                                .to_string(),
+                            src: self.input.clone(),
+                            span,
+                        })?;
+                    }
+                    _ => {}
+                }
+
                 let opcode = match op {
                     "AND" => Opcode::AndRegRegReg,
                     "OR" => Opcode::OrRegRegReg,
@@ -903,6 +977,19 @@ impl Compiler {
                 self.bytecode.push(self.current_section, *rhs_reg);
             }
             (Expression::Register(lhs_reg), Expression::IntegerLiteral(rhs_val)) => {
+                match DataSize::from(*lhs_reg) {
+                    DataSize::Float | DataSize::Double => {
+                        return Err(Error::InvalidOperands {
+                            inst: op,
+                            details: "Bitwise operations not supported on floating-point registers"
+                                .to_string(),
+                            src: self.input.clone(),
+                            span,
+                        })?;
+                    }
+                    _ => {}
+                }
+
                 let opcode = match op {
                     "AND" => Opcode::AndRegRegImm,
                     "OR" => Opcode::OrRegRegImm,
@@ -933,6 +1020,15 @@ impl Compiler {
                         })?;
                     }
                 }
+            }
+            (Expression::Register(_), Expression::FloatLiteral(_)) => {
+                return Err(Error::InvalidOperands {
+                    inst: op,
+                    details: "Bitwise operations not supported with floating-point operands"
+                        .to_string(),
+                    src: self.input.clone(),
+                    span,
+                })?;
             }
             _ => {
                 return Err(Error::InvalidOperands {
@@ -970,6 +1066,25 @@ impl Compiler {
                     DataSize::Double => self
                         .bytecode
                         .extend(self.current_section, (*rhs_imm as f64).to_le_bytes()),
+                }
+            }
+            (Expression::Register(lhs_reg), Expression::FloatLiteral(rhs_imm)) => {
+                self.bytecode.push(self.current_section, Opcode::CmpRegImm);
+                self.bytecode.push(self.current_section, *lhs_reg);
+                match DataSize::from(*lhs_reg) {
+                    DataSize::Float => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_imm as f32).to_le_bytes()),
+                    DataSize::Double => self
+                        .bytecode
+                        .extend(self.current_section, rhs_imm.to_le_bytes()),
+                    _ => {
+                        return Err(Error::InvalidDataSize {
+                            inst: INST,
+                            src: self.input.clone(),
+                            span,
+                        })?;
+                    }
                 }
             }
             (Expression::Register(lhs_reg), Expression::Register(rhs_reg)) => {
