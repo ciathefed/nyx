@@ -161,6 +161,33 @@ impl Compiler {
                         }
                     }
                 }
+                Statement::Add(dest, lhs, rhs, span) => {
+                    self.compile_arithmetic(dest, lhs, rhs, span.into(), "ADD")?
+                }
+                Statement::Sub(dest, lhs, rhs, span) => {
+                    self.compile_arithmetic(dest, lhs, rhs, span.into(), "SUB")?
+                }
+                Statement::Mul(dest, lhs, rhs, span) => {
+                    self.compile_arithmetic(dest, lhs, rhs, span.into(), "MUL")?
+                }
+                Statement::Div(dest, lhs, rhs, span) => {
+                    self.compile_arithmetic(dest, lhs, rhs, span.into(), "DIV")?
+                }
+                Statement::And(dest, lhs, rhs, span) => {
+                    self.compile_bitwise(dest, lhs, rhs, span.into(), "AND")?
+                }
+                Statement::Or(dest, lhs, rhs, span) => {
+                    self.compile_bitwise(dest, lhs, rhs, span.into(), "OR")?
+                }
+                Statement::Xor(dest, lhs, rhs, span) => {
+                    self.compile_bitwise(dest, lhs, rhs, span.into(), "XOR")?
+                }
+                Statement::Shl(dest, lhs, rhs, span) => {
+                    self.compile_bitwise(dest, lhs, rhs, span.into(), "SHL")?
+                }
+                Statement::Shr(dest, lhs, rhs, span) => {
+                    self.compile_bitwise(dest, lhs, rhs, span.into(), "SHR")?
+                }
                 other => {
                     let span = other.span().into();
                     return Err(Error::UnsupportedOperation {
@@ -754,6 +781,162 @@ impl Compiler {
                 return Err(Error::InvalidOperands {
                     inst: INST,
                     details: format!("Unsupported data size and operand: {:?} -> {:?}", ds, expr),
+                    src: self.input.clone(),
+                    span,
+                })?;
+            }
+        }
+        Ok(())
+    }
+
+    fn compile_arithmetic(
+        &mut self,
+        dest: Expression,
+        lhs: Expression,
+        rhs: Expression,
+        span: SourceSpan,
+        op: &'static str,
+    ) -> Result<()> {
+        let dest_reg = match dest {
+            Expression::Register(reg) => reg,
+            _ => {
+                return Err(Error::InvalidOperands {
+                    inst: op,
+                    details: "Destination must be a register".to_string(),
+                    src: self.input.clone(),
+                    span,
+                })?;
+            }
+        };
+
+        match (&lhs, &rhs) {
+            (Expression::Register(lhs_reg), Expression::Register(rhs_reg)) => {
+                let opcode = match op {
+                    "ADD" => Opcode::AddRegRegReg,
+                    "SUB" => Opcode::SubRegRegReg,
+                    "MUL" => Opcode::MulRegRegReg,
+                    "DIV" => Opcode::DivRegRegReg,
+                    _ => unreachable!(),
+                };
+                self.bytecode.push(self.current_section, opcode);
+                self.bytecode.push(self.current_section, dest_reg);
+                self.bytecode.push(self.current_section, *lhs_reg);
+                self.bytecode.push(self.current_section, *rhs_reg);
+            }
+            (Expression::Register(lhs_reg), Expression::IntegerLiteral(rhs_val)) => {
+                let opcode = match op {
+                    "ADD" => Opcode::AddRegRegImm,
+                    "SUB" => Opcode::SubRegRegImm,
+                    "MUL" => Opcode::MulRegRegImm,
+                    "DIV" => Opcode::DivRegRegImm,
+                    _ => unreachable!(),
+                };
+                self.bytecode.push(self.current_section, opcode);
+                self.bytecode.push(self.current_section, dest_reg);
+                self.bytecode.push(self.current_section, *lhs_reg);
+                match DataSize::from(dest_reg) {
+                    DataSize::Byte => self.bytecode.push(self.current_section, *rhs_val as u8),
+                    DataSize::Word => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_val as u16).to_le_bytes()),
+                    DataSize::DWord => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_val as u32).to_le_bytes()),
+                    DataSize::QWord => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_val as u64).to_le_bytes()),
+                    _ => {
+                        return Err(Error::InvalidDataSize {
+                            inst: op,
+                            src: self.input.clone(),
+                            span,
+                        })?;
+                    }
+                }
+            }
+            _ => {
+                return Err(Error::InvalidOperands {
+                    inst: op,
+                    details: format!("Unsupported operand combination: {:?}, {:?}", lhs, rhs),
+                    src: self.input.clone(),
+                    span,
+                })?;
+            }
+        }
+        Ok(())
+    }
+
+    fn compile_bitwise(
+        &mut self,
+        dest: Expression,
+        lhs: Expression,
+        rhs: Expression,
+        span: SourceSpan,
+        op: &'static str,
+    ) -> Result<()> {
+        let dest_reg = match dest {
+            Expression::Register(reg) => reg,
+            _ => {
+                return Err(Error::InvalidOperands {
+                    inst: op,
+                    details: "Destination must be a register".to_string(),
+                    src: self.input.clone(),
+                    span,
+                })?;
+            }
+        };
+
+        match (&lhs, &rhs) {
+            (Expression::Register(lhs_reg), Expression::Register(rhs_reg)) => {
+                let opcode = match op {
+                    "AND" => Opcode::AndRegRegReg,
+                    "OR" => Opcode::OrRegRegReg,
+                    "XOR" => Opcode::XorRegRegReg,
+                    "SHL" => Opcode::ShlRegRegReg,
+                    "SHR" => Opcode::ShrRegRegReg,
+                    _ => unreachable!(),
+                };
+                self.bytecode.push(self.current_section, opcode);
+                self.bytecode.push(self.current_section, dest_reg);
+                self.bytecode.push(self.current_section, *lhs_reg);
+                self.bytecode.push(self.current_section, *rhs_reg);
+            }
+            (Expression::Register(lhs_reg), Expression::IntegerLiteral(rhs_val)) => {
+                let opcode = match op {
+                    "AND" => Opcode::AndRegRegImm,
+                    "OR" => Opcode::OrRegRegImm,
+                    "XOR" => Opcode::XorRegRegImm,
+                    "SHL" => Opcode::ShlRegRegImm,
+                    "SHR" => Opcode::ShrRegRegImm,
+                    _ => unreachable!(),
+                };
+                self.bytecode.push(self.current_section, opcode);
+                self.bytecode.push(self.current_section, dest_reg);
+                self.bytecode.push(self.current_section, *lhs_reg);
+                match DataSize::from(dest_reg) {
+                    DataSize::Byte => self.bytecode.push(self.current_section, *rhs_val as u8),
+                    DataSize::Word => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_val as u16).to_le_bytes()),
+                    DataSize::DWord => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_val as u32).to_le_bytes()),
+                    DataSize::QWord => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_val as u64).to_le_bytes()),
+                    _ => {
+                        return Err(Error::InvalidDataSize {
+                            inst: op,
+                            src: self.input.clone(),
+                            span,
+                        })?;
+                    }
+                }
+            }
+            _ => {
+                return Err(Error::InvalidOperands {
+                    inst: op,
+                    details: format!("Unsupported operand combination: {:?}, {:?}", lhs, rhs),
                     src: self.input.clone(),
                     span,
                 })?;

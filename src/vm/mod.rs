@@ -223,6 +223,421 @@ impl VM {
                 syscall(self)?;
                 Ok(())
             }
+            Opcode::AddRegRegReg => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let rhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = self.regs.get(rhs);
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => {
+                        Immediate::Byte(lhs_val.as_u8()?.wrapping_add(rhs_val.as_u8()?))
+                    }
+                    DataSize::Word => {
+                        Immediate::Word(lhs_val.as_u16()?.wrapping_add(rhs_val.as_u16()?))
+                    }
+                    DataSize::DWord => {
+                        Immediate::DWord(lhs_val.as_u32()?.wrapping_add(rhs_val.as_u32()?))
+                    }
+                    DataSize::QWord => {
+                        Immediate::QWord(lhs_val.as_u64()?.wrapping_add(rhs_val.as_u64()?))
+                    }
+                    DataSize::Float => Immediate::Float(lhs_val.as_f32()? + rhs_val.as_f32()?),
+                    DataSize::Double => Immediate::Double(lhs_val.as_f64()? + rhs_val.as_f64()?),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::AddRegRegImm => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(self.read_byte()?),
+                    DataSize::Word => Immediate::Word(self.read_word()?),
+                    DataSize::DWord => Immediate::DWord(self.read_dword()?),
+                    DataSize::QWord => Immediate::QWord(self.read_qword()?),
+                    DataSize::Float => Immediate::Float(self.read_float()?),
+                    DataSize::Double => Immediate::Double(self.read_double()?),
+                };
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => {
+                        Immediate::Byte(lhs_val.as_u8()?.wrapping_add(rhs_val.as_u8()?))
+                    }
+                    DataSize::Word => {
+                        Immediate::Word(lhs_val.as_u16()?.wrapping_add(rhs_val.as_u16()?))
+                    }
+                    DataSize::DWord => {
+                        Immediate::DWord(lhs_val.as_u32()?.wrapping_add(rhs_val.as_u32()?))
+                    }
+                    DataSize::QWord => {
+                        Immediate::QWord(lhs_val.as_u64()?.wrapping_add(rhs_val.as_u64()?))
+                    }
+                    DataSize::Float => Immediate::Float(lhs_val.as_f32()? + rhs_val.as_f32()?),
+                    DataSize::Double => Immediate::Double(lhs_val.as_f64()? + rhs_val.as_f64()?),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::SubRegRegReg => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let rhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = self.regs.get(rhs);
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => {
+                        Immediate::Byte(lhs_val.as_u8()?.wrapping_sub(rhs_val.as_u8()?))
+                    }
+                    DataSize::Word => {
+                        Immediate::Word(lhs_val.as_u16()?.wrapping_sub(rhs_val.as_u16()?))
+                    }
+                    DataSize::DWord => {
+                        Immediate::DWord(lhs_val.as_u32()?.wrapping_sub(rhs_val.as_u32()?))
+                    }
+                    DataSize::QWord => {
+                        Immediate::QWord(lhs_val.as_u64()?.wrapping_sub(rhs_val.as_u64()?))
+                    }
+                    DataSize::Float => Immediate::Float(lhs_val.as_f32()? - rhs_val.as_f32()?),
+                    DataSize::Double => Immediate::Double(lhs_val.as_f64()? - rhs_val.as_f64()?),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::SubRegRegImm => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(self.read_byte()?),
+                    DataSize::Word => Immediate::Word(self.read_word()?),
+                    DataSize::DWord => Immediate::DWord(self.read_dword()?),
+                    DataSize::QWord => Immediate::QWord(self.read_qword()?),
+                    DataSize::Float => Immediate::Float(self.read_float()?),
+                    DataSize::Double => Immediate::Double(self.read_double()?),
+                };
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => {
+                        Immediate::Byte(lhs_val.as_u8()?.wrapping_sub(rhs_val.as_u8()?))
+                    }
+                    DataSize::Word => {
+                        Immediate::Word(lhs_val.as_u16()?.wrapping_sub(rhs_val.as_u16()?))
+                    }
+                    DataSize::DWord => {
+                        Immediate::DWord(lhs_val.as_u32()?.wrapping_sub(rhs_val.as_u32()?))
+                    }
+                    DataSize::QWord => {
+                        Immediate::QWord(lhs_val.as_u64()?.wrapping_sub(rhs_val.as_u64()?))
+                    }
+                    DataSize::Float => Immediate::Float(lhs_val.as_f32()? - rhs_val.as_f32()?),
+                    DataSize::Double => Immediate::Double(lhs_val.as_f64()? - rhs_val.as_f64()?),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::MulRegRegReg => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let rhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = self.regs.get(rhs);
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => {
+                        Immediate::Byte(lhs_val.as_u8()?.wrapping_mul(rhs_val.as_u8()?))
+                    }
+                    DataSize::Word => {
+                        Immediate::Word(lhs_val.as_u16()?.wrapping_mul(rhs_val.as_u16()?))
+                    }
+                    DataSize::DWord => {
+                        Immediate::DWord(lhs_val.as_u32()?.wrapping_mul(rhs_val.as_u32()?))
+                    }
+                    DataSize::QWord => {
+                        Immediate::QWord(lhs_val.as_u64()?.wrapping_mul(rhs_val.as_u64()?))
+                    }
+                    DataSize::Float => Immediate::Float(lhs_val.as_f32()? * rhs_val.as_f32()?),
+                    DataSize::Double => Immediate::Double(lhs_val.as_f64()? * rhs_val.as_f64()?),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::MulRegRegImm => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(self.read_byte()?),
+                    DataSize::Word => Immediate::Word(self.read_word()?),
+                    DataSize::DWord => Immediate::DWord(self.read_dword()?),
+                    DataSize::QWord => Immediate::QWord(self.read_qword()?),
+                    DataSize::Float => Immediate::Float(self.read_float()?),
+                    DataSize::Double => Immediate::Double(self.read_double()?),
+                };
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => {
+                        Immediate::Byte(lhs_val.as_u8()?.wrapping_mul(rhs_val.as_u8()?))
+                    }
+                    DataSize::Word => {
+                        Immediate::Word(lhs_val.as_u16()?.wrapping_mul(rhs_val.as_u16()?))
+                    }
+                    DataSize::DWord => {
+                        Immediate::DWord(lhs_val.as_u32()?.wrapping_mul(rhs_val.as_u32()?))
+                    }
+                    DataSize::QWord => {
+                        Immediate::QWord(lhs_val.as_u64()?.wrapping_mul(rhs_val.as_u64()?))
+                    }
+                    DataSize::Float => Immediate::Float(lhs_val.as_f32()? * rhs_val.as_f32()?),
+                    DataSize::Double => Immediate::Double(lhs_val.as_f64()? * rhs_val.as_f64()?),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::DivRegRegReg => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let rhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = self.regs.get(rhs);
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => {
+                        Immediate::Byte(lhs_val.as_u8()?.wrapping_div(rhs_val.as_u8()?))
+                    }
+                    DataSize::Word => {
+                        Immediate::Word(lhs_val.as_u16()?.wrapping_div(rhs_val.as_u16()?))
+                    }
+                    DataSize::DWord => {
+                        Immediate::DWord(lhs_val.as_u32()?.wrapping_div(rhs_val.as_u32()?))
+                    }
+                    DataSize::QWord => {
+                        Immediate::QWord(lhs_val.as_u64()?.wrapping_div(rhs_val.as_u64()?))
+                    }
+                    DataSize::Float => Immediate::Float(lhs_val.as_f32()? / rhs_val.as_f32()?),
+                    DataSize::Double => Immediate::Double(lhs_val.as_f64()? / rhs_val.as_f64()?),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::DivRegRegImm => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(self.read_byte()?),
+                    DataSize::Word => Immediate::Word(self.read_word()?),
+                    DataSize::DWord => Immediate::DWord(self.read_dword()?),
+                    DataSize::QWord => Immediate::QWord(self.read_qword()?),
+                    DataSize::Float => Immediate::Float(self.read_float()?),
+                    DataSize::Double => Immediate::Double(self.read_double()?),
+                };
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => {
+                        Immediate::Byte(lhs_val.as_u8()?.wrapping_div(rhs_val.as_u8()?))
+                    }
+                    DataSize::Word => {
+                        Immediate::Word(lhs_val.as_u16()?.wrapping_div(rhs_val.as_u16()?))
+                    }
+                    DataSize::DWord => {
+                        Immediate::DWord(lhs_val.as_u32()?.wrapping_div(rhs_val.as_u32()?))
+                    }
+                    DataSize::QWord => {
+                        Immediate::QWord(lhs_val.as_u64()?.wrapping_div(rhs_val.as_u64()?))
+                    }
+                    DataSize::Float => Immediate::Float(lhs_val.as_f32()? / rhs_val.as_f32()?),
+                    DataSize::Double => Immediate::Double(lhs_val.as_f64()? / rhs_val.as_f64()?),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::AndRegRegReg => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let rhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = self.regs.get(rhs);
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(lhs_val.as_u8()? & rhs_val.as_u8()?),
+                    DataSize::Word => Immediate::Word(lhs_val.as_u16()? & rhs_val.as_u16()?),
+                    DataSize::DWord => Immediate::DWord(lhs_val.as_u32()? & rhs_val.as_u32()?),
+                    DataSize::QWord => Immediate::QWord(lhs_val.as_u64()? & rhs_val.as_u64()?),
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::AndRegRegImm => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(self.read_byte()?),
+                    DataSize::Word => Immediate::Word(self.read_word()?),
+                    DataSize::DWord => Immediate::DWord(self.read_dword()?),
+                    DataSize::QWord => Immediate::QWord(self.read_qword()?),
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(lhs_val.as_u8()? & rhs_val.as_u8()?),
+                    DataSize::Word => Immediate::Word(lhs_val.as_u16()? & rhs_val.as_u16()?),
+                    DataSize::DWord => Immediate::DWord(lhs_val.as_u32()? & rhs_val.as_u32()?),
+                    DataSize::QWord => Immediate::QWord(lhs_val.as_u64()? & rhs_val.as_u64()?),
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::OrRegRegReg => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let rhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = self.regs.get(rhs);
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(lhs_val.as_u8()? | rhs_val.as_u8()?),
+                    DataSize::Word => Immediate::Word(lhs_val.as_u16()? | rhs_val.as_u16()?),
+                    DataSize::DWord => Immediate::DWord(lhs_val.as_u32()? | rhs_val.as_u32()?),
+                    DataSize::QWord => Immediate::QWord(lhs_val.as_u64()? | rhs_val.as_u64()?),
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::OrRegRegImm => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(self.read_byte()?),
+                    DataSize::Word => Immediate::Word(self.read_word()?),
+                    DataSize::DWord => Immediate::DWord(self.read_dword()?),
+                    DataSize::QWord => Immediate::QWord(self.read_qword()?),
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(lhs_val.as_u8()? | rhs_val.as_u8()?),
+                    DataSize::Word => Immediate::Word(lhs_val.as_u16()? | rhs_val.as_u16()?),
+                    DataSize::DWord => Immediate::DWord(lhs_val.as_u32()? | rhs_val.as_u32()?),
+                    DataSize::QWord => Immediate::QWord(lhs_val.as_u64()? | rhs_val.as_u64()?),
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::XorRegRegReg => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let rhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = self.regs.get(rhs);
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(lhs_val.as_u8()? ^ rhs_val.as_u8()?),
+                    DataSize::Word => Immediate::Word(lhs_val.as_u16()? ^ rhs_val.as_u16()?),
+                    DataSize::DWord => Immediate::DWord(lhs_val.as_u32()? ^ rhs_val.as_u32()?),
+                    DataSize::QWord => Immediate::QWord(lhs_val.as_u64()? ^ rhs_val.as_u64()?),
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::XorRegRegImm => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(self.read_byte()?),
+                    DataSize::Word => Immediate::Word(self.read_word()?),
+                    DataSize::DWord => Immediate::DWord(self.read_dword()?),
+                    DataSize::QWord => Immediate::QWord(self.read_qword()?),
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(lhs_val.as_u8()? ^ rhs_val.as_u8()?),
+                    DataSize::Word => Immediate::Word(lhs_val.as_u16()? ^ rhs_val.as_u16()?),
+                    DataSize::DWord => Immediate::DWord(lhs_val.as_u32()? ^ rhs_val.as_u32()?),
+                    DataSize::QWord => Immediate::QWord(lhs_val.as_u64()? ^ rhs_val.as_u64()?),
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::ShlRegRegReg => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let rhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = self.regs.get(rhs);
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(lhs_val.as_u8()? << (rhs_val.as_u8()? & 7)),
+                    DataSize::Word => {
+                        Immediate::Word(lhs_val.as_u16()? << (rhs_val.as_u16()? & 15))
+                    }
+                    DataSize::DWord => {
+                        Immediate::DWord(lhs_val.as_u32()? << (rhs_val.as_u32()? & 31))
+                    }
+                    DataSize::QWord => {
+                        Immediate::QWord(lhs_val.as_u64()? << (rhs_val.as_u64()? & 63))
+                    }
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::ShlRegRegImm => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(self.read_byte()?),
+                    DataSize::Word => Immediate::Word(self.read_word()?),
+                    DataSize::DWord => Immediate::DWord(self.read_dword()?),
+                    DataSize::QWord => Immediate::QWord(self.read_qword()?),
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(lhs_val.as_u8()? << (rhs_val.as_u8()? & 7)),
+                    DataSize::Word => {
+                        Immediate::Word(lhs_val.as_u16()? << (rhs_val.as_u16()? & 15))
+                    }
+                    DataSize::DWord => {
+                        Immediate::DWord(lhs_val.as_u32()? << (rhs_val.as_u32()? & 31))
+                    }
+                    DataSize::QWord => {
+                        Immediate::QWord(lhs_val.as_u64()? << (rhs_val.as_u64()? & 63))
+                    }
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::ShrRegRegReg => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let rhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = self.regs.get(rhs);
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(lhs_val.as_u8()? >> (rhs_val.as_u8()? & 7)),
+                    DataSize::Word => {
+                        Immediate::Word(lhs_val.as_u16()? >> (rhs_val.as_u16()? & 15))
+                    }
+                    DataSize::DWord => {
+                        Immediate::DWord(lhs_val.as_u32()? >> (rhs_val.as_u32()? & 31))
+                    }
+                    DataSize::QWord => {
+                        Immediate::QWord(lhs_val.as_u64()? >> (rhs_val.as_u64()? & 63))
+                    }
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                self.regs.set(dest, result)
+            }
+            Opcode::ShrRegRegImm => {
+                let dest = self.read_register()?;
+                let lhs = self.read_register()?;
+                let lhs_val = self.regs.get(lhs);
+                let rhs_val = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(self.read_byte()?),
+                    DataSize::Word => Immediate::Word(self.read_word()?),
+                    DataSize::DWord => Immediate::DWord(self.read_dword()?),
+                    DataSize::QWord => Immediate::QWord(self.read_qword()?),
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                let result = match DataSize::from(dest) {
+                    DataSize::Byte => Immediate::Byte(lhs_val.as_u8()? >> (rhs_val.as_u8()? & 7)),
+                    DataSize::Word => {
+                        Immediate::Word(lhs_val.as_u16()? >> (rhs_val.as_u16()? & 15))
+                    }
+                    DataSize::DWord => {
+                        Immediate::DWord(lhs_val.as_u32()? >> (rhs_val.as_u32()? & 31))
+                    }
+                    DataSize::QWord => {
+                        Immediate::QWord(lhs_val.as_u64()? >> (rhs_val.as_u64()? & 63))
+                    }
+                    _ => return Err(Error::InvalidDataSize(DataSize::from(dest) as u8).into()),
+                };
+                self.regs.set(dest, result)
+            }
             Opcode::Hlt => {
                 self.halted = true;
                 Ok(())

@@ -220,6 +220,141 @@ impl Parser {
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }
+            TokenKind::KwAdd => {
+                self.next_token();
+                let dest = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let lhs = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let rhs = self.parse_expression()?;
+
+                Ok(Statement::Add(
+                    dest,
+                    lhs,
+                    rhs,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwSub => {
+                self.next_token();
+                let dest = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let lhs = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let rhs = self.parse_expression()?;
+
+                Ok(Statement::Sub(
+                    dest,
+                    lhs,
+                    rhs,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwMul => {
+                self.next_token();
+                let dest = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let lhs = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let rhs = self.parse_expression()?;
+
+                Ok(Statement::Mul(
+                    dest,
+                    lhs,
+                    rhs,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwDiv => {
+                self.next_token();
+                let dest = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let lhs = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let rhs = self.parse_expression()?;
+
+                Ok(Statement::Div(
+                    dest,
+                    lhs,
+                    rhs,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwAnd => {
+                self.next_token();
+                let dest = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let lhs = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let rhs = self.parse_expression()?;
+
+                Ok(Statement::And(
+                    dest,
+                    lhs,
+                    rhs,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwOr => {
+                self.next_token();
+                let dest = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let lhs = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let rhs = self.parse_expression()?;
+
+                Ok(Statement::Or(
+                    dest,
+                    lhs,
+                    rhs,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwXor => {
+                self.next_token();
+                let dest = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let lhs = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let rhs = self.parse_expression()?;
+
+                Ok(Statement::Xor(
+                    dest,
+                    lhs,
+                    rhs,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwShl => {
+                self.next_token();
+                let dest = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let lhs = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let rhs = self.parse_expression()?;
+
+                Ok(Statement::Shl(
+                    dest,
+                    lhs,
+                    rhs,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwShr => {
+                self.next_token();
+                let dest = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let lhs = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let rhs = self.parse_expression()?;
+
+                Ok(Statement::Shr(
+                    dest,
+                    lhs,
+                    rhs,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
             TokenKind::KwDb => {
                 self.next_token();
                 let mut exprs = vec![];

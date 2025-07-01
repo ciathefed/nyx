@@ -55,6 +55,60 @@ impl Preprocessor {
                     self.substitute_expr(dst),
                     span,
                 ),
+                Statement::Add(dest, lhs, rhs, span) => Statement::Add(
+                    self.substitute_expr(dest),
+                    self.substitute_expr(lhs),
+                    self.substitute_expr(rhs),
+                    span,
+                ),
+                Statement::Sub(dest, lhs, rhs, span) => Statement::Sub(
+                    self.substitute_expr(dest),
+                    self.substitute_expr(lhs),
+                    self.substitute_expr(rhs),
+                    span,
+                ),
+                Statement::Mul(dest, lhs, rhs, span) => Statement::Mul(
+                    self.substitute_expr(dest),
+                    self.substitute_expr(lhs),
+                    self.substitute_expr(rhs),
+                    span,
+                ),
+                Statement::Div(dest, lhs, rhs, span) => Statement::Div(
+                    self.substitute_expr(dest),
+                    self.substitute_expr(lhs),
+                    self.substitute_expr(rhs),
+                    span,
+                ),
+                Statement::And(dest, lhs, rhs, span) => Statement::And(
+                    self.substitute_expr(dest),
+                    self.substitute_expr(lhs),
+                    self.substitute_expr(rhs),
+                    span,
+                ),
+                Statement::Or(dest, lhs, rhs, span) => Statement::Or(
+                    self.substitute_expr(dest),
+                    self.substitute_expr(lhs),
+                    self.substitute_expr(rhs),
+                    span,
+                ),
+                Statement::Xor(dest, lhs, rhs, span) => Statement::Xor(
+                    self.substitute_expr(dest),
+                    self.substitute_expr(lhs),
+                    self.substitute_expr(rhs),
+                    span,
+                ),
+                Statement::Shl(dest, lhs, rhs, span) => Statement::Shl(
+                    self.substitute_expr(dest),
+                    self.substitute_expr(lhs),
+                    self.substitute_expr(rhs),
+                    span,
+                ),
+                Statement::Shr(dest, lhs, rhs, span) => Statement::Shr(
+                    self.substitute_expr(dest),
+                    self.substitute_expr(lhs),
+                    self.substitute_expr(rhs),
+                    span,
+                ),
                 Statement::Define(key, val, span) => {
                     Statement::Define(self.substitute_expr(key), self.substitute_expr(val), span)
                 }
