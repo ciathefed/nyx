@@ -217,6 +217,38 @@ fn shift_operations() {
 }
 
 #[test]
+fn jump_operations() {
+    let tests = vec![
+        (
+            "jmp 0x37",
+            vec![Statement::Jmp(
+                Expression::IntegerLiteral(0x37),
+                (0, 8).into(),
+            )],
+        ),
+        (
+            "jne _exit",
+            vec![Statement::Jne(
+                Expression::Identifier("_exit".into()),
+                (0, 9).into(),
+            )],
+        ),
+        (
+            "jge q0",
+            vec![Statement::Jge(
+                Expression::Register(Register::Q0),
+                (0, 6).into(),
+            )],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let ast = parse(input).unwrap();
+        assert_eq!(expected, ast);
+    }
+}
+
+#[test]
 fn expressions() {
     let tests = vec![
         (

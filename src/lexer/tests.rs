@@ -199,6 +199,24 @@ fn shift_instructions() {
 }
 
 #[test]
+fn jump_instructions() {
+    let tests = vec![
+        ("jmp", vec![Token::new(TokenKind::KwJmp, "jmp", (0, 3))]),
+        ("jeq", vec![Token::new(TokenKind::KwJeq, "jeq", (0, 3))]),
+        ("jne", vec![Token::new(TokenKind::KwJne, "jne", (0, 3))]),
+        ("jlt", vec![Token::new(TokenKind::KwJlt, "jlt", (0, 3))]),
+        ("jgt", vec![Token::new(TokenKind::KwJgt, "jgt", (0, 3))]),
+        ("jle", vec![Token::new(TokenKind::KwJle, "jle", (0, 3))]),
+        ("jge", vec![Token::new(TokenKind::KwJge, "jge", (0, 3))]),
+    ];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
 fn data_decleration_directives() {
     let tests = vec![("db", vec![Token::new(TokenKind::KwDb, "db", (0, 2))])];
 

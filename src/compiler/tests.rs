@@ -495,6 +495,47 @@ fn bitwise_operations() {
 }
 
 #[test]
+fn jump_operations() {
+    let tests = vec![
+        (
+            "_start: jmp _start",
+            vec![
+                Opcode::JmpImm as u8,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+            ],
+        ),
+        (
+            "jne 0x37",
+            vec![
+                Opcode::JneImm as u8,
+                0x37,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+            ],
+        ),
+        ("jge q0", vec![Opcode::JgeReg as u8, Register::Q0 as u8]),
+    ];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
 fn sections() {
     let input = r#"
 .section text

@@ -340,6 +340,83 @@ fn shift_operations() -> Result<()> {
 }
 
 #[test]
+fn jump_operations() -> Result<()> {
+    fn run_test(input: &'static str, ip: usize) -> Result<()> {
+        let vm = run(input, 0, None)?;
+        assert!(vm.halted);
+        assert_eq!(vm.regs.ip(), ip);
+        Ok(())
+    }
+
+    run_test(
+        r#"
+        jmp _start
+        _exit:
+            hlt
+        _start:
+            jmp _exit
+        "#,
+        10,
+    )?;
+
+    run_test(
+        r#"
+        jmp _start
+        _exit:
+            hlt
+        _start:
+            mov q0, 1337
+            cmp q0, 1337
+            jeq _exit
+        "#,
+        10,
+    )?;
+
+    run_test(
+        r#"
+        jmp _start
+        _exit:
+            hlt
+        _start:
+            mov q0, 1337
+            cmp q0, 1337
+            jne _exit
+            hlt
+        "#,
+        40,
+    )?;
+
+    run_test(
+        r#"
+        jmp _start
+        _exit:
+            hlt
+        _start:
+            mov q0, 1336
+            cmp q0, 1337
+            jlt _exit
+        "#,
+        10,
+    )?;
+
+    run_test(
+        r#"
+        jmp _start
+        _exit:
+            hlt
+        _start:
+            mov q0, 1336
+            cmp q0, 1337
+            jgt _exit
+            hlt
+        "#,
+        40,
+    )?;
+
+    Ok(())
+}
+
+#[test]
 fn floating_point_arithmetic() -> Result<()> {
     let input = r#"
         mov ff0, 3.5
@@ -510,7 +587,7 @@ fn float_comparison() -> Result<()> {
 
     assert!(vm.halted);
     assert!(vm.flags.lt);
-    assert!(!vm.flags.eq); // 2.71 != 3.14
+    assert!(!vm.flags.eq);
 
     Ok(())
 }
@@ -620,17 +697,14 @@ fn float_register_independence() -> Result<()> {
 
     assert!(vm.halted);
 
-    // Debug all register values
     println!("FF0: {:?}", vm.regs.get(Register::FF0));
     println!("DD0: {:?}", vm.regs.get(Register::DD0));
     println!("FF1: {:?}", vm.regs.get(Register::FF1));
     println!("DD1: {:?}", vm.regs.get(Register::DD1));
 
-    // Also check if there's any interference with GPRs
     println!("Q0: {:?}", vm.regs.get(Register::Q0));
     println!("Q1: {:?}", vm.regs.get(Register::Q1));
 
-    // Verify each register maintains its independent value
     match vm.regs.get(Register::FF0) {
         Immediate::Float(val) => {
             println!(
