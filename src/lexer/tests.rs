@@ -356,6 +356,42 @@ message:
 }
 
 #[test]
+fn comments() {
+    let tests = vec![
+        (
+            "mov q0, 42 ; this is a comment",
+            vec![
+                Token::new(TokenKind::KwMov, "mov", (0, 3)),
+                Token::new(TokenKind::Register, "q0", (4, 6)),
+                Token::new(TokenKind::Comma, ",", (6, 7)),
+                Token::new(TokenKind::Integer, "42", (8, 10)),
+            ],
+        ),
+        (
+            "; full line comment\nmov q0, 1",
+            vec![
+                Token::new(TokenKind::KwMov, "mov", (20, 23)),
+                Token::new(TokenKind::Register, "q0", (24, 26)),
+                Token::new(TokenKind::Comma, ",", (26, 27)),
+                Token::new(TokenKind::Integer, "1", (28, 29)),
+            ],
+        ),
+        (
+            "nop ; comment\nhlt ; another comment",
+            vec![
+                Token::new(TokenKind::KwNop, "nop", (0, 3)),
+                Token::new(TokenKind::KwHlt, "hlt", (14, 17)),
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
 fn strings() {
     let tests = vec![
         (
