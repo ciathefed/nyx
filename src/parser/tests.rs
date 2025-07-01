@@ -41,7 +41,7 @@ fn label() {
 #[test]
 fn instructions() {
     let tests = vec![
-        ("hlt", vec![Statement::Hlt((0, 3).into())]),
+        ("nop", vec![Statement::Nop((0, 3).into())]),
         (
             "mov q0, 1337",
             vec![Statement::Mov(
@@ -85,6 +85,15 @@ fn instructions() {
                 (0, 13).into(),
             )],
         ),
+        (
+            "cmp q0, 13",
+            vec![Statement::Cmp(
+                Expression::Register(Register::Q0),
+                Expression::IntegerLiteral(13),
+                (0, 10).into(),
+            )],
+        ),
+        ("hlt", vec![Statement::Hlt((0, 3).into())]),
     ];
 
     for (input, expected) in tests {

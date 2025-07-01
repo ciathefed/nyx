@@ -137,6 +137,21 @@ fn pop() -> Result<()> {
 }
 
 #[test]
+fn cmp() -> Result<()> {
+    let input = r#"
+        mov q0, 1337
+        cmp q0, 1337
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+    assert_eq!(vm.regs.ip(), 21);
+    assert!(vm.flags.eq);
+    Ok(())
+}
+
+#[test]
 fn overlapping_gpr_registers() {
     let mut regs = Registers::new();
 
