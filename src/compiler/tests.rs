@@ -384,6 +384,117 @@ fn hlt() {
 }
 
 #[test]
+fn arithmetic_operations() {
+    let tests = vec![
+        (
+            "add q0, q1, q2",
+            vec![
+                Opcode::AddRegRegReg as u8,
+                Register::Q0 as u8,
+                Register::Q1 as u8,
+                Register::Q2 as u8,
+            ],
+        ),
+        (
+            "sub d0, d1, 42",
+            vec![
+                Opcode::SubRegRegImm as u8,
+                Register::D0 as u8,
+                Register::D1 as u8,
+                42,
+                0,
+                0,
+                0,
+            ],
+        ),
+        (
+            "mul w0, w1, w2",
+            vec![
+                Opcode::MulRegRegReg as u8,
+                Register::W0 as u8,
+                Register::W1 as u8,
+                Register::W2 as u8,
+            ],
+        ),
+        (
+            "div b0, b1, 10",
+            vec![
+                Opcode::DivRegRegImm as u8,
+                Register::B0 as u8,
+                Register::B1 as u8,
+                10,
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
+fn bitwise_operations() {
+    let tests = vec![
+        (
+            "and q0, q1, q2",
+            vec![
+                Opcode::AndRegRegReg as u8,
+                Register::Q0 as u8,
+                Register::Q1 as u8,
+                Register::Q2 as u8,
+            ],
+        ),
+        (
+            "or d0, d1, 255",
+            vec![
+                Opcode::OrRegRegImm as u8,
+                Register::D0 as u8,
+                Register::D1 as u8,
+                255,
+                0,
+                0,
+                0,
+            ],
+        ),
+        (
+            "xor w0, w1, w2",
+            vec![
+                Opcode::XorRegRegReg as u8,
+                Register::W0 as u8,
+                Register::W1 as u8,
+                Register::W2 as u8,
+            ],
+        ),
+        (
+            "shl b0, b1, 4",
+            vec![
+                Opcode::ShlRegRegImm as u8,
+                Register::B0 as u8,
+                Register::B1 as u8,
+                4,
+            ],
+        ),
+        (
+            "shr q0, q1, q2",
+            vec![
+                Opcode::ShrRegRegReg as u8,
+                Register::Q0 as u8,
+                Register::Q1 as u8,
+                Register::Q2 as u8,
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
 fn sections() {
     let input = r#"
 .section text

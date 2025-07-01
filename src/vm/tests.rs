@@ -239,3 +239,162 @@ fn register_independence() {
     assert_eq!(regs.get(Register::D1), Immediate::DWord(512));
     assert_eq!(regs.get(Register::Q0), Immediate::QWord(7331));
 }
+
+#[test]
+fn arithmetic_operations() -> Result<()> {
+    let input = r#"
+        mov q0, 10
+        mov q1, 5
+        add q2, q0, q1
+        sub q3, q0, q1
+        mul q4, q0, q1
+        div q5, q0, q1
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+    assert_eq!(vm.regs.get(Register::Q0), Immediate::QWord(10));
+    assert_eq!(vm.regs.get(Register::Q1), Immediate::QWord(5));
+    assert_eq!(vm.regs.get(Register::Q2), Immediate::QWord(15));
+    assert_eq!(vm.regs.get(Register::Q3), Immediate::QWord(5));
+    assert_eq!(vm.regs.get(Register::Q4), Immediate::QWord(50));
+    assert_eq!(vm.regs.get(Register::Q5), Immediate::QWord(2));
+    Ok(())
+}
+
+#[test]
+fn arithmetic_immediate() -> Result<()> {
+    let input = r#"
+        mov q0, 20
+        add q1, q0, 5
+        sub q2, q0, 3
+        mul q3, q0, 2
+        div q4, q0, 4
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+    assert_eq!(vm.regs.get(Register::Q0), Immediate::QWord(20));
+    assert_eq!(vm.regs.get(Register::Q1), Immediate::QWord(25));
+    assert_eq!(vm.regs.get(Register::Q2), Immediate::QWord(17));
+    assert_eq!(vm.regs.get(Register::Q3), Immediate::QWord(40));
+    assert_eq!(vm.regs.get(Register::Q4), Immediate::QWord(5));
+    Ok(())
+}
+
+#[test]
+fn bitwise_operations() -> Result<()> {
+    let input = r#"
+        mov q0, 15
+        mov q1, 10
+        and q2, q0, q1
+        or q3, q0, q1
+        xor q4, q0, q1
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+    assert_eq!(vm.regs.get(Register::Q0), Immediate::QWord(15));
+    assert_eq!(vm.regs.get(Register::Q1), Immediate::QWord(10));
+    assert_eq!(vm.regs.get(Register::Q2), Immediate::QWord(10));
+    assert_eq!(vm.regs.get(Register::Q3), Immediate::QWord(15));
+    assert_eq!(vm.regs.get(Register::Q4), Immediate::QWord(5));
+    Ok(())
+}
+
+#[test]
+fn shift_operations() -> Result<()> {
+    let input = r#"
+        mov q0, 8
+        mov q1, 2
+        shl q2, q0, q1
+        shr q3, q2, q1
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+    assert_eq!(vm.regs.get(Register::Q0), Immediate::QWord(8));
+    assert_eq!(vm.regs.get(Register::Q1), Immediate::QWord(2));
+    assert_eq!(vm.regs.get(Register::Q2), Immediate::QWord(32));
+    assert_eq!(vm.regs.get(Register::Q3), Immediate::QWord(8));
+    Ok(())
+}
+
+#[test]
+fn floating_point_arithmetic() -> Result<()> {
+    let input = r#"
+        mov ff0, 3.5
+        mov ff1, 1.5
+        add ff2, ff0, ff1
+        sub ff3, ff0, ff1
+        mul ff4, ff0, ff1
+        div ff5, ff0, ff1
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+
+    // Check floating point results with epsilon comparison
+    match vm.regs.get(Register::FF2) {
+        Immediate::Float(val) => assert!((val - 5.0).abs() < f32::EPSILON),
+        _ => panic!("Expected float"),
+    }
+
+    match vm.regs.get(Register::FF3) {
+        Immediate::Float(val) => assert!((val - 2.0).abs() < f32::EPSILON),
+        _ => panic!("Expected float"),
+    }
+
+    match vm.regs.get(Register::FF4) {
+        Immediate::Float(val) => assert!((val - 5.25).abs() < f32::EPSILON),
+        _ => panic!("Expected float"),
+    }
+
+    match vm.regs.get(Register::FF5) {
+        Immediate::Float(val) => assert!((val - (7.0 / 3.0)).abs() < f32::EPSILON),
+        _ => panic!("Expected float"),
+    }
+
+    Ok(())
+}
+
+#[test]
+fn mixed_register_sizes() -> Result<()> {
+    let input = r#"
+        mov w0, 300
+        mov b1, 50
+        add w2, w0, b1
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+    assert_eq!(vm.regs.get(Register::W0), Immediate::Word(300));
+    assert_eq!(vm.regs.get(Register::B1), Immediate::Byte(50));
+    assert_eq!(vm.regs.get(Register::W2), Immediate::Word(350));
+    Ok(())
+}
+
+#[test]
+fn overflow_wrapping() -> Result<()> {
+    let input = r#"
+        mov b0, 255
+        add b1, b0, 1
+        mov w0, 65535
+        add w1, w0, 1
+        hlt
+    "#;
+    let vm = run(input, 0, None)?;
+
+    assert!(vm.halted);
+    assert_eq!(vm.regs.get(Register::B0), Immediate::Byte(255));
+    assert_eq!(vm.regs.get(Register::B1), Immediate::Byte(0));
+    assert_eq!(vm.regs.get(Register::W0), Immediate::Word(65535));
+    assert_eq!(vm.regs.get(Register::W1), Immediate::Word(0));
+    Ok(())
+}

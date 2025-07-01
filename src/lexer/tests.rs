@@ -166,6 +166,196 @@ fn data_decleration_directives() {
 }
 
 #[test]
+fn float_numbers() {
+    let tests = vec![
+        ("3.14", vec![Token::new(TokenKind::Float, "3.14", (0, 4))]),
+        ("0.5", vec![Token::new(TokenKind::Float, "0.5", (0, 3))]),
+        (
+            "123.456",
+            vec![Token::new(TokenKind::Float, "123.456", (0, 7))],
+        ),
+        ("0.0", vec![Token::new(TokenKind::Float, "0.0", (0, 3))]),
+        (
+            "999.999",
+            vec![Token::new(TokenKind::Float, "999.999", (0, 7))],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
+fn mixed_numbers() {
+    let tests = vec![
+        (
+            "42 3.14 0xFF",
+            vec![
+                Token::new(TokenKind::Integer, "42", (0, 2)),
+                Token::new(TokenKind::Float, "3.14", (3, 7)),
+                Token::new(TokenKind::Hexadecimal, "0xFF", (8, 12)),
+            ],
+        ),
+        (
+            "0b1010 420.69 0o777",
+            vec![
+                Token::new(TokenKind::Binary, "0b1010", (0, 6)),
+                Token::new(TokenKind::Float, "420.69", (7, 13)),
+                Token::new(TokenKind::Octal, "0o777", (14, 19)),
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
+fn register_tokens() {
+    let tests = vec![
+        (
+            "b0 w1 d2 q3",
+            vec![
+                Token::new(TokenKind::Register, "b0", (0, 2)),
+                Token::new(TokenKind::Register, "w1", (3, 5)),
+                Token::new(TokenKind::Register, "d2", (6, 8)),
+                Token::new(TokenKind::Register, "q3", (9, 11)),
+            ],
+        ),
+        (
+            "ff0 dd1 ip sp bp",
+            vec![
+                Token::new(TokenKind::Register, "ff0", (0, 3)),
+                Token::new(TokenKind::Register, "dd1", (4, 7)),
+                Token::new(TokenKind::Register, "ip", (8, 10)),
+                Token::new(TokenKind::Register, "sp", (11, 13)),
+                Token::new(TokenKind::Register, "bp", (14, 16)),
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
+fn data_size_tokens() {
+    let tests = vec![
+        (
+            "byte word dword qword",
+            vec![
+                Token::new(TokenKind::DataSize, "byte", (0, 4)),
+                Token::new(TokenKind::DataSize, "word", (5, 9)),
+                Token::new(TokenKind::DataSize, "dword", (10, 15)),
+                Token::new(TokenKind::DataSize, "qword", (16, 21)),
+            ],
+        ),
+        (
+            "float double",
+            vec![
+                Token::new(TokenKind::DataSize, "float", (0, 5)),
+                Token::new(TokenKind::DataSize, "double", (6, 12)),
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
+fn arithmetic_instructions() {
+    let tests = vec![
+        (
+            "add sub mul div",
+            vec![
+                Token::new(TokenKind::KwAdd, "add", (0, 3)),
+                Token::new(TokenKind::KwSub, "sub", (4, 7)),
+                Token::new(TokenKind::KwMul, "mul", (8, 11)),
+                Token::new(TokenKind::KwDiv, "div", (12, 15)),
+            ],
+        ),
+        (
+            "and or xor shl shr",
+            vec![
+                Token::new(TokenKind::KwAnd, "and", (0, 3)),
+                Token::new(TokenKind::KwOr, "or", (4, 6)),
+                Token::new(TokenKind::KwXor, "xor", (7, 10)),
+                Token::new(TokenKind::KwShl, "shl", (11, 14)),
+                Token::new(TokenKind::KwShr, "shr", (15, 18)),
+            ],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
+fn section_names() {
+    let tests = vec![(
+        "text data",
+        vec![
+            Token::new(TokenKind::SectionName, "text", (0, 4)),
+            Token::new(TokenKind::SectionName, "data", (5, 9)),
+        ],
+    )];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
+fn complex_program() {
+    let input = r#".section text
+_start:
+    mov q0, 42
+    add q1, q0, 100
+    push QWORD q1
+    syscall
+    hlt
+
+.section data
+message:
+    db "Hello", 0x00"#;
+
+    let tokens = lex(input);
+
+    // Just check that we get the expected number of tokens and key ones
+    assert!(!tokens.is_empty());
+    assert_eq!(tokens[0].kind, TokenKind::KwSection);
+    assert_eq!(tokens[1].kind, TokenKind::SectionName);
+
+    // Check for presence of key instruction tokens
+    let instruction_tokens: Vec<_> = tokens
+        .iter()
+        .filter(|t| {
+            matches!(
+                t.kind,
+                TokenKind::KwMov
+                    | TokenKind::KwAdd
+                    | TokenKind::KwPush
+                    | TokenKind::KwSyscall
+                    | TokenKind::KwHlt
+            )
+        })
+        .collect();
+    assert_eq!(instruction_tokens.len(), 5);
+}
+
+#[test]
 fn strings() {
     let tests = vec![
         (

@@ -92,3 +92,303 @@ fn instructions() {
         assert_eq!(expected, ast);
     }
 }
+
+#[test]
+fn arithmetic_operations() {
+    let tests = vec![
+        (
+            "add q0, q1, q2",
+            vec![Statement::Add(
+                Expression::Register(Register::Q0),
+                Expression::Register(Register::Q1),
+                Expression::Register(Register::Q2),
+                (0, 14).into(),
+            )],
+        ),
+        (
+            "sub d0, d1, 42",
+            vec![Statement::Sub(
+                Expression::Register(Register::D0),
+                Expression::Register(Register::D1),
+                Expression::IntegerLiteral(42),
+                (0, 14).into(),
+            )],
+        ),
+        (
+            "mul w0, w1, w2",
+            vec![Statement::Mul(
+                Expression::Register(Register::W0),
+                Expression::Register(Register::W1),
+                Expression::Register(Register::W2),
+                (0, 14).into(),
+            )],
+        ),
+        (
+            "div b0, b1, 10",
+            vec![Statement::Div(
+                Expression::Register(Register::B0),
+                Expression::Register(Register::B1),
+                Expression::IntegerLiteral(10),
+                (0, 14).into(),
+            )],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let ast = parse(input).unwrap();
+        assert_eq!(expected, ast);
+    }
+}
+
+#[test]
+fn bitwise_operations() {
+    let tests = vec![
+        (
+            "and q0, q1, q2",
+            vec![Statement::And(
+                Expression::Register(Register::Q0),
+                Expression::Register(Register::Q1),
+                Expression::Register(Register::Q2),
+                (0, 14).into(),
+            )],
+        ),
+        (
+            "or d0, d1, 255",
+            vec![Statement::Or(
+                Expression::Register(Register::D0),
+                Expression::Register(Register::D1),
+                Expression::IntegerLiteral(255),
+                (0, 14).into(),
+            )],
+        ),
+        (
+            "xor w0, w1, w2",
+            vec![Statement::Xor(
+                Expression::Register(Register::W0),
+                Expression::Register(Register::W1),
+                Expression::Register(Register::W2),
+                (0, 14).into(),
+            )],
+        ),
+        (
+            "shl b0, b1, 4",
+            vec![Statement::Shl(
+                Expression::Register(Register::B0),
+                Expression::Register(Register::B1),
+                Expression::IntegerLiteral(4),
+                (0, 13).into(),
+            )],
+        ),
+        (
+            "shr q0, q1, q2",
+            vec![Statement::Shr(
+                Expression::Register(Register::Q0),
+                Expression::Register(Register::Q1),
+                Expression::Register(Register::Q2),
+                (0, 14).into(),
+            )],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let ast = parse(input).unwrap();
+        assert_eq!(expected, ast);
+    }
+}
+
+#[test]
+fn expressions() {
+    let tests = vec![
+        (
+            "mov q0, 0xFF",
+            vec![Statement::Mov(
+                Expression::Register(Register::Q0),
+                Expression::IntegerLiteral(255),
+                (0, 12).into(),
+            )],
+        ),
+        (
+            "mov q0, 0b1010",
+            vec![Statement::Mov(
+                Expression::Register(Register::Q0),
+                Expression::IntegerLiteral(10),
+                (0, 14).into(),
+            )],
+        ),
+        (
+            "mov q0, 0o777",
+            vec![Statement::Mov(
+                Expression::Register(Register::Q0),
+                Expression::IntegerLiteral(511),
+                (0, 13).into(),
+            )],
+        ),
+        (
+            "mov ff0, 3.14",
+            vec![Statement::Mov(
+                Expression::Register(Register::FF0),
+                Expression::FloatLiteral(3.14),
+                (0, 13).into(),
+            )],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let ast = parse(input).unwrap();
+        assert_eq!(expected, ast);
+    }
+}
+
+#[test]
+fn addressing_modes() {
+    let tests = vec![
+        (
+            "ldr q0, [q1]",
+            vec![Statement::Ldr(
+                Expression::Register(Register::Q0),
+                Expression::Address(Box::new(Expression::Register(Register::Q1)), None),
+                (0, 12).into(),
+            )],
+        ),
+        (
+            "str b0, [1000]",
+            vec![Statement::Str(
+                Expression::Register(Register::B0),
+                Expression::Address(Box::new(Expression::IntegerLiteral(1000)), None),
+                (0, 14).into(),
+            )],
+        ),
+        (
+            "ldr w0, [buffer, 16]",
+            vec![Statement::Ldr(
+                Expression::Register(Register::W0),
+                Expression::Address(
+                    Box::new(Expression::Identifier("buffer".into())),
+                    Some(Box::new(Expression::IntegerLiteral(16))),
+                ),
+                (0, 20).into(),
+            )],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let ast = parse(input).unwrap();
+        assert_eq!(expected, ast);
+    }
+}
+
+#[test]
+fn data_declarations() {
+    let tests = vec![
+        (
+            r#"db 42"#,
+            vec![Statement::Db(
+                vec![Expression::IntegerLiteral(42)],
+                (0, 5).into(),
+            )],
+        ),
+        (
+            r#"db "Hello", 0x00"#,
+            vec![Statement::Db(
+                vec![
+                    Expression::StringLiteral("Hello".into()),
+                    Expression::IntegerLiteral(0),
+                ],
+                (0, 16).into(),
+            )],
+        ),
+        (
+            r#"db 1, 2, 3, 4"#,
+            vec![Statement::Db(
+                vec![
+                    Expression::IntegerLiteral(1),
+                    Expression::IntegerLiteral(2),
+                    Expression::IntegerLiteral(3),
+                    Expression::IntegerLiteral(4),
+                ],
+                (0, 13).into(),
+            )],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let ast = parse(input).unwrap();
+        assert_eq!(expected, ast);
+    }
+}
+
+#[test]
+fn sections() {
+    let tests = vec![
+        (
+            ".section text",
+            vec![Statement::Section(SectionType::Text, (0, 13).into())],
+        ),
+        (
+            ".section data",
+            vec![Statement::Section(SectionType::Data, (0, 13).into())],
+        ),
+    ];
+
+    for (input, expected) in tests {
+        let ast = parse(input).unwrap();
+        assert_eq!(expected, ast);
+    }
+}
+
+#[test]
+fn complex_program() {
+    let input = r#".section text
+_start:
+    mov q0, 42
+    add q1, q0, 100
+    push QWORD q1
+    syscall
+    hlt
+
+.section data
+message:
+    db "Hello, World!", 0x00"#;
+
+    let ast = parse(input).unwrap();
+
+    // Check we have the expected number of statements
+    assert_eq!(ast.len(), 10);
+
+    // Check first statement is section directive
+    match &ast[0] {
+        Statement::Section(SectionType::Text, _) => (),
+        _ => panic!("Expected text section"),
+    }
+
+    // Check label
+    match &ast[1] {
+        Statement::Label(name, _) => assert_eq!(name, "_start"),
+        _ => panic!("Expected label"),
+    }
+
+    // Check instructions are present
+    assert!(matches!(ast[2], Statement::Mov(_, _, _)));
+    assert!(matches!(ast[3], Statement::Add(_, _, _, _)));
+    assert!(matches!(ast[4], Statement::Push(_, _, _)));
+    assert!(matches!(ast[5], Statement::Syscall(_)));
+    assert!(matches!(ast[6], Statement::Hlt(_)));
+
+    // Check data section
+    match &ast[7] {
+        Statement::Section(SectionType::Data, _) => (),
+        _ => panic!("Expected data section"),
+    }
+
+    // Check data declaration
+    match &ast[9] {
+        Statement::Db(exprs, _) => {
+            assert_eq!(exprs.len(), 2);
+            match &exprs[0] {
+                Expression::StringLiteral(s) => assert_eq!(s, "Hello, World!"),
+                _ => panic!("Expected string literal"),
+            }
+        }
+        _ => panic!("Expected data declaration"),
+    }
+}
