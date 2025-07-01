@@ -8,4 +8,5 @@ _start:
     hlt
 
 .section data
-message:    db "Hello, World!\n", 0x00
+message:
+    db "Hello, world!\n", 0x00
