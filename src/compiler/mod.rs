@@ -140,27 +140,6 @@ impl Compiler {
                 }
                 Statement::Push(ds, expr, span) => self.compile_push(ds, expr, span.into())?,
                 Statement::Pop(ds, expr, span) => self.compile_pop(ds, expr, span.into())?,
-                Statement::Syscall(_) => self.bytecode.push(self.current_section, Opcode::Syscall),
-                Statement::Hlt(_) => self.bytecode.push(self.current_section, Opcode::Hlt),
-                Statement::Db(exprs, span) => {
-                    for expr in exprs {
-                        match expr {
-                            Expression::IntegerLiteral(integer) => {
-                                self.bytecode.push(self.current_section, integer as u8);
-                            }
-                            Expression::StringLiteral(string) => {
-                                self.bytecode.extend(self.current_section, string.bytes());
-                            }
-                            _ => {
-                                return Err(Error::InvalidExpression {
-                                    inst: "DB",
-                                    src: self.input.clone(),
-                                    span: span.into(),
-                                })?;
-                            }
-                        }
-                    }
-                }
                 Statement::Add(dest, lhs, rhs, span) => {
                     self.compile_arithmetic(dest, lhs, rhs, span.into(), "ADD")?
                 }
@@ -187,6 +166,28 @@ impl Compiler {
                 }
                 Statement::Shr(dest, lhs, rhs, span) => {
                     self.compile_bitwise(dest, lhs, rhs, span.into(), "SHR")?
+                }
+                Statement::Cmp(lhs, rhs, span) => self.compile_cmp(lhs, rhs, span.into())?,
+                Statement::Syscall(_) => self.bytecode.push(self.current_section, Opcode::Syscall),
+                Statement::Hlt(_) => self.bytecode.push(self.current_section, Opcode::Hlt),
+                Statement::Db(exprs, span) => {
+                    for expr in exprs {
+                        match expr {
+                            Expression::IntegerLiteral(integer) => {
+                                self.bytecode.push(self.current_section, integer as u8);
+                            }
+                            Expression::StringLiteral(string) => {
+                                self.bytecode.extend(self.current_section, string.bytes());
+                            }
+                            _ => {
+                                return Err(Error::InvalidExpression {
+                                    inst: "DB",
+                                    src: self.input.clone(),
+                                    span: span.into(),
+                                })?;
+                            }
+                        }
+                    }
                 }
                 other => {
                     let span = other.span().into();
@@ -936,6 +937,49 @@ impl Compiler {
             _ => {
                 return Err(Error::InvalidOperands {
                     inst: op,
+                    details: format!("Unsupported operand combination: {:?}, {:?}", lhs, rhs),
+                    src: self.input.clone(),
+                    span,
+                })?;
+            }
+        }
+        Ok(())
+    }
+
+    fn compile_cmp(&mut self, lhs: Expression, rhs: Expression, span: SourceSpan) -> Result<()> {
+        const INST: &str = "CMP";
+
+        match (&lhs, &rhs) {
+            (Expression::Register(lhs_reg), Expression::IntegerLiteral(rhs_imm)) => {
+                self.bytecode.push(self.current_section, Opcode::CmpRegImm);
+                self.bytecode.push(self.current_section, *lhs_reg);
+                match DataSize::from(*lhs_reg) {
+                    DataSize::Byte => self.bytecode.push(self.current_section, *rhs_imm as u8),
+                    DataSize::Word => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_imm as u16).to_le_bytes()),
+                    DataSize::DWord => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_imm as u32).to_le_bytes()),
+                    DataSize::QWord => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_imm as u64).to_le_bytes()),
+                    DataSize::Float => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_imm as f32).to_le_bytes()),
+                    DataSize::Double => self
+                        .bytecode
+                        .extend(self.current_section, (*rhs_imm as f64).to_le_bytes()),
+                }
+            }
+            (Expression::Register(lhs_reg), Expression::Register(rhs_reg)) => {
+                self.bytecode.push(self.current_section, Opcode::CmpRegReg);
+                self.bytecode.push(self.current_section, *lhs_reg);
+                self.bytecode.push(self.current_section, *rhs_reg);
+            }
+            _ => {
+                return Err(Error::InvalidOperands {
+                    inst: INST,
                     details: format!("Unsupported operand combination: {:?}, {:?}", lhs, rhs),
                     src: self.input.clone(),
                     span,

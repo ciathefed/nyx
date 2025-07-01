@@ -27,6 +27,7 @@ lazy_static! {
         ("xor", TokenKind::KwXor),
         ("shl", TokenKind::KwShl),
         ("shr", TokenKind::KwShr),
+        ("cmp", TokenKind::KwCmp),
         ("syscall", TokenKind::KwSyscall),
         ("hlt", TokenKind::KwHlt),
         // Data Declaration Directives
@@ -119,6 +120,7 @@ pub enum TokenKind {
     KwXor,
     KwShl,
     KwShr,
+    KwCmp,
     KwSyscall,
     KwHlt,
 

@@ -208,18 +208,6 @@ impl Parser {
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }
-            TokenKind::KwSyscall => {
-                self.next_token();
-                Ok(Statement::Syscall(
-                    (cur_span.start, self.prev_token.loc.end).into(),
-                ))
-            }
-            TokenKind::KwHlt => {
-                self.next_token();
-                Ok(Statement::Hlt(
-                    (cur_span.start, self.prev_token.loc.end).into(),
-                ))
-            }
             TokenKind::KwAdd => {
                 self.next_token();
                 let dest = self.parse_expression()?;
@@ -352,6 +340,30 @@ impl Parser {
                     dest,
                     lhs,
                     rhs,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwSyscall => {
+                self.next_token();
+                Ok(Statement::Syscall(
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwCmp => {
+                self.next_token();
+                let lhs = self.parse_expression()?;
+                self.expect_cur(TokenKind::Comma)?;
+                let rhs = self.parse_expression()?;
+
+                Ok(Statement::Cmp(
+                    lhs,
+                    rhs,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwHlt => {
+                self.next_token();
+                Ok(Statement::Hlt(
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }

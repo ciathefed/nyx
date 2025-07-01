@@ -31,6 +31,8 @@ pub enum Opcode {
     ShlRegRegImm,
     ShrRegRegReg,
     ShrRegRegImm,
+    CmpRegImm,
+    CmpRegReg,
     Syscall,
     Hlt,
 }
@@ -74,8 +76,10 @@ impl TryFrom<u8> for Opcode {
             0x19 => Ok(Self::ShlRegRegImm),
             0x1A => Ok(Self::ShrRegRegReg),
             0x1B => Ok(Self::ShrRegRegImm),
-            0x1C => Ok(Self::Syscall),
-            0x1D => Ok(Self::Hlt),
+            0x1C => Ok(Self::CmpRegImm),
+            0x1D => Ok(Self::CmpRegReg),
+            0x1E => Ok(Self::Syscall),
+            0x1F => Ok(Self::Hlt),
             _ => Err(()),
         }
     }
@@ -112,6 +116,8 @@ impl fmt::Display for Opcode {
             Opcode::ShlRegRegImm => write!(f, "shl"),
             Opcode::ShrRegRegReg => write!(f, "shr"),
             Opcode::ShrRegRegImm => write!(f, "shr"),
+            Opcode::CmpRegImm => write!(f, "cmp"),
+            Opcode::CmpRegReg => write!(f, "cmp"),
             Opcode::Syscall => write!(f, "syscall"),
             Opcode::Hlt => write!(f, "hlt"),
         }

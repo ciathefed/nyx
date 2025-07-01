@@ -107,7 +107,7 @@ impl Into<u8> for DataSize {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub enum Immediate {
     Byte(u8),
     Word(u16),

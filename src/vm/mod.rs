@@ -220,16 +220,6 @@ impl VM {
                 let value = self.pop(size)?;
                 self.mem.write(addr, value, size)
             }
-            Opcode::Syscall => {
-                let index = self.regs.get(Register::Q15).as_usize()?;
-                let syscall = if let Some(syscall) = self.syscalls.get(&index) {
-                    syscall
-                } else {
-                    return Err(Error::UnknownSyscall(index))?;
-                };
-                syscall(self)?;
-                Ok(())
-            }
             Opcode::AddRegRegReg => binary_arithmetic_op!(self, wrapping_add, +),
             Opcode::AddRegRegImm => binary_arithmetic_op_imm!(self, wrapping_add, +),
             Opcode::SubRegRegReg => binary_arithmetic_op!(self, wrapping_sub, -),
@@ -248,6 +238,40 @@ impl VM {
             Opcode::ShlRegRegImm => shift_op_imm!(self, <<),
             Opcode::ShrRegRegReg => shift_op!(self, >>),
             Opcode::ShrRegRegImm => shift_op_imm!(self, >>),
+            Opcode::CmpRegImm => {
+                let reg = self.read_register()?;
+                let lhs = self.regs.get(reg);
+                let rhs = match DataSize::from(reg) {
+                    DataSize::Byte => Immediate::Byte(self.read_byte()?),
+                    DataSize::Word => Immediate::Word(self.read_word()?),
+                    DataSize::DWord => Immediate::DWord(self.read_dword()?),
+                    DataSize::QWord => Immediate::QWord(self.read_qword()?),
+                    DataSize::Float => Immediate::Float(self.read_float()?),
+                    DataSize::Double => Immediate::Double(self.read_double()?),
+                };
+                self.flags.eq = lhs == rhs;
+                self.flags.lt = lhs < rhs;
+                Ok(())
+            }
+            Opcode::CmpRegReg => {
+                let reg = self.read_register()?;
+                let lhs = self.regs.get(reg);
+                let reg = self.read_register()?;
+                let rhs = self.regs.get(reg);
+                self.flags.eq = lhs == rhs;
+                self.flags.lt = lhs < rhs;
+                Ok(())
+            }
+            Opcode::Syscall => {
+                let index = self.regs.get(Register::Q15).as_usize()?;
+                let syscall = if let Some(syscall) = self.syscalls.get(&index) {
+                    syscall
+                } else {
+                    return Err(Error::UnknownSyscall(index))?;
+                };
+                syscall(self)?;
+                Ok(())
+            }
             Opcode::Hlt => {
                 self.halted = true;
                 Ok(())

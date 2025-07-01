@@ -4,11 +4,12 @@ pub use crate::parser::immediate::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
+    Label(String, Span),
+
     Define(Expression, Expression, Span),
 
     Section(SectionType, Span),
 
-    Label(String, Span),
     Nop(Span),
     Mov(Expression, Expression, Span),
     Ldr(Expression, Expression, Span),
@@ -24,6 +25,7 @@ pub enum Statement {
     Xor(Expression, Expression, Expression, Span),
     Shl(Expression, Expression, Expression, Span),
     Shr(Expression, Expression, Expression, Span),
+    Cmp(Expression, Expression, Span),
     Syscall(Span),
     Hlt(Span),
 
@@ -51,6 +53,7 @@ impl Statement {
             Statement::Xor(_, _, _, span) => *span,
             Statement::Shl(_, _, _, span) => *span,
             Statement::Shr(_, _, _, span) => *span,
+            Statement::Cmp(_, _, span) => *span,
             Statement::Hlt(span) => *span,
             Statement::Syscall(span) => *span,
             Statement::Db(_, span) => *span,

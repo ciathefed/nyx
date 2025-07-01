@@ -36,6 +36,12 @@ impl Preprocessor {
 
         for stmt in processed_statements {
             let new_stmt = match stmt {
+                Statement::Label(name, span) => Statement::Label(name, span),
+                Statement::Define(key, val, span) => {
+                    Statement::Define(self.substitute_expr(key), self.substitute_expr(val), span)
+                }
+                Statement::Section(section_type, span) => Statement::Section(section_type, span),
+                Statement::Nop(span) => Statement::Nop(span),
                 Statement::Mov(dest, src, span) => {
                     Statement::Mov(self.substitute_expr(dest), self.substitute_expr(src), span)
                 }
@@ -109,18 +115,15 @@ impl Preprocessor {
                     self.substitute_expr(rhs),
                     span,
                 ),
-                Statement::Define(key, val, span) => {
-                    Statement::Define(self.substitute_expr(key), self.substitute_expr(val), span)
+                Statement::Cmp(lhs, rhs, span) => {
+                    Statement::Cmp(self.substitute_expr(lhs), self.substitute_expr(rhs), span)
                 }
+                Statement::Syscall(span) => Statement::Syscall(span),
+                Statement::Hlt(span) => Statement::Hlt(span),
                 Statement::Db(exprs, span) => Statement::Db(
                     exprs.into_iter().map(|e| self.substitute_expr(e)).collect(),
                     span,
                 ),
-                Statement::Label(name, span) => Statement::Label(name, span),
-                Statement::Nop(span) => Statement::Nop(span),
-                Statement::Hlt(span) => Statement::Hlt(span),
-                Statement::Syscall(span) => Statement::Syscall(span),
-                Statement::Section(section_type, span) => Statement::Section(section_type, span),
             };
 
             final_statements.push(new_stmt);
