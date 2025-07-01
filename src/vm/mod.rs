@@ -4,12 +4,14 @@ use crate::{
     compiler::{ADDRESSING_VARIANT_1, ADDRESSING_VARIANT_2, opcode::Opcode},
     parser::ast::{DataSize, Immediate},
     vm::{
+        flags::Flags,
         memory::Memory,
         register::{Register, Registers},
         syscall::{Syscalls, collect_syscalls},
     },
 };
 
+pub mod flags;
 pub mod memory;
 pub mod register;
 pub mod syscall;
@@ -71,6 +73,7 @@ enum Error {
 pub struct VM {
     pub(crate) regs: Registers,
     pub(crate) mem: Memory,
+    pub(crate) flags: Flags,
     pub(crate) syscalls: Syscalls,
     pub(crate) halted: bool,
 }
@@ -88,6 +91,7 @@ impl VM {
         Self {
             regs,
             mem,
+            flags: Flags::new(),
             syscalls: collect_syscalls(),
             halted: false,
         }
