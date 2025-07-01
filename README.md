@@ -2,6 +2,8 @@
 
 64-bit register-based virtual machine and compiler written in [Rust](https://www.rust-lang.org/). Nyx supports compiling a simple assembly-like language into bytecode and executing it on a custom VM.
 
+![tests](https://img.shields.io/github/actions/workflow/status/ciathefed/nyx/rust.yml?label=tests%20%F0%9F%A7%AA&style=flat-square)
+
 > [!WARNING]
 > Nyx is in very early development. It is incomplete, lightly tested, and many features are missing. Expect breaking changes and unstable behavior.
 
@@ -59,10 +61,18 @@ nyx execute hello.nyb --mem 16384
 ## Example Program
 
 ```asm
-mov q0, 1337
-push q0
-pop QWORD d0
-hlt
+.section text
+_start:
+    mov q0, 1
+    mov q1, message
+    mov q2, 14
+    mov q15, 3
+    syscall
+    hlt
+
+.section data
+message:
+    db "Hello, world!\n", 0x00
 ```
 
 ## License
