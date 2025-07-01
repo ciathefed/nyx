@@ -15,20 +15,15 @@ pub enum Statement {
     Str(Expression, Expression, Span),
     Push(Option<Expression>, Expression, Span),
     Pop(Option<Expression>, Expression, Span),
-
-    // Arithmetic Instructions
     Add(Expression, Expression, Expression, Span),
     Sub(Expression, Expression, Expression, Span),
     Mul(Expression, Expression, Expression, Span),
     Div(Expression, Expression, Expression, Span),
-
-    // Bitwise Instructions
     And(Expression, Expression, Expression, Span),
     Or(Expression, Expression, Expression, Span),
     Xor(Expression, Expression, Expression, Span),
     Shl(Expression, Expression, Expression, Span),
     Shr(Expression, Expression, Expression, Span),
-
     Syscall(Span),
     Hlt(Span),
 

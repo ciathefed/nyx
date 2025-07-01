@@ -339,7 +339,6 @@ fn floating_point_arithmetic() -> Result<()> {
 
     assert!(vm.halted);
 
-    // Check floating point results with epsilon comparison
     match vm.regs.get(Register::FF2) {
         Immediate::Float(val) => assert!((val - 5.0).abs() < f32::EPSILON),
         _ => panic!("Expected float"),

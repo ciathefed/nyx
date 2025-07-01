@@ -333,12 +333,10 @@ message:
 
     let tokens = lex(input);
 
-    // Just check that we get the expected number of tokens and key ones
     assert!(!tokens.is_empty());
     assert_eq!(tokens[0].kind, TokenKind::KwSection);
     assert_eq!(tokens[1].kind, TokenKind::SectionName);
 
-    // Check for presence of key instruction tokens
     let instruction_tokens: Vec<_> = tokens
         .iter()
         .filter(|t| {

@@ -179,7 +179,7 @@ impl Lexer {
 
     fn read_string(&mut self) -> Token {
         let start = self.pos;
-        self.read_char(); // Skip opening quote
+        self.read_char();
 
         let mut result = String::new();
         let mut escaped = false;
@@ -237,15 +237,12 @@ impl Lexer {
     }
 
     fn skip_comment(&mut self) -> Token {
-        // Skip the semicolon
         self.read_char();
 
-        // Skip until end of line or end of file
         while self.ch != '\n' && self.ch != '\0' {
             self.read_char();
         }
 
-        // Return the next token after the comment
         self.next_token()
     }
 }

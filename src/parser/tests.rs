@@ -352,35 +352,29 @@ message:
 
     let ast = parse(input).unwrap();
 
-    // Check we have the expected number of statements
     assert_eq!(ast.len(), 10);
 
-    // Check first statement is section directive
     match &ast[0] {
         Statement::Section(SectionType::Text, _) => (),
         _ => panic!("Expected text section"),
     }
 
-    // Check label
     match &ast[1] {
         Statement::Label(name, _) => assert_eq!(name, "_start"),
         _ => panic!("Expected label"),
     }
 
-    // Check instructions are present
     assert!(matches!(ast[2], Statement::Mov(_, _, _)));
     assert!(matches!(ast[3], Statement::Add(_, _, _, _)));
     assert!(matches!(ast[4], Statement::Push(_, _, _)));
     assert!(matches!(ast[5], Statement::Syscall(_)));
     assert!(matches!(ast[6], Statement::Hlt(_)));
 
-    // Check data section
     match &ast[7] {
         Statement::Section(SectionType::Data, _) => (),
         _ => panic!("Expected data section"),
     }
 
-    // Check data declaration
     match &ast[9] {
         Statement::Db(exprs, _) => {
             assert_eq!(exprs.len(), 2);
