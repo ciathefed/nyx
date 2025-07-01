@@ -343,12 +343,6 @@ impl Parser {
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }
-            TokenKind::KwSyscall => {
-                self.next_token();
-                Ok(Statement::Syscall(
-                    (cur_span.start, self.prev_token.loc.end).into(),
-                ))
-            }
             TokenKind::KwCmp => {
                 self.next_token();
                 let lhs = self.parse_expression()?;
@@ -358,6 +352,75 @@ impl Parser {
                 Ok(Statement::Cmp(
                     lhs,
                     rhs,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwJmp => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::Jmp(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwJeq => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::Jeq(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwJne => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::Jne(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwJlt => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::Jlt(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwJgt => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::Jgt(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwJle => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::Jle(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwJge => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::Jge(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwSyscall => {
+                self.next_token();
+                Ok(Statement::Syscall(
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }

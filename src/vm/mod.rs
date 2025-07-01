@@ -262,6 +262,107 @@ impl VM {
                 self.flags.lt = lhs < rhs;
                 Ok(())
             }
+            Opcode::JmpImm => {
+                let addr = self.read_qword()?;
+                self.regs.set_ip(addr as usize);
+                Ok(())
+            }
+            Opcode::JmpReg => {
+                let reg = self.read_register()?;
+                let addr = self.regs.get(reg).as_usize()?;
+                self.regs.set_ip(addr);
+                Ok(())
+            }
+            Opcode::JeqImm => {
+                let addr = self.read_qword()?;
+                if self.flags.eq {
+                    self.regs.set_ip(addr as usize);
+                }
+                Ok(())
+            }
+            Opcode::JeqReg => {
+                let reg = self.read_register()?;
+                let addr = self.regs.get(reg).as_usize()?;
+                if self.flags.eq {
+                    self.regs.set_ip(addr);
+                }
+                Ok(())
+            }
+            Opcode::JneImm => {
+                let addr = self.read_qword()?;
+                if !self.flags.eq {
+                    self.regs.set_ip(addr as usize);
+                }
+                Ok(())
+            }
+            Opcode::JneReg => {
+                let reg = self.read_register()?;
+                let addr = self.regs.get(reg).as_usize()?;
+                if !self.flags.eq {
+                    self.regs.set_ip(addr);
+                }
+                Ok(())
+            }
+            Opcode::JltImm => {
+                let addr = self.read_qword()?;
+                if self.flags.lt {
+                    self.regs.set_ip(addr as usize);
+                }
+                Ok(())
+            }
+            Opcode::JltReg => {
+                let reg = self.read_register()?;
+                let addr = self.regs.get(reg).as_usize()?;
+                if self.flags.lt {
+                    self.regs.set_ip(addr);
+                }
+                Ok(())
+            }
+            Opcode::JgtImm => {
+                let addr = self.read_qword()?;
+                if !self.flags.lt {
+                    self.regs.set_ip(addr as usize);
+                }
+                Ok(())
+            }
+            Opcode::JgtReg => {
+                let reg = self.read_register()?;
+                let addr = self.regs.get(reg).as_usize()?;
+                if !self.flags.lt {
+                    self.regs.set_ip(addr);
+                }
+                Ok(())
+            }
+            Opcode::JleImm => {
+                let addr = self.read_qword()?;
+                if self.flags.lt || self.flags.eq {
+                    self.regs.set_ip(addr as usize);
+                }
+                Ok(())
+            }
+            Opcode::JleReg => {
+                let reg = self.read_register()?;
+                let addr = self.regs.get(reg).as_usize()?;
+                if self.flags.lt || self.flags.eq {
+                    self.regs.set_ip(addr);
+                }
+                Ok(())
+            }
+            Opcode::JgeImm => {
+                let addr = self.read_qword()?;
+                if !self.flags.lt || self.flags.eq {
+                    self.regs.set_ip(addr as usize);
+                }
+                Ok(())
+            }
+            Opcode::JgeReg => {
+                let reg = self.read_register()?;
+                let addr = self.regs.get(reg).as_usize()?;
+                if !self.flags.lt || self.flags.eq {
+                    self.regs.set_ip(addr);
+                }
+                Ok(())
+            }
             Opcode::Syscall => {
                 let index = self.regs.get(Register::Q15).as_usize()?;
                 let syscall = if let Some(syscall) = self.syscalls.get(&index) {
@@ -354,11 +455,13 @@ impl VM {
         Ok(u64::from_le_bytes(bytes))
     }
 
+    #[inline]
     fn read_float(&mut self) -> Result<f32> {
         let bits = self.read_dword()?;
         Ok(f32::from_bits(bits))
     }
 
+    #[inline]
     fn read_double(&mut self) -> Result<f64> {
         let bits = self.read_qword()?;
         Ok(f64::from_bits(bits))

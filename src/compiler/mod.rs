@@ -168,6 +168,13 @@ impl Compiler {
                     self.compile_bitwise(dest, lhs, rhs, span.into(), "SHR")?
                 }
                 Statement::Cmp(lhs, rhs, span) => self.compile_cmp(lhs, rhs, span.into())?,
+                Statement::Jmp(expr, span) => self.compile_jump(expr, span.into(), "JMP")?,
+                Statement::Jeq(expr, span) => self.compile_jump(expr, span.into(), "JEQ")?,
+                Statement::Jne(expr, span) => self.compile_jump(expr, span.into(), "JNE")?,
+                Statement::Jlt(expr, span) => self.compile_jump(expr, span.into(), "JLT")?,
+                Statement::Jgt(expr, span) => self.compile_jump(expr, span.into(), "JGT")?,
+                Statement::Jle(expr, span) => self.compile_jump(expr, span.into(), "JLE")?,
+                Statement::Jge(expr, span) => self.compile_jump(expr, span.into(), "JGE")?,
                 Statement::Syscall(_) => self.bytecode.push(self.current_section, Opcode::Syscall),
                 Statement::Hlt(_) => self.bytecode.push(self.current_section, Opcode::Hlt),
                 Statement::Db(exprs, span) => {
@@ -393,7 +400,7 @@ impl Compiler {
                             (DataSize::QWord, base.clone()),
                         );
                         self.bytecode
-                            .extend(self.current_section, (0_i64).to_le_bytes());
+                            .extend(self.current_section, (0_u64).to_le_bytes());
                         self.bytecode
                             .extend(self.current_section, offset.to_le_bytes());
                     }
@@ -404,7 +411,7 @@ impl Compiler {
                             .push(self.current_section, ADDRESSING_VARIANT_1);
                         self.bytecode.push(self.current_section, *base);
                         self.bytecode
-                            .extend(self.current_section, (0_i64).to_le_bytes());
+                            .extend(self.current_section, (0_u64).to_le_bytes());
                     }
                     (Expression::IntegerLiteral(base), None) => {
                         self.bytecode.push(self.current_section, opcode);
@@ -423,7 +430,7 @@ impl Compiler {
                             .push(self.current_section, ADDRESSING_VARIANT_2);
                         let offset = self.bytecode.len(self.current_section);
                         self.bytecode
-                            .extend(self.current_section, (0_i64).to_le_bytes());
+                            .extend(self.current_section, (0_u64).to_le_bytes());
                         self.fixups.insert(
                             (self.current_section, offset),
                             (DataSize::QWord, base.clone()),
@@ -518,7 +525,7 @@ impl Compiler {
                             .push(self.current_section, ADDRESSING_VARIANT_2);
                         let fixup_offset = self.bytecode.len(self.current_section);
                         self.bytecode
-                            .extend(self.current_section, (0_i64).to_le_bytes());
+                            .extend(self.current_section, (0_u64).to_le_bytes());
                         self.fixups.insert(
                             (self.current_section, fixup_offset),
                             (DataSize::QWord, base.clone()),
@@ -531,7 +538,7 @@ impl Compiler {
                             .push(self.current_section, ADDRESSING_VARIANT_2);
                         let fixup_offset = self.bytecode.len(self.current_section);
                         self.bytecode
-                            .extend(self.current_section, (0_i64).to_le_bytes());
+                            .extend(self.current_section, (0_u64).to_le_bytes());
                         self.fixups.insert(
                             (self.current_section, fixup_offset),
                             (DataSize::QWord, base.clone()),
@@ -654,7 +661,7 @@ impl Compiler {
                             .push(self.current_section, ADDRESSING_VARIANT_2);
                         let fixup_offset = self.bytecode.len(self.current_section);
                         self.bytecode
-                            .extend(self.current_section, (0_i64).to_le_bytes());
+                            .extend(self.current_section, (0_u64).to_le_bytes());
                         self.fixups.insert(
                             (self.current_section, fixup_offset),
                             (DataSize::QWord, base.clone()),
@@ -667,7 +674,7 @@ impl Compiler {
                             .push(self.current_section, ADDRESSING_VARIANT_2);
                         let fixup_offset = self.bytecode.len(self.current_section);
                         self.bytecode
-                            .extend(self.current_section, (0_i64).to_le_bytes());
+                            .extend(self.current_section, (0_u64).to_le_bytes());
                         self.fixups.insert(
                             (self.current_section, fixup_offset),
                             (DataSize::QWord, base.clone()),
@@ -763,7 +770,7 @@ impl Compiler {
                             .push(self.current_section, ADDRESSING_VARIANT_2);
                         let fixup_offset = self.bytecode.len(self.current_section);
                         self.bytecode
-                            .extend(self.current_section, (0_i64).to_le_bytes());
+                            .extend(self.current_section, (0_u64).to_le_bytes());
                         self.fixups.insert(
                             (self.current_section, fixup_offset),
                             (DataSize::QWord, base.clone()),
@@ -776,7 +783,7 @@ impl Compiler {
                             .push(self.current_section, ADDRESSING_VARIANT_2);
                         let fixup_offset = self.bytecode.len(self.current_section);
                         self.bytecode
-                            .extend(self.current_section, (0_i64).to_le_bytes());
+                            .extend(self.current_section, (0_u64).to_le_bytes());
                         self.fixups.insert(
                             (self.current_section, fixup_offset),
                             (DataSize::QWord, base.clone()),
@@ -1096,6 +1103,72 @@ impl Compiler {
                 return Err(Error::InvalidOperands {
                     inst: INST,
                     details: format!("Unsupported operand combination: {:?}, {:?}", lhs, rhs),
+                    src: self.input.clone(),
+                    span,
+                })?;
+            }
+        }
+        Ok(())
+    }
+
+    fn compile_jump(&mut self, expr: Expression, span: SourceSpan, op: &'static str) -> Result<()> {
+        match expr {
+            Expression::IntegerLiteral(src) => {
+                let opcode = match op {
+                    "JMP" => Opcode::JmpImm,
+                    "JEQ" => Opcode::JeqImm,
+                    "JNE" => Opcode::JneImm,
+                    "JLT" => Opcode::JltImm,
+                    "JGT" => Opcode::JgtImm,
+                    "JLE" => Opcode::JleImm,
+                    "JGE" => Opcode::JgeImm,
+                    _ => unreachable!(),
+                };
+
+                self.bytecode.push(self.current_section, opcode);
+                self.bytecode
+                    .extend(self.current_section, (src as u64).to_le_bytes());
+            }
+            Expression::Register(src) => {
+                let opcode = match op {
+                    "JMP" => Opcode::JmpReg,
+                    "JEQ" => Opcode::JeqReg,
+                    "JNE" => Opcode::JneReg,
+                    "JLT" => Opcode::JltReg,
+                    "JGT" => Opcode::JgtReg,
+                    "JLE" => Opcode::JleReg,
+                    "JGE" => Opcode::JgeReg,
+                    _ => unreachable!(),
+                };
+
+                self.bytecode.push(self.current_section, opcode);
+                self.bytecode.push(self.current_section, src);
+            }
+            Expression::Identifier(src) => {
+                let opcode = match op {
+                    "JMP" => Opcode::JmpImm,
+                    "JEQ" => Opcode::JeqImm,
+                    "JNE" => Opcode::JneImm,
+                    "JLT" => Opcode::JltImm,
+                    "JGT" => Opcode::JgtImm,
+                    "JLE" => Opcode::JleImm,
+                    "JGE" => Opcode::JgeImm,
+                    _ => unreachable!(),
+                };
+
+                self.bytecode.push(self.current_section, opcode);
+                let offset = self.bytecode.len(self.current_section);
+                self.bytecode
+                    .extend(self.current_section, (0_u64).to_le_bytes());
+                self.fixups.insert(
+                    (self.current_section, offset),
+                    (DataSize::QWord, src.clone()),
+                );
+            }
+            _ => {
+                return Err(Error::InvalidOperands {
+                    inst: op,
+                    details: format!("Unsupported operand: {:?}", expr),
                     src: self.input.clone(),
                     span,
                 })?;

@@ -118,6 +118,13 @@ impl Preprocessor {
                 Statement::Cmp(lhs, rhs, span) => {
                     Statement::Cmp(self.substitute_expr(lhs), self.substitute_expr(rhs), span)
                 }
+                Statement::Jmp(expr, span) => Statement::Jmp(self.substitute_expr(expr), span),
+                Statement::Jeq(expr, span) => Statement::Jeq(self.substitute_expr(expr), span),
+                Statement::Jne(expr, span) => Statement::Jne(self.substitute_expr(expr), span),
+                Statement::Jlt(expr, span) => Statement::Jlt(self.substitute_expr(expr), span),
+                Statement::Jgt(expr, span) => Statement::Jgt(self.substitute_expr(expr), span),
+                Statement::Jle(expr, span) => Statement::Jle(self.substitute_expr(expr), span),
+                Statement::Jge(expr, span) => Statement::Jge(self.substitute_expr(expr), span),
                 Statement::Syscall(span) => Statement::Syscall(span),
                 Statement::Hlt(span) => Statement::Hlt(span),
                 Statement::Db(exprs, span) => Statement::Db(
