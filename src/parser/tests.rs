@@ -179,6 +179,17 @@ fn bitwise_operations() {
                 (0, 14).into(),
             )],
         ),
+    ];
+
+    for (input, expected) in tests {
+        let ast = parse(input).unwrap();
+        assert_eq!(expected, ast);
+    }
+}
+
+#[test]
+fn shift_operations() {
+    let tests = vec![
         (
             "shl b0, b1, 4",
             vec![Statement::Shl(

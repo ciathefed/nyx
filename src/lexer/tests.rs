@@ -134,7 +134,7 @@ fn preprocessor_directives() {
 }
 
 #[test]
-fn instructions() {
+fn basic_instructions() {
     let tests = vec![
         ("nop", vec![Token::new(TokenKind::KwNop, "nop", (0, 3))]),
         ("mov", vec![Token::new(TokenKind::KwMov, "mov", (0, 3))]),
@@ -148,6 +148,48 @@ fn instructions() {
             vec![Token::new(TokenKind::KwSyscall, "syscall", (0, 7))],
         ),
         ("hlt", vec![Token::new(TokenKind::KwHlt, "hlt", (0, 3))]),
+    ];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
+fn arithmetic_instructions() {
+    let tests = vec![
+        ("add", vec![Token::new(TokenKind::KwAdd, "add", (0, 3))]),
+        ("sub", vec![Token::new(TokenKind::KwSub, "sub", (0, 3))]),
+        ("mul", vec![Token::new(TokenKind::KwMul, "mul", (0, 3))]),
+        ("div", vec![Token::new(TokenKind::KwDiv, "div", (0, 3))]),
+    ];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
+fn bitwise_instructions() {
+    let tests = vec![
+        ("and", vec![Token::new(TokenKind::KwAnd, "and", (0, 3))]),
+        ("or", vec![Token::new(TokenKind::KwOr, "or", (0, 2))]),
+        ("xor", vec![Token::new(TokenKind::KwXor, "xor", (0, 3))]),
+    ];
+
+    for (input, expected) in tests {
+        let tokens = lex(input);
+        assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
+fn shift_instructions() {
+    let tests = vec![
+        ("shl", vec![Token::new(TokenKind::KwShl, "shl", (0, 3))]),
+        ("shr", vec![Token::new(TokenKind::KwShr, "shr", (0, 3))]),
     ];
 
     for (input, expected) in tests {
@@ -262,36 +304,6 @@ fn data_size_tokens() {
             vec![
                 Token::new(TokenKind::DataSize, "float", (0, 5)),
                 Token::new(TokenKind::DataSize, "double", (6, 12)),
-            ],
-        ),
-    ];
-
-    for (input, expected) in tests {
-        let tokens = lex(input);
-        assert_eq!(tokens, expected);
-    }
-}
-
-#[test]
-fn arithmetic_instructions() {
-    let tests = vec![
-        (
-            "add sub mul div",
-            vec![
-                Token::new(TokenKind::KwAdd, "add", (0, 3)),
-                Token::new(TokenKind::KwSub, "sub", (4, 7)),
-                Token::new(TokenKind::KwMul, "mul", (8, 11)),
-                Token::new(TokenKind::KwDiv, "div", (12, 15)),
-            ],
-        ),
-        (
-            "and or xor shl shr",
-            vec![
-                Token::new(TokenKind::KwAnd, "and", (0, 3)),
-                Token::new(TokenKind::KwOr, "or", (4, 6)),
-                Token::new(TokenKind::KwXor, "xor", (7, 10)),
-                Token::new(TokenKind::KwShl, "shl", (11, 14)),
-                Token::new(TokenKind::KwShr, "shr", (15, 18)),
             ],
         ),
     ];
