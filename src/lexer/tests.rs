@@ -228,7 +228,10 @@ fn jump_instructions() {
 
 #[test]
 fn data_decleration_directives() {
-    let tests = vec![("db", vec![Token::new(TokenKind::KwDb, "db", (0, 2))])];
+    let tests = vec![
+        ("db", vec![Token::new(TokenKind::KwDb, "db", (0, 2))]),
+        ("resb", vec![Token::new(TokenKind::KwResb, "resb", (0, 4))]),
+    ];
 
     for (input, expected) in tests {
         let tokens = lex(input);

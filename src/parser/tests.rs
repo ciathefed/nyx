@@ -383,6 +383,20 @@ fn data_declarations() {
                 (0, 13).into(),
             )],
         ),
+        (
+            r#"resb 69"#,
+            vec![Statement::Resb(
+                Expression::IntegerLiteral(69),
+                (0, 7).into(),
+            )],
+        ),
+        (
+            r#"resb 1024"#,
+            vec![Statement::Resb(
+                Expression::IntegerLiteral(1024),
+                (0, 9).into(),
+            )],
+        ),
     ];
 
     for (input, expected) in tests {

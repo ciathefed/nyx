@@ -434,6 +434,17 @@ fn db() {
 }
 
 #[test]
+fn resb() {
+    let tests = vec![("resb 10", vec![0x00; 10]), ("resb 1024", vec![0x00; 1024])];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
 fn hlt() {
     let tests = vec![("hlt", vec![Opcode::Hlt as u8])];
 
