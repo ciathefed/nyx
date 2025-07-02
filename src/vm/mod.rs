@@ -376,6 +376,34 @@ impl VM {
                 self.regs.set_ip(addr as usize);
                 Ok(())
             }
+            Opcode::Inc => {
+                let reg = self.read_register()?;
+                let value = self.regs.get(reg);
+                let new_value = match value {
+                    Immediate::Byte(imm) => Immediate::Byte(imm.wrapping_add(1)),
+                    Immediate::Word(imm) => Immediate::Word(imm.wrapping_add(1)),
+                    Immediate::DWord(imm) => Immediate::DWord(imm.wrapping_add(1)),
+                    Immediate::QWord(imm) => Immediate::QWord(imm.wrapping_add(1)),
+                    Immediate::Float(imm) => Immediate::Float(imm + 1.0),
+                    Immediate::Double(imm) => Immediate::Double(imm + 1.0),
+                };
+                self.regs.set(reg, new_value)?;
+                Ok(())
+            }
+            Opcode::Dec => {
+                let reg = self.read_register()?;
+                let value = self.regs.get(reg);
+                let new_value = match value {
+                    Immediate::Byte(imm) => Immediate::Byte(imm.wrapping_sub(1)),
+                    Immediate::Word(imm) => Immediate::Word(imm.wrapping_sub(1)),
+                    Immediate::DWord(imm) => Immediate::DWord(imm.wrapping_sub(1)),
+                    Immediate::QWord(imm) => Immediate::QWord(imm.wrapping_sub(1)),
+                    Immediate::Float(imm) => Immediate::Float(imm - 1.0),
+                    Immediate::Double(imm) => Immediate::Double(imm - 1.0),
+                };
+                self.regs.set(reg, new_value)?;
+                Ok(())
+            }
             Opcode::Ret => {
                 let addr = self.pop(DataSize::QWord)?.as_usize()?;
                 self.regs.set_ip(addr);

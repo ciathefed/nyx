@@ -36,6 +36,8 @@ pub enum Statement {
     Jge(Expression, Span),
     Call(Expression, Span),
     Ret(Span),
+    Inc(Expression, Span),
+    Dec(Expression, Span),
     Syscall(Span),
     Hlt(Span),
 
@@ -74,6 +76,8 @@ impl Statement {
             Statement::Jge(_, span) => *span,
             Statement::Call(_, span) => *span,
             Statement::Ret(span) => *span,
+            Statement::Inc(_, span) => *span,
+            Statement::Dec(_, span) => *span,
             Statement::Syscall(span) => *span,
             Statement::Hlt(span) => *span,
             Statement::Db(_, span) => *span,

@@ -50,6 +50,8 @@ pub enum Opcode {
     CallImm,
     CallReg,
     Ret,
+    Inc,
+    Dec,
     Syscall,
     Hlt,
 }
@@ -112,8 +114,10 @@ impl TryFrom<u8> for Opcode {
             0x2C => Ok(Self::CallImm),
             0x2D => Ok(Self::CallReg),
             0x2E => Ok(Self::Ret),
-            0x2F => Ok(Self::Syscall),
-            0x30 => Ok(Self::Hlt),
+            0x2F => Ok(Self::Inc),
+            0x30 => Ok(Self::Dec),
+            0x31 => Ok(Self::Syscall),
+            0x32 => Ok(Self::Hlt),
             _ => Err(()),
         }
     }
@@ -169,6 +173,8 @@ impl fmt::Display for Opcode {
             Opcode::CallImm => write!(f, "call"),
             Opcode::CallReg => write!(f, "call"),
             Opcode::Ret => write!(f, "ret"),
+            Opcode::Inc => write!(f, "inc"),
+            Opcode::Dec => write!(f, "dec"),
             Opcode::Syscall => write!(f, "syscall"),
             Opcode::Hlt => write!(f, "hlt"),
         }

@@ -443,6 +443,24 @@ impl Parser {
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }
+            TokenKind::KwInc => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::Inc(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwDec => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::Dec(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
             TokenKind::KwSyscall => {
                 self.next_token();
                 Ok(Statement::Syscall(

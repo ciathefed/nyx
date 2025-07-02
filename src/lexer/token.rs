@@ -38,6 +38,8 @@ lazy_static! {
         ("jge", TokenKind::KwJge),
         ("call", TokenKind::KwCall),
         ("ret", TokenKind::KwRet),
+        ("inc", TokenKind::KwInc),
+        ("dec", TokenKind::KwDec),
         ("syscall", TokenKind::KwSyscall),
         ("hlt", TokenKind::KwHlt),
         // Data Declaration Directives
@@ -142,6 +144,8 @@ pub enum TokenKind {
     KwJge,
     KwCall,
     KwRet,
+    KwInc,
+    KwDec,
     KwSyscall,
     KwHlt,
 

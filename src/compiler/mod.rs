@@ -177,6 +177,12 @@ impl Compiler {
                 Statement::Jge(expr, span) => self.compile_jump(expr, span.into(), "JGE")?,
                 Statement::Call(expr, span) => self.compile_call(expr, span.into())?,
                 Statement::Ret(_) => self.bytecode.push(self.current_section, Opcode::Ret),
+                Statement::Inc(expr, span) => {
+                    self.compile_inc_or_dec(expr, Opcode::Inc, span.into())?
+                }
+                Statement::Dec(expr, span) => {
+                    self.compile_inc_or_dec(expr, Opcode::Dec, span.into())?
+                }
                 Statement::Syscall(_) => self.bytecode.push(self.current_section, Opcode::Syscall),
                 Statement::Hlt(_) => self.bytecode.push(self.current_section, Opcode::Hlt),
                 Statement::Db(exprs, span) => {
@@ -352,7 +358,11 @@ impl Compiler {
         opcode: Opcode,
         span: SourceSpan,
     ) -> Result<()> {
-        const INST: &str = "STR";
+        let inst = match opcode {
+            Opcode::Ldr => "LDR",
+            Opcode::Str => "STR",
+            _ => unreachable!(),
+        };
 
         match (&lhs, &rhs) {
             (Expression::Register(reg), Expression::Address(base_expr, offset_expr)) => {
@@ -442,7 +452,7 @@ impl Compiler {
                     }
                     _ => {
                         return Err(Error::InvalidOperands {
-                            inst: INST,
+                            inst,
                             details: format!(
                                 "Unsupported addressing operands: {:?} -> {:?}",
                                 base_expr, offset_expr
@@ -455,7 +465,7 @@ impl Compiler {
             }
             (lhs, rhs) => {
                 return Err(Error::InvalidOperands {
-                    inst: INST,
+                    inst,
                     details: format!("Unsupported operands: {:?} -> {:?}", lhs, rhs),
                     src: self.input.clone(),
                     span,
@@ -1205,6 +1215,35 @@ impl Compiler {
             _ => {
                 return Err(Error::InvalidOperands {
                     inst: INST,
+                    details: format!("Unsupported operand: {:?}", expr),
+                    src: self.input.clone(),
+                    span,
+                })?;
+            }
+        }
+        Ok(())
+    }
+
+    fn compile_inc_or_dec(
+        &mut self,
+        expr: Expression,
+        opcode: Opcode,
+        span: SourceSpan,
+    ) -> Result<()> {
+        let inst = match opcode {
+            Opcode::Inc => "INC",
+            Opcode::Dec => "DEC",
+            _ => unreachable!(),
+        };
+
+        match expr {
+            Expression::Register(src) => {
+                self.bytecode.push(self.current_section, opcode);
+                self.bytecode.push(self.current_section, src);
+            }
+            _ => {
+                return Err(Error::InvalidOperands {
+                    inst,
                     details: format!("Unsupported operand: {:?}", expr),
                     src: self.input.clone(),
                     span,
