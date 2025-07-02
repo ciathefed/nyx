@@ -152,6 +152,41 @@ fn cmp() -> Result<()> {
 }
 
 #[test]
+fn call() -> Result<()> {
+    let input = r#"
+        call function
+        hlt
+
+        function:
+            mov q15, 1337
+            ret
+    "#;
+    let vm = run(input, 0, None)?;
+    assert!(vm.halted);
+    assert_eq!(vm.regs.ip(), 10);
+    assert_eq!(vm.regs.get(Register::Q15), Immediate::QWord(1337));
+
+    let input = r#"
+        mov q0, function
+        call q0
+        hlt
+
+        function:
+            mov q15, 1337
+            ret
+    "#;
+    let vm = run(input, 0, None)?;
+    assert!(vm.halted);
+    assert_eq!(vm.regs.ip(), 13);
+    assert_eq!(vm.regs.get(Register::Q15), Immediate::QWord(1337));
+
+    Ok(())
+}
+
+#[test]
+fn ret() {}
+
+#[test]
 fn overlapping_gpr_registers() {
     let mut regs = Registers::new();
 

@@ -143,6 +143,8 @@ fn basic_instructions() {
         ("push", vec![Token::new(TokenKind::KwPush, "push", (0, 4))]),
         ("pop", vec![Token::new(TokenKind::KwPop, "pop", (0, 3))]),
         ("cmp", vec![Token::new(TokenKind::KwCmp, "cmp", (0, 3))]),
+        ("call", vec![Token::new(TokenKind::KwCall, "call", (0, 4))]),
+        ("ret", vec![Token::new(TokenKind::KwRet, "ret", (0, 3))]),
         (
             "syscall",
             vec![Token::new(TokenKind::KwSyscall, "syscall", (0, 7))],

@@ -354,6 +354,45 @@ fn pop() {
 }
 
 #[test]
+fn call() {
+    let tests = vec![
+        (
+            "call function_name function_name: hlt",
+            vec![
+                Opcode::CallImm as u8,
+                0x09,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                Opcode::Hlt as u8,
+            ],
+        ),
+        ("call q0", vec![Opcode::CallReg as u8, Register::Q0 as u8]),
+    ];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
+fn ret() {
+    let tests = vec![("ret", vec![Opcode::Ret as u8])];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
 fn db() {
     let tests = vec![
         ("db 69", vec![0x45]),

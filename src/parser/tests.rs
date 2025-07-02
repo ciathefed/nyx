@@ -93,6 +93,14 @@ fn instructions() {
                 (0, 10).into(),
             )],
         ),
+        (
+            "call function_name",
+            vec![Statement::Call(
+                Expression::Identifier("function_name".into()),
+                (0, 18).into(),
+            )],
+        ),
+        ("ret", vec![Statement::Ret((0, 3).into())]),
         ("hlt", vec![Statement::Hlt((0, 3).into())]),
     ];
 
