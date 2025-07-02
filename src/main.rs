@@ -123,12 +123,12 @@ fn main() -> Result<()> {
 
             fs::write(output, &bytecode).into_diagnostic()?;
 
-            let mut vm = VM::new(bytecode, memory);
+            let mut vm = VM::new(bytecode, memory)?;
             vm.run()?;
         }
         Command::Execute { input, memory } => {
             let bytecode = fs::read(input).into_diagnostic()?;
-            let mut vm = VM::new(bytecode, memory);
+            let mut vm = VM::new(bytecode, memory)?;
             vm.run()?;
         }
     }

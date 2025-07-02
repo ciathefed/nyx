@@ -73,6 +73,7 @@ impl Preprocessor {
                     Statement::Define(self.substitute_expr(key), self.substitute_expr(val), span)
                 }
                 Statement::Section(section_type, span) => Statement::Section(section_type, span),
+                Statement::Entry(expr, span) => Statement::Entry(self.substitute_expr(expr), span),
                 Statement::Nop(span) => Statement::Nop(span),
                 Statement::Mov(dest, src, span) => {
                     Statement::Mov(self.substitute_expr(dest), self.substitute_expr(src), span)

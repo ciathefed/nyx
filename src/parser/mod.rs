@@ -124,6 +124,15 @@ impl Parser {
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }
+            TokenKind::KwEntry => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::Entry(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
             TokenKind::Identifier => {
                 if self.peek_token_is(TokenKind::Colon) {
                     let ident = self.cur_token.literal.to_string();

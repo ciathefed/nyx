@@ -10,6 +10,7 @@ pub enum Statement {
     Include(Expression, Span),
 
     Section(SectionType, Span),
+    Entry(Expression, Span),
 
     Nop(Span),
     Mov(Expression, Expression, Span),
@@ -51,6 +52,7 @@ impl Statement {
             Statement::Define(_, _, span) => *span,
             Statement::Include(_, span) => *span,
             Statement::Section(_, span) => *span,
+            Statement::Entry(_, span) => *span,
             Statement::Label(_, span) => *span,
             Statement::Nop(span) => *span,
             Statement::Mov(_, _, span) => *span,

@@ -61,13 +61,35 @@ enum Error {
     #[error("unknown syscall: {0}")]
     UnknownSyscall(usize),
 
-    #[diagnostic(code(vm::unimplemented))]
-    #[error("unimplemented: {0}")]
-    Unimplemented(&'static str),
-
     #[diagnostic(code(vm::io_error))]
     #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),
+
+    #[diagnostic(code(vm::program_too_small))]
+    #[error("program too small: expected at least 8 bytes for entry point, got {0} bytes")]
+    ProgramTooSmall(usize),
+
+    #[diagnostic(code(vm::invalid_entry_point))]
+    #[error(
+        "invalid entry point: 0x{entry_point:x} is outside program bounds (program size: {program_size} bytes)"
+    )]
+    InvalidEntryPoint {
+        entry_point: u64,
+        program_size: usize,
+    },
+
+    #[diagnostic(code(vm::program_too_large))]
+    #[error(
+        "program too large: {program_size} bytes exceeds available memory ({memory_size} bytes)"
+    )]
+    ProgramTooLarge {
+        program_size: usize,
+        memory_size: usize,
+    },
+
+    #[diagnostic(code(vm::unimplemented))]
+    #[error("unimplemented: {0}")]
+    Unimplemented(&'static str),
 }
 
 pub struct VM {
@@ -79,22 +101,54 @@ pub struct VM {
 }
 
 impl VM {
-    pub fn new(program: Vec<u8>, mem_size: usize) -> Self {
+    pub fn new(program: Vec<u8>, mem_size: usize) -> Result<Self> {
+        // Program must be at least 8 bytes to contain the entry point
+        if program.len() < 8 {
+            return Err(Error::ProgramTooSmall(program.len()))?;
+        }
+
+        // Extract entry point from the first 8 bytes (u64 little-endian)
+        let entry_point = u64::from_le_bytes([
+            program[0], program[1], program[2], program[3], program[4], program[5], program[6],
+            program[7],
+        ]);
+
+        // The actual program data starts after the entry point
+        let program_data = &program[8..];
+
+        // Validate entry point is within the program bounds
+        if entry_point as usize >= program_data.len() {
+            return Err(Error::InvalidEntryPoint {
+                entry_point,
+                program_size: program_data.len(),
+            })?;
+        }
+
+        // Check if program fits in available memory
+        if program_data.len() > mem_size {
+            return Err(Error::ProgramTooLarge {
+                program_size: program_data.len(),
+                memory_size: mem_size,
+            })?;
+        }
+
         let mut regs = Registers::new();
         regs.set_sp(mem_size);
         regs.set_bp(0);
-        regs.set_ip(0);
+        regs.set_ip(entry_point as usize); // Set IP to the entry point
 
         let mut mem = Memory::new(mem_size);
-        mem.storage[..program.len()].copy_from_slice(&program);
 
-        Self {
+        // Load the program data (excluding the entry point) into memory
+        mem.storage[..program_data.len()].copy_from_slice(program_data);
+
+        Ok(Self {
             regs,
             mem,
             flags: Flags::new(),
             syscalls: collect_syscalls(),
             halted: false,
-        }
+        })
     }
 
     #[allow(unreachable_patterns)]

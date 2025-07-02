@@ -5,6 +5,7 @@ use miette::{Diagnostic, NamedSource, Result, SourceSpan};
 use crate::{
     compiler::{bytecode::Bytecode, opcode::Opcode},
     parser::ast::{DataSize, Expression, SectionType, Statement},
+    span::Span,
 };
 
 pub mod bytecode;
@@ -95,12 +96,18 @@ pub enum Error {
     },
 }
 
+pub enum Entry {
+    Address(u64),
+    Fixup(String, Span),
+}
+
 pub struct Compiler {
     program: Vec<Statement>,
     bytecode: Bytecode,
     labels: HashMap<String, (Section, usize)>,
     fixups: HashMap<(Section, usize), (DataSize, String)>,
     current_section: Section,
+    entry: Entry,
     input: NamedSource<String>,
 }
 
@@ -113,6 +120,7 @@ impl Compiler {
             labels: HashMap::with_capacity(4 * program_len),
             fixups: HashMap::with_capacity(4 * program_len),
             current_section: Section::Text,
+            entry: Entry::Address(0x00),
             input,
         }
     }
@@ -126,6 +134,18 @@ impl Compiler {
                         SectionType::Data => Section::Data,
                     };
                 }
+                Statement::Entry(expr, span) => match expr {
+                    Expression::IntegerLiteral(src) => self.entry = Entry::Address(src as u64),
+                    Expression::Identifier(src) => self.entry = Entry::Fixup(src, span),
+                    _ => {
+                        return Err(Error::InvalidOperands {
+                            inst: ".ENTRY",
+                            details: format!("Unsupported operand: {:?}", expr),
+                            src: self.input.clone(),
+                            span: span.into(),
+                        })?;
+                    }
+                },
                 Statement::Label(name, _) => {
                     let offset = self.bytecode.len(self.current_section);
                     self.labels.insert(name, (self.current_section, offset));
@@ -271,7 +291,33 @@ impl Compiler {
             }
         }
 
-        Ok(self.bytecode.finalize())
+        let entry = match &self.entry {
+            Entry::Address(addr) => *addr,
+            Entry::Fixup(label, span) => {
+                let (label_section, label_pos) =
+                    self.labels
+                        .get(label)
+                        .ok_or_else(|| Error::UndefinedLabel {
+                            inst: ".ENTRY",
+                            label: label.clone(),
+                            src: self.input.clone(),
+                            span: (*span).into(),
+                        })?;
+
+                let absolute_pos = match label_section {
+                    Section::Text => *label_pos,
+                    Section::Data => self.bytecode.len(Section::Text) + *label_pos,
+                };
+
+                absolute_pos as u64
+            }
+        };
+
+        let mut bytecode = vec![];
+        bytecode.extend(entry.to_le_bytes());
+        bytecode.extend(self.bytecode.finalize());
+
+        Ok(bytecode)
     }
 
     fn compile_mov(&mut self, lhs: Expression, rhs: Expression, span: SourceSpan) -> Result<()> {

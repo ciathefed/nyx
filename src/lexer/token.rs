@@ -12,6 +12,7 @@ lazy_static! {
         ("#include", TokenKind::KwInclude),
         // Assembler Directives
         (".section", TokenKind::KwSection),
+        (".entry", TokenKind::KwEntry),
         // Instructions
         ("nop", TokenKind::KwNop),
         ("mov", TokenKind::KwMov),
@@ -119,6 +120,7 @@ pub enum TokenKind {
     KwInclude,
 
     KwSection,
+    KwEntry,
 
     KwNop,
     KwMov,
