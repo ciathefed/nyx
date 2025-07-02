@@ -21,6 +21,14 @@ fn label() {
         exit:
             hlt"#,
         vec![
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
             Opcode::MovRegImm as u8,
             Register::B0 as u8,
             0x03,
@@ -37,7 +45,20 @@ fn label() {
 
 #[test]
 fn nop() {
-    let tests = vec![("nop", vec![Opcode::Nop as u8])];
+    let tests = vec![(
+        "nop",
+        vec![
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            Opcode::Nop as u8,
+        ],
+    )];
 
     for (input, expected) in tests {
         let bytecode = compile(input);
@@ -51,19 +72,64 @@ fn mov() {
     let tests = vec![
         (
             "mov w0, b0",
-            vec![Opcode::MovRegReg as u8, Register::W0 as u8, 0x00],
+            vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                Opcode::MovRegReg as u8,
+                Register::W0 as u8,
+                0x00,
+            ],
         ),
         (
             "mov b0, 10",
-            vec![Opcode::MovRegImm as u8, Register::B0 as u8, 0x0A],
+            vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                Opcode::MovRegImm as u8,
+                Register::B0 as u8,
+                0x0A,
+            ],
         ),
         (
             "mov w0, 1337",
-            vec![Opcode::MovRegImm as u8, Register::W0 as u8, 0x39, 0x05],
+            vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                Opcode::MovRegImm as u8,
+                Register::W0 as u8,
+                0x39,
+                0x05,
+            ],
         ),
         (
             "mov d0, 70000",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::MovRegImm as u8,
                 Register::D0 as u8,
                 0x70,
@@ -75,6 +141,14 @@ fn mov() {
         (
             "mov q0, 3735928559",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::MovRegImm as u8,
                 Register::Q0 as u8,
                 0xEF,
@@ -90,6 +164,14 @@ fn mov() {
         (
             "mov ff0, 420.69",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::MovRegImm as u8,
                 Register::FF0 as u8,
                 0x52,
@@ -101,6 +183,14 @@ fn mov() {
         (
             "mov dd0, 1337.420",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::MovRegImm as u8,
                 Register::DD0 as u8,
                 0x48,
@@ -128,6 +218,14 @@ fn str() {
         (
             "str b0, [q0, 8]",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::Str as u8,
                 Register::B0 as u8,
                 ADDRESSING_VARIANT_1,
@@ -145,6 +243,14 @@ fn str() {
         (
             "str b0, [1000, 32]",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::Str as u8,
                 Register::B0 as u8,
                 ADDRESSING_VARIANT_2,
@@ -181,6 +287,14 @@ fn ldr() {
         (
             "ldr b0, [q0]",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::Ldr as u8,
                 Register::B0 as u8,
                 ADDRESSING_VARIANT_1,
@@ -198,6 +312,14 @@ fn ldr() {
         (
             "ldr b0, [1000]",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::Ldr as u8,
                 Register::B0 as u8,
                 ADDRESSING_VARIANT_2,
@@ -234,6 +356,14 @@ fn push() {
         (
             "push b0",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::PushReg as u8,
                 DataSize::Byte as u8,
                 Register::B0 as u8,
@@ -242,6 +372,14 @@ fn push() {
         (
             "push WORD b0",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::PushReg as u8,
                 DataSize::Word as u8,
                 Register::B0 as u8,
@@ -250,6 +388,14 @@ fn push() {
         (
             "push DWORD 1337",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::PushImm as u8,
                 DataSize::DWord as u8,
                 0x39,
@@ -261,6 +407,14 @@ fn push() {
         (
             "push QWORD [q0, 8]",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::PushAddr as u8,
                 DataSize::QWord as u8,
                 ADDRESSING_VARIANT_1,
@@ -290,6 +444,14 @@ fn pop() {
         (
             "pop b0",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::PopReg as u8,
                 DataSize::Byte as u8,
                 Register::B0 as u8,
@@ -298,6 +460,14 @@ fn pop() {
         (
             "pop WORD b0",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::PopReg as u8,
                 DataSize::Word as u8,
                 Register::B0 as u8,
@@ -306,6 +476,14 @@ fn pop() {
         (
             "pop QWORD [q0, 8]",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::PopAddr as u8,
                 DataSize::QWord as u8,
                 ADDRESSING_VARIANT_1,
@@ -323,6 +501,14 @@ fn pop() {
         (
             "pop BYTE [1000, 16]",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::PopAddr as u8,
                 DataSize::Byte as u8,
                 ADDRESSING_VARIANT_2,
@@ -359,6 +545,14 @@ fn call() {
         (
             "call function_name function_name: hlt",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::CallImm as u8,
                 0x09,
                 0x00,
@@ -371,7 +565,21 @@ fn call() {
                 Opcode::Hlt as u8,
             ],
         ),
-        ("call q0", vec![Opcode::CallReg as u8, Register::Q0 as u8]),
+        (
+            "call q0",
+            vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                Opcode::CallReg as u8,
+                Register::Q0 as u8,
+            ],
+        ),
     ];
 
     for (input, expected) in tests {
@@ -383,7 +591,20 @@ fn call() {
 
 #[test]
 fn ret() {
-    let tests = vec![("ret", vec![Opcode::Ret as u8])];
+    let tests = vec![(
+        "ret",
+        vec![
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            Opcode::Ret as u8,
+        ],
+    )];
 
     for (input, expected) in tests {
         let bytecode = compile(input);
@@ -394,7 +615,21 @@ fn ret() {
 
 #[test]
 fn inc() {
-    let tests = vec![("inc q0", vec![Opcode::Inc as u8, Register::Q0 as u8])];
+    let tests = vec![(
+        "inc q0",
+        vec![
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            Opcode::Inc as u8,
+            Register::Q0 as u8,
+        ],
+    )];
 
     for (input, expected) in tests {
         let bytecode = compile(input);
@@ -405,7 +640,21 @@ fn inc() {
 
 #[test]
 fn dec() {
-    let tests = vec![("dec q0", vec![Opcode::Dec as u8, Register::Q0 as u8])];
+    let tests = vec![(
+        "dec q0",
+        vec![
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            Opcode::Dec as u8,
+            Register::Q0 as u8,
+        ],
+    )];
 
     for (input, expected) in tests {
         let bytecode = compile(input);
@@ -417,11 +666,15 @@ fn dec() {
 #[test]
 fn db() {
     let tests = vec![
-        ("db 69", vec![0x45]),
+        (
+            "db 69",
+            vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x45],
+        ),
         (
             r#"db "Hello, World", 10, 0"#,
             vec![
-                0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x2C, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64, 0x0A, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x2C,
+                0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64, 0x0A, 0x00,
             ],
         ),
     ];
@@ -435,7 +688,7 @@ fn db() {
 
 #[test]
 fn resb() {
-    let tests = vec![("resb 10", vec![0x00; 10]), ("resb 1024", vec![0x00; 1024])];
+    let tests = vec![("resb 10", vec![0x00; 18]), ("resb 1024", vec![0x00; 1032])];
 
     for (input, expected) in tests {
         let bytecode = compile(input);
@@ -446,7 +699,20 @@ fn resb() {
 
 #[test]
 fn hlt() {
-    let tests = vec![("hlt", vec![Opcode::Hlt as u8])];
+    let tests = vec![(
+        "hlt",
+        vec![
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            Opcode::Hlt as u8,
+        ],
+    )];
 
     for (input, expected) in tests {
         let bytecode = compile(input);
@@ -461,6 +727,14 @@ fn arithmetic_operations() {
         (
             "add q0, q1, q2",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::AddRegRegReg as u8,
                 Register::Q0 as u8,
                 Register::Q1 as u8,
@@ -470,6 +744,14 @@ fn arithmetic_operations() {
         (
             "sub d0, d1, 42",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::SubRegRegImm as u8,
                 Register::D0 as u8,
                 Register::D1 as u8,
@@ -482,6 +764,14 @@ fn arithmetic_operations() {
         (
             "mul w0, w1, w2",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::MulRegRegReg as u8,
                 Register::W0 as u8,
                 Register::W1 as u8,
@@ -491,6 +781,14 @@ fn arithmetic_operations() {
         (
             "div b0, b1, 10",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::DivRegRegImm as u8,
                 Register::B0 as u8,
                 Register::B1 as u8,
@@ -512,6 +810,14 @@ fn bitwise_operations() {
         (
             "and q0, q1, q2",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::AndRegRegReg as u8,
                 Register::Q0 as u8,
                 Register::Q1 as u8,
@@ -521,6 +827,14 @@ fn bitwise_operations() {
         (
             "or d0, d1, 255",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::OrRegRegImm as u8,
                 Register::D0 as u8,
                 Register::D1 as u8,
@@ -533,6 +847,14 @@ fn bitwise_operations() {
         (
             "xor w0, w1, w2",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::XorRegRegReg as u8,
                 Register::W0 as u8,
                 Register::W1 as u8,
@@ -542,6 +864,14 @@ fn bitwise_operations() {
         (
             "shl b0, b1, 4",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::ShlRegRegImm as u8,
                 Register::B0 as u8,
                 Register::B1 as u8,
@@ -551,6 +881,14 @@ fn bitwise_operations() {
         (
             "shr q0, q1, q2",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::ShrRegRegReg as u8,
                 Register::Q0 as u8,
                 Register::Q1 as u8,
@@ -572,6 +910,14 @@ fn jump_operations() {
         (
             "_start: jmp _start",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::JmpImm as u8,
                 0x00,
                 0x00,
@@ -586,6 +932,14 @@ fn jump_operations() {
         (
             "jne 0x37",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::JneImm as u8,
                 0x37,
                 0x00,
@@ -597,7 +951,21 @@ fn jump_operations() {
                 0x00,
             ],
         ),
-        ("jge q0", vec![Opcode::JgeReg as u8, Register::Q0 as u8]),
+        (
+            "jge q0",
+            vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                Opcode::JgeReg as u8,
+                Register::Q0 as u8,
+            ],
+        ),
     ];
 
     for (input, expected) in tests {
@@ -643,6 +1011,14 @@ fn float_arithmetic_operations() {
         (
             "add ff0, ff1, ff2",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::AddRegRegReg as u8,
                 Register::FF0 as u8,
                 Register::FF1 as u8,
@@ -652,6 +1028,14 @@ fn float_arithmetic_operations() {
         (
             "sub dd0, dd1, 3.14",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::SubRegRegImm as u8,
                 Register::DD0 as u8,
                 Register::DD1 as u8,
@@ -668,6 +1052,14 @@ fn float_arithmetic_operations() {
         (
             "mul ff0, ff1, 2.5",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::MulRegRegImm as u8,
                 Register::FF0 as u8,
                 Register::FF1 as u8,
@@ -680,6 +1072,14 @@ fn float_arithmetic_operations() {
         (
             "div dd0, dd1, dd2",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::DivRegRegReg as u8,
                 Register::DD0 as u8,
                 Register::DD1 as u8,
@@ -701,6 +1101,14 @@ fn float_comparison_operations() {
         (
             "cmp ff0, 1.5",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::CmpRegImm as u8,
                 Register::FF0 as u8,
                 0x00,
@@ -712,6 +1120,14 @@ fn float_comparison_operations() {
         (
             "cmp dd0, 3.14159",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::CmpRegImm as u8,
                 Register::DD0 as u8,
                 0x6E,
@@ -727,6 +1143,14 @@ fn float_comparison_operations() {
         (
             "cmp ff0, ff1",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::CmpRegReg as u8,
                 Register::FF0 as u8,
                 Register::FF1 as u8,
@@ -769,6 +1193,14 @@ fn mixed_integer_float_arithmetic() {
         (
             "add dd0, dd1, 42",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::AddRegRegImm as u8,
                 Register::DD0 as u8,
                 Register::DD1 as u8,
@@ -785,6 +1217,14 @@ fn mixed_integer_float_arithmetic() {
         (
             "mul ff0, ff1, 10",
             vec![
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
                 Opcode::MulRegRegImm as u8,
                 Register::FF0 as u8,
                 Register::FF1 as u8,

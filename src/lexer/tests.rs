@@ -363,7 +363,8 @@ fn section_names() {
 
 #[test]
 fn complex_program() {
-    let input = r#".section text
+    let input = r#".entry _start
+.section text
 _start:
     mov q0, 42
     add q1, q0, 100
@@ -378,8 +379,10 @@ message:
     let tokens = lex(input);
 
     assert!(!tokens.is_empty());
-    assert_eq!(tokens[0].kind, TokenKind::KwSection);
-    assert_eq!(tokens[1].kind, TokenKind::SectionName);
+    assert_eq!(tokens[0].kind, TokenKind::KwEntry);
+    assert_eq!(tokens[1].kind, TokenKind::Identifier);
+    assert_eq!(tokens[2].kind, TokenKind::KwSection);
+    assert_eq!(tokens[3].kind, TokenKind::SectionName);
 
     let instruction_tokens: Vec<_> = tokens
         .iter()

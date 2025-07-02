@@ -14,7 +14,7 @@ fn run(input: &str, data_addr: usize, data_value: Option<Immediate>) -> Result<V
     let mut compiler = Compiler::new(parser.parse()?, named_source);
     let program_bytes = Vec::from(compiler.compile()?);
 
-    let mut vm = VM::new(program_bytes.clone(), TEST_MEM_SIZE);
+    let mut vm = VM::new(program_bytes.clone(), TEST_MEM_SIZE)?;
     if let Some(data_value) = data_value {
         let size = data_value.size();
         vm.mem.write(data_addr, data_value, size)?;

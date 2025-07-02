@@ -426,7 +426,9 @@ fn sections() {
 
 #[test]
 fn complex_program() {
-    let input = r#".section text
+    let input = r#"
+.entry _start
+.section text
 _start:
     mov q0, 42
     add q1, q0, 100
@@ -440,30 +442,35 @@ message:
 
     let ast = parse(input).unwrap();
 
-    assert_eq!(ast.len(), 10);
+    assert_eq!(ast.len(), 11);
 
     match &ast[0] {
+        Statement::Entry(Expression::Identifier(_), _) => (),
+        _ => panic!("Expected identifier"),
+    }
+
+    match &ast[1] {
         Statement::Section(SectionType::Text, _) => (),
         _ => panic!("Expected text section"),
     }
 
-    match &ast[1] {
+    match &ast[2] {
         Statement::Label(name, _) => assert_eq!(name, "_start"),
         _ => panic!("Expected label"),
     }
 
-    assert!(matches!(ast[2], Statement::Mov(_, _, _)));
-    assert!(matches!(ast[3], Statement::Add(_, _, _, _)));
-    assert!(matches!(ast[4], Statement::Push(_, _, _)));
-    assert!(matches!(ast[5], Statement::Syscall(_)));
-    assert!(matches!(ast[6], Statement::Hlt(_)));
+    assert!(matches!(ast[3], Statement::Mov(_, _, _)));
+    assert!(matches!(ast[4], Statement::Add(_, _, _, _)));
+    assert!(matches!(ast[5], Statement::Push(_, _, _)));
+    assert!(matches!(ast[6], Statement::Syscall(_)));
+    assert!(matches!(ast[7], Statement::Hlt(_)));
 
-    match &ast[7] {
+    match &ast[8] {
         Statement::Section(SectionType::Data, _) => (),
         _ => panic!("Expected data section"),
     }
 
-    match &ast[9] {
+    match &ast[10] {
         Statement::Db(exprs, _) => {
             assert_eq!(exprs.len(), 2);
             match &exprs[0] {
