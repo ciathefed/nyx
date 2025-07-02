@@ -100,6 +100,20 @@ fn instructions() {
                 (0, 18).into(),
             )],
         ),
+        (
+            "inc q0",
+            vec![Statement::Inc(
+                Expression::Register(Register::Q0),
+                (0, 6).into(),
+            )],
+        ),
+        (
+            "dec q0",
+            vec![Statement::Dec(
+                Expression::Register(Register::Q0),
+                (0, 6).into(),
+            )],
+        ),
         ("ret", vec![Statement::Ret((0, 3).into())]),
         ("hlt", vec![Statement::Hlt((0, 3).into())]),
     ];

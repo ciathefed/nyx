@@ -393,6 +393,28 @@ fn ret() {
 }
 
 #[test]
+fn inc() {
+    let tests = vec![("inc q0", vec![Opcode::Inc as u8, Register::Q0 as u8])];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
+fn dec() {
+    let tests = vec![("dec q0", vec![Opcode::Dec as u8, Register::Q0 as u8])];
+
+    for (input, expected) in tests {
+        let bytecode = compile(input);
+        assert_ne!(bytecode.is_err(), true);
+        assert_eq!(expected, bytecode.unwrap());
+    }
+}
+
+#[test]
 fn db() {
     let tests = vec![
         ("db 69", vec![0x45]),
