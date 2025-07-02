@@ -1,0 +1,32 @@
+.section text
+memcpy:
+    cmp q2, 0
+    jeq memcpy_end
+
+    ldr b3, [q1]
+    str b3, [q0]
+    inc q0
+    inc q1
+    dec q2
+
+    jmp memcpy
+
+memcpy_end:
+    ret
+
+.section text
+strlen:
+    mov q1, 0
+
+strlen_loop:
+    ldr b3, [q0]
+    cmp b3, 0
+    jeq strlen_end
+
+    inc q1
+    inc q0
+    jmp strlen_loop
+
+strlen_end:
+    mov q0, q1
+    ret
