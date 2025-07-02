@@ -122,10 +122,16 @@ fn identifiers() {
 
 #[test]
 fn preprocessor_directives() {
-    let tests = vec![(
-        "#define",
-        vec![Token::new(TokenKind::KwDefine, "#define", (0, 7))],
-    )];
+    let tests = vec![
+        (
+            "#define",
+            vec![Token::new(TokenKind::KwDefine, "#define", (0, 7))],
+        ),
+        (
+            "#include",
+            vec![Token::new(TokenKind::KwInclude, "#include", (0, 8))],
+        ),
+    ];
 
     for (input, expected) in tests {
         let tokens = lex(input);
