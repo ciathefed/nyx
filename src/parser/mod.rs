@@ -490,6 +490,15 @@ impl Parser {
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }
+            TokenKind::KwResb => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::Resb(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
             _ => {
                 return Err(Error::UnexpectedToken {
                     token: self.cur_token.clone(),

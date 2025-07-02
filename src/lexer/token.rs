@@ -44,6 +44,7 @@ lazy_static! {
         ("hlt", TokenKind::KwHlt),
         // Data Declaration Directives
         ("db", TokenKind::KwDb),
+        ("resb", TokenKind::KwResb),
         // Section Names
         ("text", TokenKind::SectionName),
         ("data", TokenKind::SectionName),
@@ -150,6 +151,7 @@ pub enum TokenKind {
     KwHlt,
 
     KwDb,
+    KwResb,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

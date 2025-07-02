@@ -204,6 +204,19 @@ impl Compiler {
                         }
                     }
                 }
+                Statement::Resb(expr, span) => match expr {
+                    Expression::IntegerLiteral(integer) => {
+                        self.bytecode
+                            .extend(self.current_section, vec![0x00; integer as usize]);
+                    }
+                    _ => {
+                        return Err(Error::InvalidExpression {
+                            inst: "RESB",
+                            src: self.input.clone(),
+                            span: span.into(),
+                        })?;
+                    }
+                },
                 other => {
                     let span = other.span().into();
                     return Err(Error::UnsupportedOperation {

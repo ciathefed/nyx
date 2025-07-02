@@ -42,6 +42,7 @@ pub enum Statement {
     Hlt(Span),
 
     Db(Vec<Expression>, Span),
+    Resb(Expression, Span),
 }
 
 impl Statement {
@@ -81,6 +82,7 @@ impl Statement {
             Statement::Syscall(span) => *span,
             Statement::Hlt(span) => *span,
             Statement::Db(_, span) => *span,
+            Statement::Resb(_, span) => *span,
         }
     }
 }

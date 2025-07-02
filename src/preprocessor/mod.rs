@@ -167,6 +167,7 @@ impl Preprocessor {
                     exprs.into_iter().map(|e| self.substitute_expr(e)).collect(),
                     span,
                 ),
+                Statement::Resb(expr, span) => Statement::Resb(self.substitute_expr(expr), span),
                 Statement::Include(_, _) => {
                     continue;
                 }
