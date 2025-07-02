@@ -54,9 +54,8 @@ pub enum Error {
     },
 
     #[diagnostic(code(compiler::undefined_label))]
-    #[error("undefined label in {inst}: {label}")]
+    #[error("undefined label: {label}")]
     UndefinedLabel {
-        inst: &'static str,
         label: String,
         #[source_code]
         src: NamedSource<String>,
@@ -105,7 +104,7 @@ pub struct Compiler {
     program: Vec<Statement>,
     bytecode: Bytecode,
     labels: HashMap<String, (Section, usize)>,
-    fixups: HashMap<(Section, usize), (DataSize, String)>,
+    fixups: HashMap<(Section, usize), (DataSize, String, SourceSpan)>,
     current_section: Section,
     entry: Entry,
     input: NamedSource<String>,
@@ -248,15 +247,14 @@ impl Compiler {
             }
         }
 
-        for ((fixup_section, offset), (size, label)) in self.fixups.drain() {
+        for ((fixup_section, offset), (size, label, span)) in self.fixups.drain() {
             let (label_section, label_pos) =
                 self.labels
                     .get(&label)
                     .ok_or_else(|| Error::UndefinedLabel {
-                        inst: "FIXUP",
                         label: label.clone(),
                         src: self.input.clone(),
-                        span: SourceSpan::new(offset.into(), 0),
+                        span,
                     })?;
 
             let absolute_pos = match label_section {
@@ -298,7 +296,6 @@ impl Compiler {
                     self.labels
                         .get(label)
                         .ok_or_else(|| Error::UndefinedLabel {
-                            inst: ".ENTRY",
                             label: label.clone(),
                             src: self.input.clone(),
                             span: (*span).into(),
@@ -377,7 +374,7 @@ impl Compiler {
                 let size = DataSize::from(*dest);
                 let offset = self.bytecode.len(self.current_section);
                 self.fixups
-                    .insert((self.current_section, offset), (size, src.clone()));
+                    .insert((self.current_section, offset), (size, src.clone(), span));
                 match DataSize::from(*dest) {
                     DataSize::Byte => self.bytecode.push(self.current_section, 0x00),
                     DataSize::Word => self
@@ -468,7 +465,7 @@ impl Compiler {
                         let fixup_offset = self.bytecode.len(self.current_section);
                         self.fixups.insert(
                             (self.current_section, fixup_offset),
-                            (DataSize::QWord, base.clone()),
+                            (DataSize::QWord, base.clone(), span),
                         );
                         self.bytecode
                             .extend(self.current_section, (0_u64).to_le_bytes());
@@ -504,7 +501,7 @@ impl Compiler {
                             .extend(self.current_section, (0_u64).to_le_bytes());
                         self.fixups.insert(
                             (self.current_section, offset),
-                            (DataSize::QWord, base.clone()),
+                            (DataSize::QWord, base.clone(), span),
                         );
                         self.bytecode
                             .extend(self.current_section, (0_u64).to_le_bytes());
@@ -599,7 +596,7 @@ impl Compiler {
                             .extend(self.current_section, (0_u64).to_le_bytes());
                         self.fixups.insert(
                             (self.current_section, fixup_offset),
-                            (DataSize::QWord, base.clone()),
+                            (DataSize::QWord, base.clone(), span),
                         );
                         self.bytecode
                             .extend(self.current_section, offset.to_le_bytes());
@@ -612,7 +609,7 @@ impl Compiler {
                             .extend(self.current_section, (0_u64).to_le_bytes());
                         self.fixups.insert(
                             (self.current_section, fixup_offset),
-                            (DataSize::QWord, base.clone()),
+                            (DataSize::QWord, base.clone(), span),
                         );
                         self.bytecode
                             .extend(self.current_section, (0_u64).to_le_bytes());
@@ -676,7 +673,7 @@ impl Compiler {
                 self.bytecode.push(self.current_section, size);
                 let offset = self.bytecode.len(self.current_section);
                 self.fixups
-                    .insert((self.current_section, offset), (size, src));
+                    .insert((self.current_section, offset), (size, src, span));
                 self.bytecode
                     .extend(self.current_section, (0_u64).to_le_bytes());
             }
@@ -685,7 +682,7 @@ impl Compiler {
                 self.bytecode.push(self.current_section, DataSize::QWord);
                 let offset = self.bytecode.len(self.current_section);
                 self.fixups
-                    .insert((self.current_section, offset), (DataSize::QWord, src));
+                    .insert((self.current_section, offset), (DataSize::QWord, src, span));
                 self.bytecode
                     .extend(self.current_section, (0_u64).to_le_bytes());
             }
@@ -735,7 +732,7 @@ impl Compiler {
                             .extend(self.current_section, (0_u64).to_le_bytes());
                         self.fixups.insert(
                             (self.current_section, fixup_offset),
-                            (DataSize::QWord, base.clone()),
+                            (DataSize::QWord, base.clone(), span),
                         );
                         self.bytecode
                             .extend(self.current_section, offset.to_le_bytes());
@@ -748,7 +745,7 @@ impl Compiler {
                             .extend(self.current_section, (0_u64).to_le_bytes());
                         self.fixups.insert(
                             (self.current_section, fixup_offset),
-                            (DataSize::QWord, base.clone()),
+                            (DataSize::QWord, base.clone(), span),
                         );
                         self.bytecode
                             .extend(self.current_section, (0_u64).to_le_bytes());
@@ -844,7 +841,7 @@ impl Compiler {
                             .extend(self.current_section, (0_u64).to_le_bytes());
                         self.fixups.insert(
                             (self.current_section, fixup_offset),
-                            (DataSize::QWord, base.clone()),
+                            (DataSize::QWord, base.clone(), span),
                         );
                         self.bytecode
                             .extend(self.current_section, offset.to_le_bytes());
@@ -857,7 +854,7 @@ impl Compiler {
                             .extend(self.current_section, (0_u64).to_le_bytes());
                         self.fixups.insert(
                             (self.current_section, fixup_offset),
-                            (DataSize::QWord, base.clone()),
+                            (DataSize::QWord, base.clone(), span),
                         );
                         self.bytecode
                             .extend(self.current_section, (0_u64).to_le_bytes());
@@ -1233,7 +1230,7 @@ impl Compiler {
                     .extend(self.current_section, (0_u64).to_le_bytes());
                 self.fixups.insert(
                     (self.current_section, offset),
-                    (DataSize::QWord, src.clone()),
+                    (DataSize::QWord, src.clone(), span),
                 );
             }
             _ => {
@@ -1268,7 +1265,7 @@ impl Compiler {
                     .extend(self.current_section, (0_u64).to_le_bytes());
                 self.fixups.insert(
                     (self.current_section, offset),
-                    (DataSize::QWord, src.clone()),
+                    (DataSize::QWord, src.clone(), span),
                 );
             }
             _ => {
