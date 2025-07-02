@@ -175,6 +175,8 @@ impl Compiler {
                 Statement::Jgt(expr, span) => self.compile_jump(expr, span.into(), "JGT")?,
                 Statement::Jle(expr, span) => self.compile_jump(expr, span.into(), "JLE")?,
                 Statement::Jge(expr, span) => self.compile_jump(expr, span.into(), "JGE")?,
+                Statement::Call(expr, span) => self.compile_call(expr, span.into())?,
+                Statement::Ret(_) => self.bytecode.push(self.current_section, Opcode::Ret),
                 Statement::Syscall(_) => self.bytecode.push(self.current_section, Opcode::Syscall),
                 Statement::Hlt(_) => self.bytecode.push(self.current_section, Opcode::Hlt),
                 Statement::Db(exprs, span) => {
@@ -1168,6 +1170,41 @@ impl Compiler {
             _ => {
                 return Err(Error::InvalidOperands {
                     inst: op,
+                    details: format!("Unsupported operand: {:?}", expr),
+                    src: self.input.clone(),
+                    span,
+                })?;
+            }
+        }
+        Ok(())
+    }
+
+    fn compile_call(&mut self, expr: Expression, span: SourceSpan) -> Result<()> {
+        const INST: &'static str = "CALL";
+
+        match expr {
+            Expression::IntegerLiteral(src) => {
+                self.bytecode.push(self.current_section, Opcode::CallImm);
+                self.bytecode
+                    .extend(self.current_section, (src as u64).to_le_bytes());
+            }
+            Expression::Register(src) => {
+                self.bytecode.push(self.current_section, Opcode::CallReg);
+                self.bytecode.push(self.current_section, src);
+            }
+            Expression::Identifier(src) => {
+                self.bytecode.push(self.current_section, Opcode::CallImm);
+                let offset = self.bytecode.len(self.current_section);
+                self.bytecode
+                    .extend(self.current_section, (0_u64).to_le_bytes());
+                self.fixups.insert(
+                    (self.current_section, offset),
+                    (DataSize::QWord, src.clone()),
+                );
+            }
+            _ => {
+                return Err(Error::InvalidOperands {
+                    inst: INST,
                     details: format!("Unsupported operand: {:?}", expr),
                     src: self.input.clone(),
                     span,

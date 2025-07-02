@@ -418,6 +418,21 @@ impl Parser {
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }
+            TokenKind::KwCall => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::Call(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwRet => {
+                self.next_token();
+                Ok(Statement::Ret(
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
             TokenKind::KwSyscall => {
                 self.next_token();
                 Ok(Statement::Syscall(

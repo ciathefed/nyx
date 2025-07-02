@@ -125,6 +125,8 @@ impl Preprocessor {
                 Statement::Jgt(expr, span) => Statement::Jgt(self.substitute_expr(expr), span),
                 Statement::Jle(expr, span) => Statement::Jle(self.substitute_expr(expr), span),
                 Statement::Jge(expr, span) => Statement::Jge(self.substitute_expr(expr), span),
+                Statement::Call(expr, span) => Statement::Call(self.substitute_expr(expr), span),
+                Statement::Ret(span) => Statement::Ret(span),
                 Statement::Syscall(span) => Statement::Syscall(span),
                 Statement::Hlt(span) => Statement::Hlt(span),
                 Statement::Db(exprs, span) => Statement::Db(

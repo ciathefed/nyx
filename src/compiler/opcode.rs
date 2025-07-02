@@ -47,6 +47,9 @@ pub enum Opcode {
     JleReg,
     JgeImm,
     JgeReg,
+    CallImm,
+    CallReg,
+    Ret,
     Syscall,
     Hlt,
 }
@@ -106,8 +109,11 @@ impl TryFrom<u8> for Opcode {
             0x29 => Ok(Self::JleReg),
             0x2A => Ok(Self::JgeImm),
             0x2B => Ok(Self::JgeReg),
-            0x2C => Ok(Self::Syscall),
-            0x2D => Ok(Self::Hlt),
+            0x2C => Ok(Self::CallImm),
+            0x2D => Ok(Self::CallReg),
+            0x2E => Ok(Self::Ret),
+            0x2F => Ok(Self::Syscall),
+            0x30 => Ok(Self::Hlt),
             _ => Err(()),
         }
     }
@@ -160,6 +166,9 @@ impl fmt::Display for Opcode {
             Opcode::JleReg => write!(f, "jle"),
             Opcode::JgeImm => write!(f, "jge"),
             Opcode::JgeReg => write!(f, "jge"),
+            Opcode::CallImm => write!(f, "call"),
+            Opcode::CallReg => write!(f, "call"),
+            Opcode::Ret => write!(f, "ret"),
             Opcode::Syscall => write!(f, "syscall"),
             Opcode::Hlt => write!(f, "hlt"),
         }

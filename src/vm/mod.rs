@@ -363,6 +363,24 @@ impl VM {
                 }
                 Ok(())
             }
+            Opcode::CallImm => {
+                let addr = self.read_qword()?;
+                self.push(Immediate::QWord(self.regs.ip() as u64))?;
+                self.regs.set_ip(addr as usize);
+                Ok(())
+            }
+            Opcode::CallReg => {
+                let reg = self.read_register()?;
+                let addr = self.regs.get(reg).as_usize()?;
+                self.push(Immediate::QWord(self.regs.ip() as u64))?;
+                self.regs.set_ip(addr as usize);
+                Ok(())
+            }
+            Opcode::Ret => {
+                let addr = self.pop(DataSize::QWord)?.as_usize()?;
+                self.regs.set_ip(addr);
+                Ok(())
+            }
             Opcode::Syscall => {
                 let index = self.regs.get(Register::Q15).as_usize()?;
                 let syscall = if let Some(syscall) = self.syscalls.get(&index) {
