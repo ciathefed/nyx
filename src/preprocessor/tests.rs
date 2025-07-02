@@ -1,4 +1,6 @@
 use miette::{NamedSource, Result};
+use pretty_assertions::assert_eq;
+use tempfile::TempDir;
 
 use crate::{lexer::Lexer, parser::Parser, vm::register::Register};
 
@@ -151,4 +153,303 @@ _start:
         assert_ne!(program.is_err(), true);
         assert_eq!(expected, program.unwrap());
     }
+}
+
+#[test]
+fn include_basic() {
+    let temp_dir = TempDir::new().unwrap();
+    let include_path = temp_dir.path().join("header.nyx");
+
+    fs::write(
+        &include_path,
+        r#"#define MAGIC_NUMBER 42
+helper_function:
+    mov q0, MAGIC_NUMBER
+    ret"#,
+    )
+    .unwrap();
+
+    let main_code = format!(
+        r#"#include "{}"
+_start:
+    call helper_function
+    hlt"#,
+        include_path.file_name().unwrap().to_str().unwrap()
+    );
+
+    let expected = vec![
+        Statement::Label("helper_function".into(), (24, 40).into()),
+        Statement::Mov(
+            Expression::Register(Register::Q0),
+            Expression::IntegerLiteral(42),
+            (45, 65).into(),
+        ),
+        Statement::Ret((70, 73).into()),
+        Statement::Label("_start".into(), (22, 29).into()),
+        Statement::Call(
+            Expression::Identifier("helper_function".into()),
+            (34, 54).into(),
+        ),
+        Statement::Hlt((59, 62).into()),
+    ];
+
+    let lexer = Lexer::new(NamedSource::new("test.nyx", main_code));
+    let mut parser = Parser::new(lexer);
+    let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
+        .with_include_paths(vec![temp_dir.path().to_path_buf()]);
+
+    let result = preprocessor.process();
+    assert!(result.is_ok());
+    assert_eq!(expected, result.unwrap());
+}
+
+#[test]
+fn include_with_defines() {
+    let temp_dir = TempDir::new().unwrap();
+    let constants_path = temp_dir.path().join("constants.nyx");
+
+    fs::write(
+        &constants_path,
+        r#"#define STACK_SIZE 1024
+#define HEAP_START 2048
+#define MAX_ITERATIONS 100"#,
+    )
+    .unwrap();
+
+    let main_code = format!(
+        r#"#include "{}"
+#define BUFFER_SIZE STACK_SIZE
+_start:
+    mov q0, BUFFER_SIZE
+    mov q1, HEAP_START
+    mov q2, MAX_ITERATIONS
+    hlt"#,
+        constants_path.file_name().unwrap().to_str().unwrap()
+    );
+
+    let expected = vec![
+        Statement::Label("_start".into(), (56, 63).into()),
+        Statement::Mov(
+            Expression::Register(Register::Q0),
+            Expression::IntegerLiteral(1024),
+            (68, 87).into(),
+        ),
+        Statement::Mov(
+            Expression::Register(Register::Q1),
+            Expression::IntegerLiteral(2048),
+            (92, 110).into(),
+        ),
+        Statement::Mov(
+            Expression::Register(Register::Q2),
+            Expression::IntegerLiteral(100),
+            (115, 137).into(),
+        ),
+        Statement::Hlt((142, 145).into()),
+    ];
+
+    let lexer = Lexer::new(NamedSource::new("test.nyx", main_code));
+    let mut parser = Parser::new(lexer);
+    let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
+        .with_include_paths(vec![temp_dir.path().to_path_buf()]);
+
+    let result = preprocessor.process();
+    assert!(result.is_ok());
+    assert_eq!(expected, result.unwrap());
+}
+
+#[test]
+fn include_nested() {
+    let temp_dir = TempDir::new().unwrap();
+
+    let math_ops_path = temp_dir.path().join("math_ops.nyx");
+    fs::write(
+        &math_ops_path,
+        r#"add_func:
+    add q0, q1, q2
+    ret"#,
+    )
+    .unwrap();
+
+    let utils_path = temp_dir.path().join("utils.nyx");
+    fs::write(
+        &utils_path,
+        format!(
+            r#"#include "{}"
+#define RESULT_REG q0"#,
+            math_ops_path.file_name().unwrap().to_str().unwrap()
+        ),
+    )
+    .unwrap();
+
+    let main_code = format!(
+        r#"#include "{}"
+_start:
+    call add_func
+    mov RESULT_REG, q3
+    hlt"#,
+        utils_path.file_name().unwrap().to_str().unwrap()
+    );
+
+    let lexer = Lexer::new(NamedSource::new("test.nyx", main_code));
+    let mut parser = Parser::new(lexer);
+    let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
+        .with_include_paths(vec![temp_dir.path().to_path_buf()]);
+
+    let result = preprocessor.process();
+    assert!(result.is_ok());
+
+    let statements = result.unwrap();
+    assert!(statements.len() > 3);
+}
+
+#[test]
+fn include_multiple_files() {
+    let temp_dir = TempDir::new().unwrap();
+
+    let constants_path = temp_dir.path().join("constants.nyx");
+    fs::write(
+        &constants_path,
+        r#"#define PI 314
+#define E 271"#,
+    )
+    .unwrap();
+
+    let functions_path = temp_dir.path().join("functions.nyx");
+    fs::write(
+        &functions_path,
+        r#"square:
+    mul q0, q0, q0
+    ret"#,
+    )
+    .unwrap();
+
+    let main_code = format!(
+        r#"#include "{}"
+#include "{}"
+_start:
+    mov q0, PI
+    call square
+    mov q1, E
+    hlt"#,
+        constants_path.file_name().unwrap().to_str().unwrap(),
+        functions_path.file_name().unwrap().to_str().unwrap()
+    );
+
+    let lexer = Lexer::new(NamedSource::new("test.nyx", main_code));
+    let mut parser = Parser::new(lexer);
+    let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
+        .with_include_paths(vec![temp_dir.path().to_path_buf()]);
+
+    let result = preprocessor.process();
+    assert!(result.is_ok());
+
+    let statements = result.unwrap();
+    assert!(
+        statements
+            .iter()
+            .any(|s| matches!(s, Statement::Label(name, _) if name == "square"))
+    );
+    assert!(
+        statements
+            .iter()
+            .any(|s| matches!(s, Statement::Label(name, _) if name == "_start"))
+    );
+}
+
+#[test]
+fn include_file_not_found() {
+    let main_code = r#"#include "nonexistent.nyx"
+_start:
+    hlt"#;
+
+    let lexer = Lexer::new(NamedSource::new("test.nyx", main_code.to_string()));
+    let mut parser = Parser::new(lexer);
+    let mut preprocessor = Preprocessor::new(parser.parse().unwrap());
+
+    let result = preprocessor.process();
+    assert!(result.is_err());
+}
+
+#[test]
+fn include_circular_dependency() {
+    let temp_dir = TempDir::new().unwrap();
+
+    let file_a_path = temp_dir.path().join("a.nyx");
+    let file_b_path = temp_dir.path().join("b.nyx");
+
+    fs::write(
+        &file_a_path,
+        format!(
+            r#"#include "{}"
+#define FROM_A 1"#,
+            file_b_path.file_name().unwrap().to_str().unwrap()
+        ),
+    )
+    .unwrap();
+
+    fs::write(
+        &file_b_path,
+        format!(
+            r#"#include "{}"
+#define FROM_B 2"#,
+            file_a_path.file_name().unwrap().to_str().unwrap()
+        ),
+    )
+    .unwrap();
+
+    let main_code = format!(
+        r#"#include "{}"
+_start:
+    hlt"#,
+        file_a_path.file_name().unwrap().to_str().unwrap()
+    );
+
+    let lexer = Lexer::new(NamedSource::new("test.nyx", main_code));
+    let mut parser = Parser::new(lexer);
+    let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
+        .with_include_paths(vec![temp_dir.path().to_path_buf()]);
+
+    let result = preprocessor.process();
+    assert!(result.is_err());
+}
+
+#[test]
+fn include_with_multiple_include_paths() {
+    let temp_dir1 = TempDir::new().unwrap();
+    let temp_dir2 = TempDir::new().unwrap();
+
+    let file1_path = temp_dir1.path().join("common.nyx");
+    let file2_path = temp_dir2.path().join("specific.nyx");
+
+    fs::write(&file1_path, r#"#define COMMON_CONST 100"#).unwrap();
+    fs::write(&file2_path, r#"#define SPECIFIC_CONST 200"#).unwrap();
+
+    let main_code = r#"#include "common.nyx"
+#include "specific.nyx"
+_start:
+    mov q0, COMMON_CONST
+    mov q1, SPECIFIC_CONST
+    hlt"#;
+
+    let lexer = Lexer::new(NamedSource::new("test.nyx", main_code.to_string()));
+    let mut parser = Parser::new(lexer);
+    let mut preprocessor = Preprocessor::new(parser.parse().unwrap()).with_include_paths(vec![
+        temp_dir1.path().to_path_buf(),
+        temp_dir2.path().to_path_buf(),
+    ]);
+
+    let result = preprocessor.process();
+    assert!(result.is_ok());
+
+    let statements = result.unwrap();
+    assert!(
+        statements
+            .iter()
+            .any(|s| matches!(s, Statement::Mov(_, Expression::IntegerLiteral(100), _)))
+    );
+    assert!(
+        statements
+            .iter()
+            .any(|s| matches!(s, Statement::Mov(_, Expression::IntegerLiteral(200), _)))
+    );
 }

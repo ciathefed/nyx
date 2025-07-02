@@ -8,7 +8,10 @@ edition = "2024"
 miette = { version = "7.6.0", features = ["fancy"] }
 thiserror = "2"
 lazy_static = "1.5.0"
-pretty_assertions = "1.4.1"
 clap = { version = "4.5.40", features = ["derive"] }
 camino = "1.1.10"
 libc = "0.2.174"
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"
+tempfile = "3.20.0"
