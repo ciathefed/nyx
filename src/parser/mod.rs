@@ -82,6 +82,16 @@ impl Parser {
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }
+            TokenKind::KwInclude => {
+                self.next_token();
+
+                let path = self.parse_expression()?;
+
+                Ok(Statement::Include(
+                    path,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
             TokenKind::KwSection => {
                 self.next_token();
 

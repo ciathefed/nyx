@@ -9,6 +9,7 @@ lazy_static! {
     static ref KEYWORDS: HashMap<&'static str, TokenKind> = HashMap::from([
         // Preprocessor Directives
         ("#define", TokenKind::KwDefine),
+        ("#include", TokenKind::KwInclude),
         // Assembler Directives
         (".section", TokenKind::KwSection),
         // Instructions
@@ -112,6 +113,8 @@ pub enum TokenKind {
     RBracket,
 
     KwDefine,
+    KwInclude,
+
     KwSection,
 
     KwNop,

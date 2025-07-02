@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::PathBuf};
 
 use camino::Utf8PathBuf;
 use clap::{Parser as ClapParser, Subcommand};
@@ -87,6 +87,11 @@ pub enum Command {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    let mut include_paths = vec![PathBuf::from("")];
+    if let Ok(stdlib_path) = std::env::var("NYX_STDLIB_PATH") {
+        include_paths.push(PathBuf::from(stdlib_path));
+    };
+
     match cli.cmd {
         Command::Build { input, output } => {
             let source_code = fs::read_to_string(&input).into_diagnostic()?;
@@ -94,7 +99,8 @@ fn main() -> Result<()> {
 
             let lexer = Lexer::new(named_source.clone());
             let mut parser = Parser::new(lexer);
-            let mut preprocessor = Preprocessor::new(parser.parse()?);
+            let mut preprocessor =
+                Preprocessor::new(parser.parse()?).with_include_paths(include_paths);
             let mut compiler = Compiler::new(preprocessor.process()?, named_source);
             let bytecode = compiler.compile()?;
 
@@ -110,7 +116,8 @@ fn main() -> Result<()> {
 
             let lexer = Lexer::new(named_source.clone());
             let mut parser = Parser::new(lexer);
-            let mut preprocessor = Preprocessor::new(parser.parse()?);
+            let mut preprocessor =
+                Preprocessor::new(parser.parse()?).with_include_paths(include_paths);
             let mut compiler = Compiler::new(preprocessor.process()?, named_source);
             let bytecode = compiler.compile()?;
 

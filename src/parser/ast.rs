@@ -7,6 +7,7 @@ pub enum Statement {
     Label(String, Span),
 
     Define(Expression, Expression, Span),
+    Include(Expression, Span),
 
     Section(SectionType, Span),
 
@@ -45,6 +46,7 @@ impl Statement {
     pub fn span(&self) -> Span {
         match self {
             Statement::Define(_, _, span) => *span,
+            Statement::Include(_, span) => *span,
             Statement::Section(_, span) => *span,
             Statement::Label(_, span) => *span,
             Statement::Nop(span) => *span,

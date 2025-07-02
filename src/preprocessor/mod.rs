@@ -1,15 +1,36 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::fs;
+use std::path::{Path, PathBuf};
 
-use miette::Result;
+use crate::lexer::Lexer;
+use crate::parser::Parser;
+use miette::{Diagnostic, NamedSource, Result};
 
 use crate::parser::ast::{Expression, Statement};
 
 #[cfg(test)]
 mod tests;
 
+#[derive(Debug, thiserror::Error, Diagnostic)]
+pub enum Error {
+    #[diagnostic(code(preproccessor::include_file_not_found))]
+    #[error("Include file not found: {0}")]
+    IncludeFileNotFound(String),
+
+    #[diagnostic(code(preproccessor::circular_include))]
+    #[error("Circular include detected: {0}")]
+    CircularInclude(String),
+
+    #[diagnostic(code(preproccessor::include_read_error))]
+    #[error("Failed to read include file: {0}")]
+    IncludeReadError(String),
+}
+
 pub struct Preprocessor {
     program: Vec<Statement>,
     definitions: HashMap<String, Expression>,
+    include_paths: Vec<PathBuf>,
+    included_files: HashSet<PathBuf>,
 }
 
 impl Preprocessor {
@@ -17,7 +38,14 @@ impl Preprocessor {
         Self {
             program,
             definitions: HashMap::new(),
+            include_paths: vec![PathBuf::from("")],
+            included_files: HashSet::new(),
         }
+    }
+
+    pub fn with_include_paths(mut self, paths: Vec<PathBuf>) -> Self {
+        self.include_paths = paths;
+        self
     }
 
     pub fn process(&mut self) -> Result<Vec<Statement>> {
@@ -27,6 +55,10 @@ impl Preprocessor {
             match stmt {
                 Statement::Define(Expression::Identifier(name), value, _) => {
                     self.definitions.insert(name, value);
+                }
+                Statement::Include(Expression::StringLiteral(file_path), _) => {
+                    let included_statements = self.process_include(&file_path)?;
+                    processed_statements.extend(included_statements);
                 }
                 other => processed_statements.push(other),
             }
@@ -133,12 +165,62 @@ impl Preprocessor {
                     exprs.into_iter().map(|e| self.substitute_expr(e)).collect(),
                     span,
                 ),
+                Statement::Include(_, _) => {
+                    continue;
+                }
             };
 
             final_statements.push(new_stmt);
         }
 
         Ok(final_statements)
+    }
+
+    fn process_include(&mut self, file_path: &str) -> Result<Vec<Statement>> {
+        let mut found_path = None;
+        for include_dir in &self.include_paths {
+            let candidate = include_dir.join(file_path);
+            if candidate.exists() {
+                found_path = Some(candidate);
+                break;
+            }
+        }
+
+        let path = found_path.ok_or_else(|| Error::IncludeFileNotFound(file_path.to_string()))?;
+
+        if self.included_files.contains(&path) {
+            return Err(Error::CircularInclude(path.display().to_string()).into());
+        }
+
+        let content = fs::read_to_string(&path)
+            .map_err(|_| Error::IncludeReadError(path.display().to_string()))?;
+
+        self.included_files.insert(path.clone());
+
+        let included_statements = self.parse_file_content(&content, &path)?;
+
+        let mut sub_preprocessor = Preprocessor {
+            program: included_statements,
+            definitions: self.definitions.clone(),
+            include_paths: self.include_paths.clone(),
+            included_files: self.included_files.clone(),
+        };
+
+        let processed = sub_preprocessor.process()?;
+
+        self.definitions.extend(sub_preprocessor.definitions);
+        self.included_files.extend(sub_preprocessor.included_files);
+
+        Ok(processed)
+    }
+
+    fn parse_file_content(&self, content: &str, path: &Path) -> Result<Vec<Statement>> {
+        let named_source =
+            NamedSource::new(path.to_string_lossy().to_string(), content.to_string());
+        let lexer = Lexer::new(named_source);
+        let mut parser = Parser::new(lexer);
+
+        parser.parse().map_err(|e| e.into())
     }
 
     fn substitute_expr(&self, expr: Expression) -> Expression {
