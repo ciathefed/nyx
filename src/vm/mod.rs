@@ -102,21 +102,17 @@ pub struct VM {
 
 impl VM {
     pub fn new(program: Vec<u8>, mem_size: usize) -> Result<Self> {
-        // Program must be at least 8 bytes to contain the entry point
         if program.len() < 8 {
             return Err(Error::ProgramTooSmall(program.len()))?;
         }
 
-        // Extract entry point from the first 8 bytes (u64 little-endian)
         let entry_point = u64::from_le_bytes([
             program[0], program[1], program[2], program[3], program[4], program[5], program[6],
             program[7],
         ]);
 
-        // The actual program data starts after the entry point
         let program_data = &program[8..];
 
-        // Validate entry point is within the program bounds
         if entry_point as usize >= program_data.len() {
             return Err(Error::InvalidEntryPoint {
                 entry_point,
@@ -124,7 +120,6 @@ impl VM {
             })?;
         }
 
-        // Check if program fits in available memory
         if program_data.len() > mem_size {
             return Err(Error::ProgramTooLarge {
                 program_size: program_data.len(),
@@ -135,11 +130,10 @@ impl VM {
         let mut regs = Registers::new();
         regs.set_sp(mem_size);
         regs.set_bp(0);
-        regs.set_ip(entry_point as usize); // Set IP to the entry point
+        regs.set_ip(entry_point as usize);
 
         let mut mem = Memory::new(mem_size);
 
-        // Load the program data (excluding the entry point) into memory
         mem.storage[..program_data.len()].copy_from_slice(program_data);
 
         Ok(Self {
