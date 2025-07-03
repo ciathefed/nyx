@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use crate::lexer::Lexer;
 use crate::parser::Parser;
@@ -219,9 +220,10 @@ impl Preprocessor {
     }
 
     fn parse_file_content(&self, content: &str, path: &Path) -> Result<Vec<Statement>> {
-        let named_source =
-            NamedSource::new(path.to_string_lossy().to_string(), content.to_string());
-        let lexer = Lexer::new(named_source);
+        let lexer = Lexer::new(Arc::new(NamedSource::new(
+            path.to_string_lossy().to_string(),
+            content.to_string(),
+        )));
         let mut parser = Parser::new(lexer);
 
         parser.parse().map_err(|e| e.into())

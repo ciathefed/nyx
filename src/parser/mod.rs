@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use miette::{Diagnostic, NamedSource, Result, SourceSpan};
 
 use crate::{
@@ -22,7 +24,7 @@ pub enum Error {
     UnexpectedToken {
         token: Token,
         #[source_code]
-        src: NamedSource<String>,
+        src: Arc<NamedSource<String>>,
         #[label("unexpected token here")]
         span: SourceSpan,
     },
@@ -33,7 +35,7 @@ pub enum Error {
         expected: String,
         got: Token,
         #[source_code]
-        src: NamedSource<String>,
+        src: Arc<NamedSource<String>>,
         #[label("unexpected token")]
         span: SourceSpan,
     },

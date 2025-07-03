@@ -3,7 +3,10 @@ use pretty_assertions::assert_eq;
 use super::*;
 
 fn lex(input: &str) -> Vec<Token> {
-    let lexer = Lexer::new(NamedSource::new("lexer_tests.nyx", input.to_string()));
+    let lexer = Lexer::new(Arc::new(NamedSource::new(
+        "lexer_tests.nyx",
+        input.to_string(),
+    )));
     lexer.collect()
 }
 

@@ -7,10 +7,10 @@ use crate::{lexer::Lexer, parser::Parser, vm::register::Register};
 use super::*;
 
 fn preprocess(input: &str) -> Result<Vec<Statement>> {
-    let lexer = Lexer::new(NamedSource::new(
+    let lexer = Lexer::new(Arc::new(NamedSource::new(
         "preprocessor_tests.nyx",
         input.to_string(),
-    ));
+    )));
     let mut parser = Parser::new(lexer);
     let mut program = Preprocessor::new(parser.parse()?);
     program.process()
@@ -193,7 +193,8 @@ _start:
         Statement::Hlt((59, 62).into()),
     ];
 
-    let lexer = Lexer::new(NamedSource::new("test.nyx", main_code));
+    let input = Arc::new(NamedSource::new("test.nyx", main_code));
+    let lexer = Lexer::new(input);
     let mut parser = Parser::new(lexer);
     let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
         .with_include_paths(vec![temp_dir.path().to_path_buf()]);
@@ -247,7 +248,8 @@ _start:
         Statement::Hlt((142, 145).into()),
     ];
 
-    let lexer = Lexer::new(NamedSource::new("test.nyx", main_code));
+    let input = Arc::new(NamedSource::new("test.nyx", main_code));
+    let lexer = Lexer::new(input);
     let mut parser = Parser::new(lexer);
     let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
         .with_include_paths(vec![temp_dir.path().to_path_buf()]);
@@ -290,7 +292,7 @@ _start:
         utils_path.file_name().unwrap().to_str().unwrap()
     );
 
-    let lexer = Lexer::new(NamedSource::new("test.nyx", main_code));
+    let lexer = Lexer::new(Arc::new(NamedSource::new("test.nyx", main_code)));
     let mut parser = Parser::new(lexer);
     let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
         .with_include_paths(vec![temp_dir.path().to_path_buf()]);
@@ -335,7 +337,7 @@ _start:
         functions_path.file_name().unwrap().to_str().unwrap()
     );
 
-    let lexer = Lexer::new(NamedSource::new("test.nyx", main_code));
+    let lexer = Lexer::new(Arc::new(NamedSource::new("test.nyx", main_code)));
     let mut parser = Parser::new(lexer);
     let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
         .with_include_paths(vec![temp_dir.path().to_path_buf()]);
@@ -362,7 +364,10 @@ fn include_file_not_found() {
 _start:
     hlt"#;
 
-    let lexer = Lexer::new(NamedSource::new("test.nyx", main_code.to_string()));
+    let lexer = Lexer::new(Arc::new(NamedSource::new(
+        "test.nyx",
+        main_code.to_string(),
+    )));
     let mut parser = Parser::new(lexer);
     let mut preprocessor = Preprocessor::new(parser.parse().unwrap());
 
@@ -404,7 +409,7 @@ _start:
         file_a_path.file_name().unwrap().to_str().unwrap()
     );
 
-    let lexer = Lexer::new(NamedSource::new("test.nyx", main_code));
+    let lexer = Lexer::new(Arc::new(NamedSource::new("test.nyx", main_code)));
     let mut parser = Parser::new(lexer);
     let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
         .with_include_paths(vec![temp_dir.path().to_path_buf()]);
@@ -431,7 +436,10 @@ _start:
     mov q1, SPECIFIC_CONST
     hlt"#;
 
-    let lexer = Lexer::new(NamedSource::new("test.nyx", main_code.to_string()));
+    let lexer = Lexer::new(Arc::new(NamedSource::new(
+        "test.nyx",
+        main_code.to_string(),
+    )));
     let mut parser = Parser::new(lexer);
     let mut preprocessor = Preprocessor::new(parser.parse().unwrap()).with_include_paths(vec![
         temp_dir1.path().to_path_buf(),

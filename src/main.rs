@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, sync::Arc};
 
 use camino::Utf8PathBuf;
 use clap::{Parser as ClapParser, Subcommand};
@@ -95,7 +95,7 @@ fn main() -> Result<()> {
     match cli.cmd {
         Command::Build { input, output } => {
             let source_code = fs::read_to_string(&input).into_diagnostic()?;
-            let named_source = NamedSource::new(input, source_code);
+            let named_source = Arc::new(NamedSource::new(input, source_code));
 
             let lexer = Lexer::new(named_source.clone());
             let mut parser = Parser::new(lexer);
@@ -112,7 +112,7 @@ fn main() -> Result<()> {
             memory,
         } => {
             let source_code = fs::read_to_string(&input).into_diagnostic()?;
-            let named_source = NamedSource::new(input, source_code);
+            let named_source = Arc::new(NamedSource::new(input, source_code));
 
             let lexer = Lexer::new(named_source.clone());
             let mut parser = Parser::new(lexer);

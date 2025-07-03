@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Deref};
+use std::{collections::HashMap, ops::Deref, sync::Arc};
 
 use miette::{Diagnostic, NamedSource, Result, SourceSpan};
 
@@ -27,7 +27,7 @@ pub enum Error {
     InvalidRegister {
         inst: &'static str,
         #[source_code]
-        src: NamedSource<String>,
+        src: Arc<NamedSource<String>>,
         #[label("invalid register used here")]
         span: SourceSpan,
     },
@@ -37,7 +37,7 @@ pub enum Error {
     InvalidDataSize {
         inst: &'static str,
         #[source_code]
-        src: NamedSource<String>,
+        src: Arc<NamedSource<String>>,
         #[label("invalid data size")]
         span: SourceSpan,
     },
@@ -48,7 +48,7 @@ pub enum Error {
         inst: &'static str,
         details: String,
         #[source_code]
-        src: NamedSource<String>,
+        src: Arc<NamedSource<String>>,
         #[label("invalid operands")]
         span: SourceSpan,
     },
@@ -58,7 +58,7 @@ pub enum Error {
     UndefinedLabel {
         label: String,
         #[source_code]
-        src: NamedSource<String>,
+        src: Arc<NamedSource<String>>,
         #[label("undefined label used here")]
         span: SourceSpan,
     },
@@ -68,7 +68,7 @@ pub enum Error {
     UnsupportedOperation {
         inst: String,
         #[source_code]
-        src: NamedSource<String>,
+        src: Arc<NamedSource<String>>,
         #[label("unsupported operation")]
         span: SourceSpan,
     },
@@ -79,7 +79,7 @@ pub enum Error {
         inst: &'static str,
         label: String,
         #[source_code]
-        src: NamedSource<String>,
+        src: Arc<NamedSource<String>>,
         #[label("fixup failure target")]
         span: SourceSpan,
     },
@@ -89,7 +89,7 @@ pub enum Error {
     InvalidExpression {
         inst: &'static str,
         #[source_code]
-        src: NamedSource<String>,
+        src: Arc<NamedSource<String>>,
         #[label("invalid expression")]
         span: SourceSpan,
     },
@@ -107,11 +107,11 @@ pub struct Compiler {
     fixups: HashMap<(Section, usize), (DataSize, String, SourceSpan)>,
     current_section: Section,
     entry: Entry,
-    input: NamedSource<String>,
+    input: Arc<NamedSource<String>>,
 }
 
 impl Compiler {
-    pub fn new(program: Vec<Statement>, input: NamedSource<String>) -> Self {
+    pub fn new(program: Vec<Statement>, input: Arc<NamedSource<String>>) -> Self {
         let program_len = program.len();
         Self {
             program,

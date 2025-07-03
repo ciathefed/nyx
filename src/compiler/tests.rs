@@ -5,7 +5,7 @@ use miette::{NamedSource, Result};
 use super::*;
 
 fn compile(input: &str) -> Result<Vec<u8>> {
-    let named_source = NamedSource::new("compiler_tests.nyx", input.to_string());
+    let named_source = Arc::new(NamedSource::new("compiler_tests.nyx", input.to_string()));
 
     let lexer = Lexer::new(named_source.clone());
     let mut parser = Parser::new(lexer);
@@ -992,7 +992,7 @@ end:
     hlt
 "#;
 
-    let source = NamedSource::new("test.asm", input.to_string());
+    let source = Arc::new(NamedSource::new("test.asm", input.to_string()));
     let lexer = Lexer::new(source.clone());
     let mut parser = Parser::new(lexer);
     let program = parser.parse().expect("Failed to parse");
@@ -1260,7 +1260,7 @@ end:
     hlt
 "#;
 
-    let source = NamedSource::new("test.asm", input.to_string());
+    let source = Arc::new(NamedSource::new("test.asm", input.to_string()));
     let lexer = Lexer::new(source.clone());
     let mut parser = Parser::new(lexer);
     let program = parser.parse().expect("Failed to parse");
@@ -1295,7 +1295,7 @@ main:
     hlt
 "#;
 
-    let source = NamedSource::new("test.asm", input.to_string());
+    let source = Arc::new(NamedSource::new("test.asm", input.to_string()));
     let lexer = Lexer::new(source.clone());
     let mut parser = Parser::new(lexer);
     let program = parser.parse().expect("Failed to parse");

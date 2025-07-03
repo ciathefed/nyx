@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use miette::NamedSource;
 
 use crate::lexer::token::{Token, TokenKind, lookup_ident};
@@ -8,14 +10,14 @@ pub mod token;
 mod tests;
 
 pub struct Lexer {
-    pub(crate) input: NamedSource<String>,
+    pub(crate) input: Arc<NamedSource<String>>,
     pos: usize,
     read_pos: usize,
     ch: char,
 }
 
 impl Lexer {
-    pub fn new(input: NamedSource<String>) -> Self {
+    pub fn new(input: Arc<NamedSource<String>>) -> Self {
         let mut lexer = Self {
             input,
             pos: 0,

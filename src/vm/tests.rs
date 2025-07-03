@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{compiler::Compiler, lexer::Lexer, parser::Parser};
 
 use super::*;
@@ -8,7 +10,7 @@ use pretty_assertions::assert_eq;
 const TEST_MEM_SIZE: usize = 1024;
 
 fn run(input: &str, data_addr: usize, data_value: Option<Immediate>) -> Result<VM> {
-    let named_source = NamedSource::new("vm_tests.nyx", input.to_string());
+    let named_source = Arc::new(NamedSource::new("vm_tests.nyx", input.to_string()));
     let lexer = Lexer::new(named_source.clone());
     let mut parser = Parser::new(lexer);
     let mut compiler = Compiler::new(parser.parse()?, named_source);
