@@ -62,7 +62,7 @@ enum Error {
     UnknownSyscall(usize),
 
     #[diagnostic(code(vm::io_error))]
-    #[error("I/O error: {0}")]
+    #[error("I/O error")]
     IoError(#[from] std::io::Error),
 
     #[diagnostic(code(vm::program_too_small))]
