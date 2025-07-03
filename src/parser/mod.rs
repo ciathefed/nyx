@@ -49,18 +49,16 @@ pub struct Parser {
 }
 
 impl Parser {
-    // TODO: can call self.lexer.next_token() to get prev, cur, and peek token and add them to the parser
-    // so we wont need Token::BLANK
-    pub fn new(lexer: Lexer) -> Self {
-        let mut parser = Self {
+    pub fn new(mut lexer: Lexer) -> Self {
+        let cur_token = lexer.next_token();
+        let peek_token = lexer.next_token();
+
+        Self {
             lexer,
-            prev_token: Token::BLANK,
-            cur_token: Token::BLANK,
-            peek_token: Token::BLANK,
-        };
-        parser.next_token();
-        parser.next_token();
-        parser
+            prev_token: cur_token.clone(),
+            cur_token,
+            peek_token,
+        }
     }
 
     pub fn parse(&mut self) -> Result<Vec<Statement>> {

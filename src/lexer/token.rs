@@ -168,12 +168,6 @@ pub struct Token {
 }
 
 impl Token {
-    pub const BLANK: Self = Self {
-        kind: TokenKind::Eof,
-        literal: Cow::Borrowed(""),
-        loc: Span { start: 0, end: 0 },
-    };
-
     pub fn new<L: Into<Span>>(kind: TokenKind, literal: &str, loc: L) -> Self {
         Token {
             kind,
