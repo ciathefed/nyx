@@ -439,7 +439,7 @@ _start:
 
 .section data
 message:
-    db "Hello, World!", 0x00"#;
+    .asciz "Hello, world!\n""#;
 
     let ast = parse(input).unwrap();
 
@@ -472,13 +472,10 @@ message:
     }
 
     match &ast[10] {
-        Statement::Db(exprs, _) => {
-            assert_eq!(exprs.len(), 2);
-            match &exprs[0] {
-                Expression::StringLiteral(s) => assert_eq!(s, "Hello, World!"),
-                _ => panic!("Expected string literal"),
-            }
-        }
+        Statement::Asciz(expr, _) => match expr {
+            Expression::StringLiteral(s) => assert_eq!(s, "Hello, world!\n"),
+            _ => panic!("Expected string literal"),
+        },
         _ => panic!("Expected data declaration"),
     }
 }
