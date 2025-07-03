@@ -13,6 +13,8 @@ lazy_static! {
         // Assembler Directives
         (".section", TokenKind::KwSection),
         (".entry", TokenKind::KwEntry),
+        (".ascii", TokenKind::KwAscii),
+        (".asciz", TokenKind::KwAsciz),
         // Instructions
         ("nop", TokenKind::KwNop),
         ("mov", TokenKind::KwMov),
@@ -121,6 +123,8 @@ pub enum TokenKind {
 
     KwSection,
     KwEntry,
+    KwAscii,
+    KwAsciz,
 
     KwNop,
     KwMov,

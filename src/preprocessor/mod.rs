@@ -75,6 +75,8 @@ impl Preprocessor {
                 }
                 Statement::Section(section_type, span) => Statement::Section(section_type, span),
                 Statement::Entry(expr, span) => Statement::Entry(self.substitute_expr(expr), span),
+                Statement::Ascii(expr, span) => Statement::Ascii(self.substitute_expr(expr), span),
+                Statement::Asciz(expr, span) => Statement::Asciz(self.substitute_expr(expr), span),
                 Statement::Nop(span) => Statement::Nop(span),
                 Statement::Mov(dest, src, span) => {
                     Statement::Mov(self.substitute_expr(dest), self.substitute_expr(src), span)

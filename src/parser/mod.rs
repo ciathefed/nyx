@@ -49,6 +49,8 @@ pub struct Parser {
 }
 
 impl Parser {
+    // TODO: can call self.lexer.next_token() to get prev, cur, and peek token and add them to the parser
+    // so we wont need Token::BLANK
     pub fn new(lexer: Lexer) -> Self {
         let mut parser = Self {
             lexer,
@@ -131,6 +133,24 @@ impl Parser {
                 let expr = self.parse_expression()?;
 
                 Ok(Statement::Entry(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwAscii => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::Ascii(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwAsciz => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::Asciz(
                     expr,
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))

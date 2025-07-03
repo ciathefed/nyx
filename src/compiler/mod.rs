@@ -145,6 +145,33 @@ impl Compiler {
                         })?;
                     }
                 },
+                Statement::Ascii(expr, span) => match expr {
+                    Expression::StringLiteral(string) => {
+                        self.bytecode.extend(self.current_section, string.bytes());
+                    }
+                    _ => {
+                        return Err(Error::InvalidOperands {
+                            inst: ".ENTRY",
+                            details: format!("Unsupported operand: {:?}", expr),
+                            src: self.input.clone(),
+                            span: span.into(),
+                        })?;
+                    }
+                },
+                Statement::Asciz(expr, span) => match expr {
+                    Expression::StringLiteral(string) => {
+                        self.bytecode.extend(self.current_section, string.bytes());
+                        self.bytecode.push(self.current_section, 0x00);
+                    }
+                    _ => {
+                        return Err(Error::InvalidOperands {
+                            inst: ".ENTRY",
+                            details: format!("Unsupported operand: {:?}", expr),
+                            src: self.input.clone(),
+                            span: span.into(),
+                        })?;
+                    }
+                },
                 Statement::Label(name, _) => {
                     let offset = self.bytecode.len(self.current_section);
                     self.labels.insert(name, (self.current_section, offset));
