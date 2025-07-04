@@ -10,6 +10,8 @@ use miette::{Diagnostic, NamedSource, Result, SourceSpan};
 
 use crate::parser::ast::{Expression, Statement};
 
+mod utils;
+
 #[cfg(test)]
 mod tests;
 
@@ -136,7 +138,7 @@ impl Preprocessor {
         Self {
             program,
             input,
-            definitions: HashMap::new(),
+            definitions: utils::get_default_definitions(),
             include_paths: vec![PathBuf::from("")],
             included_files: HashSet::new(),
         }
