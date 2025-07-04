@@ -10,6 +10,10 @@ lazy_static! {
         // Preprocessor Directives
         ("#define", TokenKind::KwDefine),
         ("#include", TokenKind::KwInclude),
+        ("#ifdef", TokenKind::KwIfDef),
+        ("#ifndef", TokenKind::KwIfNDef),
+        ("#else", TokenKind::KwElse),
+        ("#endif", TokenKind::KwEndIf),
         // Assembler Directives
         (".section", TokenKind::KwSection),
         (".entry", TokenKind::KwEntry),
@@ -120,6 +124,10 @@ pub enum TokenKind {
 
     KwDefine,
     KwInclude,
+    KwIfDef,
+    KwIfNDef,
+    KwElse,
+    KwEndIf,
 
     KwSection,
     KwEntry,

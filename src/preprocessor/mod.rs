@@ -25,6 +25,22 @@ pub enum Error {
     #[diagnostic(code(preproccessor::include_read_error))]
     #[error("Failed to read include file: {0}")]
     IncludeReadError(String),
+
+    #[diagnostic(code(preproccessor::unmatched_ifdef))]
+    #[error("Unmatched #ifdef directive")]
+    UnmatchedIfdef,
+
+    #[diagnostic(code(preproccessor::unmatched_ifdef))]
+    #[error("Unmatched #ifndef directive")]
+    UnmatchedIfndef,
+
+    #[diagnostic(code(preproccessor::unmatched_else))]
+    #[error("Unmatched #else directive")]
+    UnmatchedElse,
+
+    #[diagnostic(code(preproccessor::unmatched_endif))]
+    #[error("Unmatched #endif directive")]
+    UnmatchedEndif,
 }
 
 pub struct Preprocessor {
@@ -65,13 +81,24 @@ impl Preprocessor {
             }
         }
 
-        let mut final_statements = Vec::with_capacity(processed_statements.len());
+        let conditional_statements = self.process_conditionals(processed_statements)?;
 
-        for stmt in processed_statements {
+        let mut final_statements = Vec::with_capacity(conditional_statements.len());
+
+        for stmt in conditional_statements {
             let new_stmt = match stmt {
                 Statement::Label(name, span) => Statement::Label(name, span),
                 Statement::Define(key, val, span) => {
                     Statement::Define(self.substitute_expr(key), self.substitute_expr(val), span)
+                }
+                Statement::Include(_, _) => {
+                    continue;
+                }
+                Statement::IfDef(_, _)
+                | Statement::IfNDef(_, _)
+                | Statement::Else(_)
+                | Statement::EndIf(_) => {
+                    continue;
                 }
                 Statement::Section(section_type, span) => Statement::Section(section_type, span),
                 Statement::Entry(expr, span) => Statement::Entry(self.substitute_expr(expr), span),
@@ -172,15 +199,90 @@ impl Preprocessor {
                     span,
                 ),
                 Statement::Resb(expr, span) => Statement::Resb(self.substitute_expr(expr), span),
-                Statement::Include(_, _) => {
-                    continue;
-                }
             };
 
             final_statements.push(new_stmt);
         }
 
         Ok(final_statements)
+    }
+
+    fn process_conditionals(&self, statements: Vec<Statement>) -> Result<Vec<Statement>> {
+        let mut result = Vec::new();
+        let mut stack = Vec::new();
+        let mut i = 0;
+
+        while i < statements.len() {
+            match &statements[i] {
+                Statement::IfDef(expr, _) => {
+                    let condition_name = match expr {
+                        Expression::Identifier(name) => name,
+                        _ => {
+                            return Err(Error::UnmatchedIfdef.into());
+                        }
+                    };
+
+                    let is_defined = self.definitions.contains_key(condition_name);
+                    stack.push((is_defined, false));
+                    i += 1;
+                }
+                Statement::IfNDef(expr, _) => {
+                    let condition_name = match expr {
+                        Expression::Identifier(name) => name,
+                        _ => {
+                            return Err(Error::UnmatchedIfndef.into());
+                        }
+                    };
+                    let is_defined = self.definitions.contains_key(condition_name);
+                    stack.push((!is_defined, false));
+                    i += 1;
+                }
+                Statement::Else(_) => {
+                    if let Some((_, seen_else)) = stack.last_mut() {
+                        if *seen_else {
+                            return Err(Error::UnmatchedElse.into());
+                        }
+                        *seen_else = true;
+                        i += 1;
+                    } else {
+                        return Err(Error::UnmatchedElse.into());
+                    }
+                }
+                Statement::EndIf(_) => {
+                    if stack.pop().is_none() {
+                        return Err(Error::UnmatchedEndif.into());
+                    }
+                    i += 1;
+                }
+                _ => {
+                    if self.should_include_statement(&stack) {
+                        result.push(statements[i].clone());
+                    }
+                    i += 1;
+                }
+            }
+        }
+
+        if !stack.is_empty() {
+            return Err(Error::UnmatchedIfdef.into());
+        }
+
+        Ok(result)
+    }
+
+    fn should_include_statement(&self, stack: &[(bool, bool)]) -> bool {
+        for (condition_result, seen_else) in stack.iter().rev() {
+            if *seen_else {
+                if *condition_result {
+                    return false;
+                }
+            } else {
+                if !*condition_result {
+                    return false;
+                }
+            }
+        }
+        true
     }
 
     fn process_include(&mut self, file_path: &str) -> Result<Vec<Statement>> {

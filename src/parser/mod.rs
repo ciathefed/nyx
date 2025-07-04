@@ -86,11 +86,40 @@ impl Parser {
             }
             TokenKind::KwInclude => {
                 self.next_token();
-
                 let path = self.parse_expression()?;
 
                 Ok(Statement::Include(
                     path,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwIfDef => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::IfDef(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwIfNDef => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+
+                Ok(Statement::IfNDef(
+                    expr,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwElse => {
+                self.next_token();
+                Ok(Statement::Else(
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
+            TokenKind::KwEndIf => {
+                self.next_token();
+                Ok(Statement::EndIf(
                     (cur_span.start, self.prev_token.loc.end).into(),
                 ))
             }

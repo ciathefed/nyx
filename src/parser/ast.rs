@@ -8,6 +8,10 @@ pub enum Statement {
 
     Define(Expression, Expression, Span),
     Include(Expression, Span),
+    IfDef(Expression, Span),
+    IfNDef(Expression, Span),
+    Else(Span),
+    EndIf(Span),
 
     Section(SectionType, Span),
     Entry(Expression, Span),
@@ -53,6 +57,10 @@ impl Statement {
         match self {
             Statement::Define(_, _, span) => *span,
             Statement::Include(_, span) => *span,
+            Statement::IfDef(_, span) => *span,
+            Statement::IfNDef(_, span) => *span,
+            Statement::Else(span) => *span,
+            Statement::EndIf(span) => *span,
             Statement::Section(_, span) => *span,
             Statement::Entry(_, span) => *span,
             Statement::Ascii(_, span) => *span,
