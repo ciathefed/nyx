@@ -72,6 +72,15 @@ impl Parser {
     fn parse_statement(&mut self) -> Result<Statement> {
         let cur_span = self.cur_token.loc;
         match self.cur_token.kind {
+            TokenKind::KwError => {
+                self.next_token();
+                let message = self.parse_expression()?;
+
+                Ok(Statement::Error(
+                    message,
+                    (cur_span.start, self.prev_token.loc.end).into(),
+                ))
+            }
             TokenKind::KwDefine => {
                 self.next_token();
 

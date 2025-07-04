@@ -8,6 +8,7 @@ use crate::span::Span;
 lazy_static! {
     static ref KEYWORDS: HashMap<&'static str, TokenKind> = HashMap::from([
         // Preprocessor Directives
+        ("#error", TokenKind::KwError),
         ("#define", TokenKind::KwDefine),
         ("#include", TokenKind::KwInclude),
         ("#ifdef", TokenKind::KwIfDef),
@@ -129,6 +130,7 @@ pub enum TokenKind {
     LBracket,
     RBracket,
 
+    KwError,
     KwDefine,
     KwInclude,
     KwIfDef,

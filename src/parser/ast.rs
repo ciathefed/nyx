@@ -6,6 +6,7 @@ pub use crate::parser::immediate::*;
 pub enum Statement {
     Label(String, Span),
 
+    Error(Expression, Span),
     Define(Expression, Expression, Span),
     Include(Expression, Span),
     IfDef(Expression, Span),
@@ -55,6 +56,7 @@ pub enum Statement {
 impl Statement {
     pub fn span(&self) -> Span {
         match self {
+            Statement::Error(_, span) => *span,
             Statement::Define(_, _, span) => *span,
             Statement::Include(_, span) => *span,
             Statement::IfDef(_, span) => *span,

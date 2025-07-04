@@ -119,6 +119,15 @@ pub enum Error {
         #[label("invalid operator for float")]
         span: SourceSpan,
     },
+
+    #[error("{message}")]
+    Error {
+        message: String,
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("called here")]
+        span: SourceSpan,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -178,7 +187,7 @@ impl Preprocessor {
                     let included_statements = self.process_include(&file_path, span)?;
                     processed_statements.extend(included_statements);
                 }
-                Statement::Include(_expr, span) => {
+                Statement::Include(_, span) => {
                     return Err(Error::InvalidIncludePath {
                         src: self.input.clone(),
                         span: span.into(),
@@ -196,6 +205,24 @@ impl Preprocessor {
         for stmt in conditional_statements {
             let new_stmt = match stmt {
                 Statement::Label(name, span) => Statement::Label(name, span),
+                Statement::Error(expr, span) => match expr {
+                    Expression::StringLiteral(message) => {
+                        return Err(Error::Error {
+                            message,
+                            src: self.input.clone(),
+                            span: span.into(),
+                        }
+                        .into());
+                    }
+                    _ => {
+                        return Err(Error::Error {
+                            message: "Expected string literal in #error directive".to_string(),
+                            src: self.input.clone(),
+                            span: span.into(),
+                        }
+                        .into());
+                    }
+                },
                 Statement::Define(key, val, span) => {
                     Statement::Define(self.substitute_expr(key)?, self.substitute_expr(val)?, span)
                 }
