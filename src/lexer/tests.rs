@@ -134,6 +134,22 @@ fn preprocessor_directives() {
             "#include",
             vec![Token::new(TokenKind::KwInclude, "#include", (0, 8))],
         ),
+        (
+            "#ifdef",
+            vec![Token::new(TokenKind::KwIfDef, "#ifdef", (0, 6))],
+        ),
+        (
+            "#ifndef",
+            vec![Token::new(TokenKind::KwIfNDef, "#ifndef", (0, 7))],
+        ),
+        (
+            "#else",
+            vec![Token::new(TokenKind::KwElse, "#else", (0, 5))],
+        ),
+        (
+            "#endif",
+            vec![Token::new(TokenKind::KwEndIf, "#endif", (0, 6))],
+        ),
     ];
 
     for (input, expected) in tests {
