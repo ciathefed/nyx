@@ -150,6 +150,10 @@ fn preprocessor_directives() {
             "#endif",
             vec![Token::new(TokenKind::KwEndIf, "#endif", (0, 6))],
         ),
+        (
+            "#error",
+            vec![Token::new(TokenKind::KwError, "#error", (0, 6))],
+        ),
     ];
 
     for (input, expected) in tests {

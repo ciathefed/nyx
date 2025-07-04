@@ -596,3 +596,18 @@ _start:
     assert!(program.is_ok());
     assert_eq!(expected, program.unwrap());
 }
+
+#[test]
+fn error() {
+    let input = r#"#error "this is an error!""#;
+
+    let result = preprocess(input);
+
+    assert!(result.is_err());
+
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("this is an error!"),
+        "error message missing or wrong: {err}"
+    );
+}
