@@ -462,3 +462,137 @@ _start:
             .any(|s| matches!(s, Statement::Mov(_, Expression::IntegerLiteral(200), _)))
     );
 }
+
+#[test]
+fn ifdef_true_branch() {
+    let input = r#"
+#define ENABLE 1
+#ifdef ENABLE
+_start:
+    mov q0, 123
+#endif
+    hlt"#;
+
+    let expected = vec![
+        Statement::Label("_start".into(), (32, 39).into()),
+        Statement::Mov(
+            Expression::Register(Register::Q0),
+            Expression::IntegerLiteral(123),
+            (44, 55).into(),
+        ),
+        Statement::Hlt((67, 70).into()),
+    ];
+
+    let program = preprocess(input);
+    assert!(program.is_ok());
+    assert_eq!(expected, program.unwrap());
+}
+
+#[test]
+fn ifdef_false_branch() {
+    let input = r#"
+#ifdef MISSING
+_start:
+    mov q0, 123
+#endif
+    hlt"#;
+
+    let expected = vec![Statement::Hlt((51, 54).into())];
+
+    let program = preprocess(input);
+    assert!(program.is_ok());
+    assert_eq!(expected, program.unwrap());
+}
+
+#[test]
+fn ifndef_true_branch() {
+    let input = r#"
+#ifndef MISSING
+_start:
+    mov q0, 456
+#endif
+    hlt"#;
+
+    let expected = vec![
+        Statement::Label("_start".into(), (17, 24).into()),
+        Statement::Mov(
+            Expression::Register(Register::Q0),
+            Expression::IntegerLiteral(456),
+            (29, 40).into(),
+        ),
+        Statement::Hlt((52, 55).into()),
+    ];
+
+    let program = preprocess(input);
+    assert!(program.is_ok());
+    assert_eq!(expected, program.unwrap());
+}
+
+#[test]
+fn ifndef_false_branch() {
+    let input = r#"
+#define FEATURE 1
+#ifndef FEATURE
+_start:
+    mov q0, 999
+#endif
+    hlt"#;
+
+    let expected = vec![Statement::Hlt((70, 73).into())];
+
+    let program = preprocess(input);
+    assert!(program.is_ok());
+    assert_eq!(expected, program.unwrap());
+}
+
+#[test]
+fn ifdef_with_else_true_branch() {
+    let input = r#"
+#define DEBUG 1
+#ifdef DEBUG
+_start:
+    mov q0, 111
+#else
+    mov q0, 222
+#endif
+    hlt"#;
+
+    let expected = vec![
+        Statement::Label("_start".into(), (30, 37).into()),
+        Statement::Mov(
+            Expression::Register(Register::Q0),
+            Expression::IntegerLiteral(111),
+            (42, 53).into(),
+        ),
+        Statement::Hlt((87, 90).into()),
+    ];
+
+    let program = preprocess(input);
+    assert!(program.is_ok());
+    assert_eq!(expected, program.unwrap());
+}
+
+#[test]
+fn ifdef_with_else_false_branch() {
+    let input = r#"
+#ifdef DEBUG
+_start:
+    mov q0, 111
+#else
+    mov q0, 222
+#endif
+    hlt"#;
+
+    let expected = vec![
+        Statement::Mov(
+            Expression::Register(Register::Q0),
+            Expression::IntegerLiteral(222),
+            (48, 59).into(),
+        ),
+        Statement::Hlt((71, 74).into()),
+    ];
+
+    let program = preprocess(input);
+    assert!(program.is_ok());
+    assert_eq!(expected, program.unwrap());
+}
