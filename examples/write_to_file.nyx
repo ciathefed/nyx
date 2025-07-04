@@ -1,0 +1,28 @@
+.entry _start
+
+#include "stdlib.nyx"
+#include "string.nyx"
+
+.section text
+_start:
+    mov q0, path
+    mov q1, (O_WRONLY | O_CREAT | O_TRUNC)
+    mov q2, 0o644
+    mov q15, SYS_OPEN
+    syscall
+    push q0
+
+    mov q1, message
+    mov q2, 14
+    mov q15, SYS_WRITE
+    syscall
+
+    pop q0
+    mov q15, SYS_CLOSE
+    syscall
+
+    hlt
+
+.section data
+path:       .asciz "hello.txt"
+message:    .asciz "Hello, world!\n"
