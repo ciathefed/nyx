@@ -99,8 +99,8 @@ fn main() -> Result<()> {
 
             let lexer = Lexer::new(named_source.clone());
             let mut parser = Parser::new(lexer);
-            let mut preprocessor =
-                Preprocessor::new(parser.parse()?).with_include_paths(include_paths);
+            let mut preprocessor = Preprocessor::new(parser.parse()?, named_source.clone())
+                .with_include_paths(include_paths);
             let mut compiler = Compiler::new(preprocessor.process()?, named_source);
             let bytecode = compiler.compile()?;
 
@@ -116,8 +116,8 @@ fn main() -> Result<()> {
 
             let lexer = Lexer::new(named_source.clone());
             let mut parser = Parser::new(lexer);
-            let mut preprocessor =
-                Preprocessor::new(parser.parse()?).with_include_paths(include_paths);
+            let mut preprocessor = Preprocessor::new(parser.parse()?, named_source.clone())
+                .with_include_paths(include_paths);
             let mut compiler = Compiler::new(preprocessor.process()?, named_source);
             let bytecode = compiler.compile()?;
 

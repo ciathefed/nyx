@@ -5,7 +5,8 @@ use std::sync::Arc;
 
 use crate::lexer::Lexer;
 use crate::parser::Parser;
-use miette::{Diagnostic, NamedSource, Result};
+use crate::span::Span;
+use miette::{Diagnostic, NamedSource, Result, SourceSpan};
 
 use crate::parser::ast::{Expression, Statement};
 
@@ -14,46 +15,127 @@ mod tests;
 
 #[derive(Debug, thiserror::Error, Diagnostic)]
 pub enum Error {
-    #[diagnostic(code(preproccessor::include_file_not_found))]
-    #[error("Include file not found: {0}")]
-    IncludeFileNotFound(String),
+    #[diagnostic(code(preprocessor::include_file_not_found))]
+    #[error("Include file not found: {file}")]
+    IncludeFileNotFound {
+        file: String,
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("include file not found")]
+        span: SourceSpan,
+    },
 
-    #[diagnostic(code(preproccessor::circular_include))]
-    #[error("Circular include detected: {0}")]
-    CircularInclude(String),
+    #[diagnostic(code(preprocessor::circular_include))]
+    #[error("Circular include detected: {file}")]
+    CircularInclude {
+        file: String,
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("circular include")]
+        span: SourceSpan,
+    },
 
-    #[diagnostic(code(preproccessor::include_read_error))]
-    #[error("Failed to read include file: {0}")]
-    IncludeReadError(String),
+    #[diagnostic(code(preprocessor::include_read_error))]
+    #[error("Failed to read include file: {file}")]
+    IncludeReadError {
+        file: String,
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("failed to read file")]
+        span: SourceSpan,
+    },
 
-    #[diagnostic(code(preproccessor::unmatched_ifdef))]
+    #[diagnostic(code(preprocessor::unmatched_ifdef))]
     #[error("Unmatched #ifdef directive")]
-    UnmatchedIfdef,
+    UnmatchedIfdef {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("unmatched #ifdef")]
+        span: SourceSpan,
+    },
 
-    #[diagnostic(code(preproccessor::unmatched_ifdef))]
+    #[diagnostic(code(preprocessor::unmatched_ifndef))]
     #[error("Unmatched #ifndef directive")]
-    UnmatchedIfndef,
+    UnmatchedIfndef {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("unmatched #ifndef")]
+        span: SourceSpan,
+    },
 
-    #[diagnostic(code(preproccessor::unmatched_else))]
+    #[diagnostic(code(preprocessor::unmatched_else))]
     #[error("Unmatched #else directive")]
-    UnmatchedElse,
+    UnmatchedElse {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("unmatched #else")]
+        span: SourceSpan,
+    },
 
-    #[diagnostic(code(preproccessor::unmatched_endif))]
+    #[diagnostic(code(preprocessor::unmatched_endif))]
     #[error("Unmatched #endif directive")]
-    UnmatchedEndif,
+    UnmatchedEndif {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("unmatched #endif")]
+        span: SourceSpan,
+    },
+
+    #[diagnostic(code(preprocessor::invalid_define_key))]
+    #[error("Invalid define key: expected identifier")]
+    InvalidDefineKey {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("expected identifier")]
+        span: SourceSpan,
+    },
+
+    #[diagnostic(code(preprocessor::invalid_include_path))]
+    #[error("Invalid include path: expected string literal")]
+    InvalidIncludePath {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("expected string literal")]
+        span: SourceSpan,
+    },
+
+    #[diagnostic(code(preprocessor::invalid_conditional_expr))]
+    #[error("Invalid conditional expression: expected identifier")]
+    InvalidConditionalExpr {
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("expected identifier")]
+        span: SourceSpan,
+    },
+}
+
+#[derive(Debug, Clone)]
+enum ConditionalType {
+    IfDef,
+    IfNDef,
+}
+
+#[derive(Debug, Clone)]
+struct ConditionalInfo {
+    condition_result: bool,
+    seen_else: bool,
+    conditional_type: ConditionalType,
+    span: Span,
 }
 
 pub struct Preprocessor {
     program: Vec<Statement>,
+    input: Arc<NamedSource<String>>,
     definitions: HashMap<String, Expression>,
     include_paths: Vec<PathBuf>,
     included_files: HashSet<PathBuf>,
 }
 
 impl Preprocessor {
-    pub fn new(program: Vec<Statement>) -> Self {
+    pub fn new(program: Vec<Statement>, input: Arc<NamedSource<String>>) -> Self {
         Self {
             program,
+            input,
             definitions: HashMap::new(),
             include_paths: vec![PathBuf::from("")],
             included_files: HashSet::new(),
@@ -73,9 +155,23 @@ impl Preprocessor {
                 Statement::Define(Expression::Identifier(name), value, _) => {
                     self.definitions.insert(name, value);
                 }
-                Statement::Include(Expression::StringLiteral(file_path), _) => {
-                    let included_statements = self.process_include(&file_path)?;
+                Statement::Define(_, _, span) => {
+                    return Err(Error::InvalidDefineKey {
+                        src: self.input.clone(),
+                        span: span.into(),
+                    }
+                    .into());
+                }
+                Statement::Include(Expression::StringLiteral(file_path), span) => {
+                    let included_statements = self.process_include(&file_path, span)?;
                     processed_statements.extend(included_statements);
+                }
+                Statement::Include(_expr, span) => {
+                    return Err(Error::InvalidIncludePath {
+                        src: self.input.clone(),
+                        span: span.into(),
+                    }
+                    .into());
                 }
                 other => processed_statements.push(other),
             }
@@ -209,53 +305,83 @@ impl Preprocessor {
 
     fn process_conditionals(&self, statements: Vec<Statement>) -> Result<Vec<Statement>> {
         let mut result = Vec::new();
-        let mut stack = Vec::new();
+        let mut stack: Vec<ConditionalInfo> = Vec::new();
         let mut i = 0;
 
         while i < statements.len() {
             match &statements[i] {
-                Statement::IfDef(expr, _) => {
+                Statement::IfDef(expr, span) => {
                     let condition_name = match expr {
                         Expression::Identifier(name) => name,
                         _ => {
-                            return Err(Error::UnmatchedIfdef.into());
+                            return Err(Error::InvalidConditionalExpr {
+                                src: self.input.clone(),
+                                span: (*span).into(),
+                            }
+                            .into());
                         }
                     };
 
                     let is_defined = self.definitions.contains_key(condition_name);
-                    stack.push((is_defined, false));
+                    stack.push(ConditionalInfo {
+                        condition_result: is_defined,
+                        seen_else: false,
+                        conditional_type: ConditionalType::IfDef,
+                        span: *span,
+                    });
                     i += 1;
                 }
-                Statement::IfNDef(expr, _) => {
+                Statement::IfNDef(expr, span) => {
                     let condition_name = match expr {
                         Expression::Identifier(name) => name,
                         _ => {
-                            return Err(Error::UnmatchedIfndef.into());
+                            return Err(Error::InvalidConditionalExpr {
+                                src: self.input.clone(),
+                                span: (*span).into(),
+                            }
+                            .into());
                         }
                     };
                     let is_defined = self.definitions.contains_key(condition_name);
-                    stack.push((!is_defined, false));
+                    stack.push(ConditionalInfo {
+                        condition_result: !is_defined,
+                        seen_else: false,
+                        conditional_type: ConditionalType::IfNDef,
+                        span: *span,
+                    });
                     i += 1;
                 }
-                Statement::Else(_) => {
-                    if let Some((_, seen_else)) = stack.last_mut() {
-                        if *seen_else {
-                            return Err(Error::UnmatchedElse.into());
+                Statement::Else(span) => {
+                    if let Some(info) = stack.last_mut() {
+                        if info.seen_else {
+                            return Err(Error::UnmatchedElse {
+                                src: self.input.clone(),
+                                span: (*span).into(),
+                            }
+                            .into());
                         }
-                        *seen_else = true;
+                        info.seen_else = true;
                         i += 1;
                     } else {
-                        return Err(Error::UnmatchedElse.into());
+                        return Err(Error::UnmatchedElse {
+                            src: self.input.clone(),
+                            span: (*span).into(),
+                        }
+                        .into());
                     }
                 }
-                Statement::EndIf(_) => {
+                Statement::EndIf(span) => {
                     if stack.pop().is_none() {
-                        return Err(Error::UnmatchedEndif.into());
+                        return Err(Error::UnmatchedEndif {
+                            src: self.input.clone(),
+                            span: (*span).into(),
+                        }
+                        .into());
                     }
                     i += 1;
                 }
                 _ => {
-                    if self.should_include_statement(&stack) {
+                    if self.should_include_statement_with_info(&stack) {
                         result.push(statements[i].clone());
                     }
                     i += 1;
@@ -264,20 +390,32 @@ impl Preprocessor {
         }
 
         if !stack.is_empty() {
-            return Err(Error::UnmatchedIfdef.into());
+            let last_unmatched = stack.last().unwrap();
+            return match last_unmatched.conditional_type {
+                ConditionalType::IfDef => Err(Error::UnmatchedIfdef {
+                    src: self.input.clone(),
+                    span: last_unmatched.span.into(),
+                }
+                .into()),
+                ConditionalType::IfNDef => Err(Error::UnmatchedIfndef {
+                    src: self.input.clone(),
+                    span: last_unmatched.span.into(),
+                }
+                .into()),
+            };
         }
 
         Ok(result)
     }
 
-    fn should_include_statement(&self, stack: &[(bool, bool)]) -> bool {
-        for (condition_result, seen_else) in stack.iter().rev() {
-            if *seen_else {
-                if *condition_result {
+    fn should_include_statement_with_info(&self, stack: &[ConditionalInfo]) -> bool {
+        for info in stack.iter().rev() {
+            if info.seen_else {
+                if info.condition_result {
                     return false;
                 }
             } else {
-                if !*condition_result {
+                if !info.condition_result {
                     return false;
                 }
             }
@@ -285,7 +423,7 @@ impl Preprocessor {
         true
     }
 
-    fn process_include(&mut self, file_path: &str) -> Result<Vec<Statement>> {
+    fn process_include(&mut self, file_path: &str, span: Span) -> Result<Vec<Statement>> {
         let mut found_path = None;
         for include_dir in &self.include_paths {
             let candidate = include_dir.join(file_path);
@@ -295,14 +433,26 @@ impl Preprocessor {
             }
         }
 
-        let path = found_path.ok_or_else(|| Error::IncludeFileNotFound(file_path.to_string()))?;
+        let path = found_path.ok_or_else(|| Error::IncludeFileNotFound {
+            file: file_path.to_string(),
+            src: self.input.clone(),
+            span: span.into(),
+        })?;
 
         if self.included_files.contains(&path) {
-            return Err(Error::CircularInclude(path.display().to_string()).into());
+            return Err(Error::CircularInclude {
+                file: path.display().to_string(),
+                src: self.input.clone(),
+                span: span.into(),
+            }
+            .into());
         }
 
-        let content = fs::read_to_string(&path)
-            .map_err(|_| Error::IncludeReadError(path.display().to_string()))?;
+        let content = fs::read_to_string(&path).map_err(|_| Error::IncludeReadError {
+            file: path.display().to_string(),
+            src: self.input.clone(),
+            span: span.into(),
+        })?;
 
         self.included_files.insert(path.clone());
 
@@ -310,6 +460,7 @@ impl Preprocessor {
 
         let mut sub_preprocessor = Preprocessor {
             program: included_statements,
+            input: Arc::new(NamedSource::new(path.display().to_string(), content)),
             definitions: self.definitions.clone(),
             include_paths: self.include_paths.clone(),
             included_files: self.included_files.clone(),

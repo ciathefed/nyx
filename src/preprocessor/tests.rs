@@ -7,12 +7,13 @@ use crate::{lexer::Lexer, parser::Parser, vm::register::Register};
 use super::*;
 
 fn preprocess(input: &str) -> Result<Vec<Statement>> {
-    let lexer = Lexer::new(Arc::new(NamedSource::new(
+    let input = Arc::new(NamedSource::new(
         "preprocessor_tests.nyx",
         input.to_string(),
-    )));
+    ));
+    let lexer = Lexer::new(input.clone());
     let mut parser = Parser::new(lexer);
-    let mut program = Preprocessor::new(parser.parse()?);
+    let mut program = Preprocessor::new(parser.parse()?, input);
     program.process()
 }
 
@@ -194,9 +195,9 @@ _start:
     ];
 
     let input = Arc::new(NamedSource::new("test.nyx", main_code));
-    let lexer = Lexer::new(input);
+    let lexer = Lexer::new(input.clone());
     let mut parser = Parser::new(lexer);
-    let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
+    let mut preprocessor = Preprocessor::new(parser.parse().unwrap(), input)
         .with_include_paths(vec![temp_dir.path().to_path_buf()]);
 
     let result = preprocessor.process();
@@ -249,9 +250,9 @@ _start:
     ];
 
     let input = Arc::new(NamedSource::new("test.nyx", main_code));
-    let lexer = Lexer::new(input);
+    let lexer = Lexer::new(input.clone());
     let mut parser = Parser::new(lexer);
-    let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
+    let mut preprocessor = Preprocessor::new(parser.parse().unwrap(), input)
         .with_include_paths(vec![temp_dir.path().to_path_buf()]);
 
     let result = preprocessor.process();
@@ -292,9 +293,10 @@ _start:
         utils_path.file_name().unwrap().to_str().unwrap()
     );
 
-    let lexer = Lexer::new(Arc::new(NamedSource::new("test.nyx", main_code)));
+    let input = Arc::new(NamedSource::new("test.nyx", main_code));
+    let lexer = Lexer::new(input.clone());
     let mut parser = Parser::new(lexer);
-    let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
+    let mut preprocessor = Preprocessor::new(parser.parse().unwrap(), input)
         .with_include_paths(vec![temp_dir.path().to_path_buf()]);
 
     let result = preprocessor.process();
@@ -337,9 +339,10 @@ _start:
         functions_path.file_name().unwrap().to_str().unwrap()
     );
 
-    let lexer = Lexer::new(Arc::new(NamedSource::new("test.nyx", main_code)));
+    let input = Arc::new(NamedSource::new("test.nyx", main_code));
+    let lexer = Lexer::new(input.clone());
     let mut parser = Parser::new(lexer);
-    let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
+    let mut preprocessor = Preprocessor::new(parser.parse().unwrap(), input)
         .with_include_paths(vec![temp_dir.path().to_path_buf()]);
 
     let result = preprocessor.process();
@@ -364,12 +367,10 @@ fn include_file_not_found() {
 _start:
     hlt"#;
 
-    let lexer = Lexer::new(Arc::new(NamedSource::new(
-        "test.nyx",
-        main_code.to_string(),
-    )));
+    let input = Arc::new(NamedSource::new("test.nyx", main_code.to_string()));
+    let lexer = Lexer::new(input.clone());
     let mut parser = Parser::new(lexer);
-    let mut preprocessor = Preprocessor::new(parser.parse().unwrap());
+    let mut preprocessor = Preprocessor::new(parser.parse().unwrap(), input);
 
     let result = preprocessor.process();
     assert!(result.is_err());
@@ -409,9 +410,10 @@ _start:
         file_a_path.file_name().unwrap().to_str().unwrap()
     );
 
-    let lexer = Lexer::new(Arc::new(NamedSource::new("test.nyx", main_code)));
+    let input = Arc::new(NamedSource::new("test.nyx", main_code));
+    let lexer = Lexer::new(input.clone());
     let mut parser = Parser::new(lexer);
-    let mut preprocessor = Preprocessor::new(parser.parse().unwrap())
+    let mut preprocessor = Preprocessor::new(parser.parse().unwrap(), input)
         .with_include_paths(vec![temp_dir.path().to_path_buf()]);
 
     let result = preprocessor.process();
@@ -436,15 +438,14 @@ _start:
     mov q1, SPECIFIC_CONST
     hlt"#;
 
-    let lexer = Lexer::new(Arc::new(NamedSource::new(
-        "test.nyx",
-        main_code.to_string(),
-    )));
+    let input = Arc::new(NamedSource::new("test.nyx", main_code.to_string()));
+    let lexer = Lexer::new(input.clone());
     let mut parser = Parser::new(lexer);
-    let mut preprocessor = Preprocessor::new(parser.parse().unwrap()).with_include_paths(vec![
-        temp_dir1.path().to_path_buf(),
-        temp_dir2.path().to_path_buf(),
-    ]);
+    let mut preprocessor =
+        Preprocessor::new(parser.parse().unwrap(), input).with_include_paths(vec![
+            temp_dir1.path().to_path_buf(),
+            temp_dir2.path().to_path_buf(),
+        ]);
 
     let result = preprocessor.process();
     assert!(result.is_ok());
