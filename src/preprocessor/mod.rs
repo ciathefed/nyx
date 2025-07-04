@@ -8,7 +8,7 @@ use crate::parser::Parser;
 use crate::span::Span;
 use miette::{Diagnostic, NamedSource, Result, SourceSpan};
 
-use crate::parser::ast::{Expression, Statement};
+use crate::parser::ast::{BinaryOperator, Expression, Statement};
 
 mod utils;
 
@@ -109,6 +109,16 @@ pub enum Error {
         #[label("expected identifier")]
         span: SourceSpan,
     },
+
+    #[diagnostic(code(eval::invalid_operator_for_float))]
+    #[error("Invalid operator {op:?} applied to float literals")]
+    InvalidOperatorForFloat {
+        op: BinaryOperator,
+        #[source_code]
+        src: Arc<NamedSource<String>>,
+        #[label("invalid operator for float")]
+        span: SourceSpan,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -187,7 +197,7 @@ impl Preprocessor {
             let new_stmt = match stmt {
                 Statement::Label(name, span) => Statement::Label(name, span),
                 Statement::Define(key, val, span) => {
-                    Statement::Define(self.substitute_expr(key), self.substitute_expr(val), span)
+                    Statement::Define(self.substitute_expr(key)?, self.substitute_expr(val)?, span)
                 }
                 Statement::Include(_, _) => {
                     continue;
@@ -199,104 +209,124 @@ impl Preprocessor {
                     continue;
                 }
                 Statement::Section(section_type, span) => Statement::Section(section_type, span),
-                Statement::Entry(expr, span) => Statement::Entry(self.substitute_expr(expr), span),
-                Statement::Ascii(expr, span) => Statement::Ascii(self.substitute_expr(expr), span),
-                Statement::Asciz(expr, span) => Statement::Asciz(self.substitute_expr(expr), span),
+                Statement::Entry(expr, span) => Statement::Entry(self.substitute_expr(expr)?, span),
+                Statement::Ascii(expr, span) => Statement::Ascii(self.substitute_expr(expr)?, span),
+                Statement::Asciz(expr, span) => Statement::Asciz(self.substitute_expr(expr)?, span),
                 Statement::Nop(span) => Statement::Nop(span),
-                Statement::Mov(dest, src, span) => {
-                    Statement::Mov(self.substitute_expr(dest), self.substitute_expr(src), span)
-                }
-                Statement::Ldr(dest, src, span) => {
-                    Statement::Ldr(self.substitute_expr(dest), self.substitute_expr(src), span)
-                }
-                Statement::Str(dest, src, span) => {
-                    Statement::Str(self.substitute_expr(dest), self.substitute_expr(src), span)
-                }
+                Statement::Mov(dest, src, span) => Statement::Mov(
+                    self.substitute_expr(dest)?,
+                    self.substitute_expr(src)?,
+                    span,
+                ),
+                Statement::Ldr(dest, src, span) => Statement::Ldr(
+                    self.substitute_expr(dest)?,
+                    self.substitute_expr(src)?,
+                    span,
+                ),
+                Statement::Str(dest, src, span) => Statement::Str(
+                    self.substitute_expr(dest)?,
+                    self.substitute_expr(src)?,
+                    span,
+                ),
                 Statement::Push(size, src, span) => Statement::Push(
-                    size.map(|e| self.substitute_expr(e)),
-                    self.substitute_expr(src),
+                    if let Some(e) = size {
+                        Some(self.substitute_expr(e)?)
+                    } else {
+                        None
+                    },
+                    self.substitute_expr(src)?,
                     span,
                 ),
                 Statement::Pop(size, dst, span) => Statement::Pop(
-                    size.map(|e| self.substitute_expr(e)),
-                    self.substitute_expr(dst),
+                    if let Some(e) = size {
+                        Some(self.substitute_expr(e)?)
+                    } else {
+                        None
+                    },
+                    self.substitute_expr(dst)?,
                     span,
                 ),
                 Statement::Add(dest, lhs, rhs, span) => Statement::Add(
-                    self.substitute_expr(dest),
-                    self.substitute_expr(lhs),
-                    self.substitute_expr(rhs),
+                    self.substitute_expr(dest)?,
+                    self.substitute_expr(lhs)?,
+                    self.substitute_expr(rhs)?,
                     span,
                 ),
                 Statement::Sub(dest, lhs, rhs, span) => Statement::Sub(
-                    self.substitute_expr(dest),
-                    self.substitute_expr(lhs),
-                    self.substitute_expr(rhs),
+                    self.substitute_expr(dest)?,
+                    self.substitute_expr(lhs)?,
+                    self.substitute_expr(rhs)?,
                     span,
                 ),
                 Statement::Mul(dest, lhs, rhs, span) => Statement::Mul(
-                    self.substitute_expr(dest),
-                    self.substitute_expr(lhs),
-                    self.substitute_expr(rhs),
+                    self.substitute_expr(dest)?,
+                    self.substitute_expr(lhs)?,
+                    self.substitute_expr(rhs)?,
                     span,
                 ),
                 Statement::Div(dest, lhs, rhs, span) => Statement::Div(
-                    self.substitute_expr(dest),
-                    self.substitute_expr(lhs),
-                    self.substitute_expr(rhs),
+                    self.substitute_expr(dest)?,
+                    self.substitute_expr(lhs)?,
+                    self.substitute_expr(rhs)?,
                     span,
                 ),
                 Statement::And(dest, lhs, rhs, span) => Statement::And(
-                    self.substitute_expr(dest),
-                    self.substitute_expr(lhs),
-                    self.substitute_expr(rhs),
+                    self.substitute_expr(dest)?,
+                    self.substitute_expr(lhs)?,
+                    self.substitute_expr(rhs)?,
                     span,
                 ),
                 Statement::Or(dest, lhs, rhs, span) => Statement::Or(
-                    self.substitute_expr(dest),
-                    self.substitute_expr(lhs),
-                    self.substitute_expr(rhs),
+                    self.substitute_expr(dest)?,
+                    self.substitute_expr(lhs)?,
+                    self.substitute_expr(rhs)?,
                     span,
                 ),
                 Statement::Xor(dest, lhs, rhs, span) => Statement::Xor(
-                    self.substitute_expr(dest),
-                    self.substitute_expr(lhs),
-                    self.substitute_expr(rhs),
+                    self.substitute_expr(dest)?,
+                    self.substitute_expr(lhs)?,
+                    self.substitute_expr(rhs)?,
                     span,
                 ),
                 Statement::Shl(dest, lhs, rhs, span) => Statement::Shl(
-                    self.substitute_expr(dest),
-                    self.substitute_expr(lhs),
-                    self.substitute_expr(rhs),
+                    self.substitute_expr(dest)?,
+                    self.substitute_expr(lhs)?,
+                    self.substitute_expr(rhs)?,
                     span,
                 ),
                 Statement::Shr(dest, lhs, rhs, span) => Statement::Shr(
-                    self.substitute_expr(dest),
-                    self.substitute_expr(lhs),
-                    self.substitute_expr(rhs),
+                    self.substitute_expr(dest)?,
+                    self.substitute_expr(lhs)?,
+                    self.substitute_expr(rhs)?,
                     span,
                 ),
                 Statement::Cmp(lhs, rhs, span) => {
-                    Statement::Cmp(self.substitute_expr(lhs), self.substitute_expr(rhs), span)
+                    Statement::Cmp(self.substitute_expr(lhs)?, self.substitute_expr(rhs)?, span)
                 }
-                Statement::Jmp(expr, span) => Statement::Jmp(self.substitute_expr(expr), span),
-                Statement::Jeq(expr, span) => Statement::Jeq(self.substitute_expr(expr), span),
-                Statement::Jne(expr, span) => Statement::Jne(self.substitute_expr(expr), span),
-                Statement::Jlt(expr, span) => Statement::Jlt(self.substitute_expr(expr), span),
-                Statement::Jgt(expr, span) => Statement::Jgt(self.substitute_expr(expr), span),
-                Statement::Jle(expr, span) => Statement::Jle(self.substitute_expr(expr), span),
-                Statement::Jge(expr, span) => Statement::Jge(self.substitute_expr(expr), span),
-                Statement::Call(expr, span) => Statement::Call(self.substitute_expr(expr), span),
+                Statement::Jmp(expr, span) => Statement::Jmp(self.substitute_expr(expr)?, span),
+                Statement::Jeq(expr, span) => Statement::Jeq(self.substitute_expr(expr)?, span),
+                Statement::Jne(expr, span) => Statement::Jne(self.substitute_expr(expr)?, span),
+                Statement::Jlt(expr, span) => Statement::Jlt(self.substitute_expr(expr)?, span),
+                Statement::Jgt(expr, span) => Statement::Jgt(self.substitute_expr(expr)?, span),
+                Statement::Jle(expr, span) => Statement::Jle(self.substitute_expr(expr)?, span),
+                Statement::Jge(expr, span) => Statement::Jge(self.substitute_expr(expr)?, span),
+                Statement::Call(expr, span) => Statement::Call(self.substitute_expr(expr)?, span),
                 Statement::Ret(span) => Statement::Ret(span),
-                Statement::Inc(expr, span) => Statement::Inc(self.substitute_expr(expr), span),
-                Statement::Dec(expr, span) => Statement::Dec(self.substitute_expr(expr), span),
+                Statement::Inc(expr, span) => Statement::Inc(self.substitute_expr(expr)?, span),
+                Statement::Dec(expr, span) => Statement::Dec(self.substitute_expr(expr)?, span),
                 Statement::Syscall(span) => Statement::Syscall(span),
                 Statement::Hlt(span) => Statement::Hlt(span),
                 Statement::Db(exprs, span) => Statement::Db(
-                    exprs.into_iter().map(|e| self.substitute_expr(e)).collect(),
+                    {
+                        let mut new_exprs = vec![];
+                        for expr in exprs {
+                            new_exprs.push(self.substitute_expr(expr)?);
+                        }
+                        new_exprs
+                    },
                     span,
                 ),
-                Statement::Resb(expr, span) => Statement::Resb(self.substitute_expr(expr), span),
+                Statement::Resb(expr, span) => Statement::Resb(self.substitute_expr(expr)?, span),
             };
 
             final_statements.push(new_stmt);
@@ -486,25 +516,63 @@ impl Preprocessor {
         parser.parse().map_err(|e| e.into())
     }
 
-    fn substitute_expr(&self, expr: Expression) -> Expression {
+    fn substitute_expr(&self, expr: Expression) -> Result<Expression> {
         match expr {
             Expression::Identifier(name) => {
                 if let Some(replacement) = self.definitions.get(&name) {
                     self.substitute_expr(replacement.clone())
                 } else {
-                    Expression::Identifier(name)
+                    Ok(Expression::Identifier(name))
                 }
             }
             Expression::Address(base, offset_opt) => {
-                let new_base = Box::new(self.substitute_expr(*base));
-                let new_offset = offset_opt.map(|offset| Box::new(self.substitute_expr(*offset)));
-                Expression::Address(new_base, new_offset)
+                let new_base = Box::new(self.substitute_expr(*base)?);
+                let new_offset = if let Some(offset) = offset_opt {
+                    Some(Box::new(self.substitute_expr(*offset)?))
+                } else {
+                    None
+                };
+                Ok(Expression::Address(new_base, new_offset))
             }
-            Expression::Register(reg) => Expression::Register(reg),
-            Expression::IntegerLiteral(val) => Expression::IntegerLiteral(val),
-            Expression::FloatLiteral(val) => Expression::FloatLiteral(val),
-            Expression::StringLiteral(val) => Expression::StringLiteral(val),
-            Expression::DataSize(size) => Expression::DataSize(size),
+            Expression::Register(reg) => Ok(Expression::Register(reg)),
+            Expression::IntegerLiteral(val) => Ok(Expression::IntegerLiteral(val)),
+            Expression::FloatLiteral(val) => Ok(Expression::FloatLiteral(val)),
+            Expression::StringLiteral(val) => Ok(Expression::StringLiteral(val)),
+            Expression::DataSize(size) => Ok(Expression::DataSize(size)),
+            Expression::BinaryOp(lhs, op, rhs, span) => {
+                let lhs = self.substitute_expr(*lhs)?;
+                let rhs = self.substitute_expr(*rhs)?;
+                match (lhs, rhs) {
+                    (Expression::IntegerLiteral(l), Expression::IntegerLiteral(r)) => {
+                        Ok(Expression::IntegerLiteral(match op {
+                            BinaryOperator::Add => l + r,
+                            BinaryOperator::Sub => l - r,
+                            BinaryOperator::Mul => l * r,
+                            BinaryOperator::Div => l / r,
+                            BinaryOperator::BitOr => l | r,
+                            BinaryOperator::BitAnd => l & r,
+                            BinaryOperator::BitXor => l ^ r,
+                        }))
+                    }
+                    (Expression::FloatLiteral(l), Expression::FloatLiteral(r)) => {
+                        Ok(Expression::FloatLiteral(match op {
+                            BinaryOperator::Add => l + r,
+                            BinaryOperator::Sub => l - r,
+                            BinaryOperator::Mul => l * r,
+                            BinaryOperator::Div => l / r,
+                            _ => {
+                                return Err(Error::InvalidOperatorForFloat {
+                                    op: op.clone(),
+                                    src: self.input.clone(),
+                                    span: span.into(),
+                                }
+                                .into());
+                            }
+                        }))
+                    }
+                    (lhs, rhs) => Ok(Expression::BinaryOp(Box::new(lhs), op, Box::new(rhs), span)),
+                }
+            }
         }
     }
 }

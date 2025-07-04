@@ -7,7 +7,7 @@ use crate::{
         Lexer,
         token::{Token, TokenKind},
     },
-    parser::ast::{DataSize, Expression, SectionType, Statement},
+    parser::ast::{BinaryOperator, DataSize, Expression, SectionType, Statement},
     vm::register::Register,
 };
 
@@ -568,6 +568,45 @@ impl Parser {
     }
 
     fn parse_expression(&mut self) -> Result<Expression> {
+        self.parse_binary_expression(0)
+    }
+
+    fn parse_binary_expression(&mut self, min_prec: u8) -> Result<Expression> {
+        let cur_span = self.cur_token.loc;
+        let mut lhs = self.parse_primary()?;
+
+        loop {
+            let op = match self.cur_token.kind {
+                TokenKind::Plus => BinaryOperator::Add,
+                TokenKind::Minus => BinaryOperator::Sub,
+                TokenKind::Asterisk => BinaryOperator::Mul,
+                TokenKind::Slash => BinaryOperator::Div,
+                TokenKind::Pipe => BinaryOperator::BitOr,
+                TokenKind::Ampersand => BinaryOperator::BitAnd,
+                TokenKind::Caret => BinaryOperator::BitXor,
+                _ => break,
+            };
+
+            let prec = Self::binary_precedence(&op);
+            if prec < min_prec {
+                break;
+            }
+
+            self.next_token();
+            let rhs = self.parse_binary_expression(prec + 1)?;
+
+            lhs = Expression::BinaryOp(
+                Box::new(lhs),
+                op,
+                Box::new(rhs),
+                (cur_span.start, self.prev_token.loc.end).into(),
+            );
+        }
+
+        Ok(lhs)
+    }
+
+    fn parse_primary(&mut self) -> Result<Expression> {
         match self.cur_token.kind {
             TokenKind::Identifier => {
                 let ident = self.cur_token.literal.to_string();
@@ -702,6 +741,20 @@ impl Parser {
 
                 Ok(Expression::Address(Box::new(base), offset))
             }
+            TokenKind::LParen => {
+                self.next_token();
+                let expr = self.parse_expression()?;
+                if !self.cur_token_is(TokenKind::RParen) {
+                    return Err(Error::Expected {
+                        expected: ")".to_string(),
+                        got: self.cur_token.clone(),
+                        span: self.cur_token.source_span(),
+                        src: self.lexer.input.clone(),
+                    })?;
+                }
+                self.next_token();
+                Ok(expr)
+            }
             _ => {
                 return Err(Error::UnexpectedToken {
                     token: self.cur_token.clone(),
@@ -709,6 +762,16 @@ impl Parser {
                     src: self.lexer.input.clone(),
                 })?;
             }
+        }
+    }
+
+    fn binary_precedence(op: &BinaryOperator) -> u8 {
+        match op {
+            BinaryOperator::Mul | BinaryOperator::Div => 20,
+            BinaryOperator::Add | BinaryOperator::Sub => 10,
+            BinaryOperator::BitAnd => 5,
+            BinaryOperator::BitXor => 4,
+            BinaryOperator::BitOr => 3,
         }
     }
 

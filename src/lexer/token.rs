@@ -119,6 +119,13 @@ pub enum TokenKind {
     Comma,
     Plus,
     Minus,
+    Asterisk,
+    Slash,
+    Pipe,
+    Ampersand,
+    Caret,
+    LParen,
+    RParen,
     LBracket,
     RBracket,
 

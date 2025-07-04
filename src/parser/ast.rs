@@ -110,10 +110,22 @@ pub enum Expression {
     StringLiteral(String),
     DataSize(DataSize),
     Address(Box<Expression>, Option<Box<Expression>>),
+    BinaryOp(Box<Expression>, BinaryOperator, Box<Expression>, Span),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SectionType {
     Text,
     Data,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum BinaryOperator {
+    Add,    // +
+    Sub,    // -
+    Mul,    // *
+    Div,    // /
+    BitOr,  // |
+    BitAnd, // &
+    BitXor, // ^
 }
