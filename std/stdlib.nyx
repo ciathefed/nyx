@@ -7,6 +7,9 @@
 #define STDOUT 0x01
 #define STDERR 0x02
 
+#define TRUE 1
+#define FALSE 0
+
 #ifdef __MACOS__
     #ifdef __AARCH64__
         #define O_ACCMODE 0x3
