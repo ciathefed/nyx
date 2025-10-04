@@ -7,7 +7,6 @@ const Span = @import("../Span.zig");
 
 const Lexer = @This();
 
-filename: []const u8,
 input: []const u8,
 pos: usize = 0,
 read_pos: usize = 0,
@@ -15,9 +14,8 @@ ch: u8 = 0,
 strings: ArrayList([]const u8),
 allocator: Allocator,
 
-pub fn init(filename: []const u8, input: []const u8, allocator: Allocator) Lexer {
+pub fn init(input: []const u8, allocator: Allocator) Lexer {
     var lexer = Lexer{
-        .filename = filename,
         .input = input,
         .strings = .init(allocator),
         .allocator = allocator,
@@ -83,21 +81,21 @@ fn readNumber(self: *Lexer) Token {
 
     if (self.ch == '0') {
         switch (self.peekChar()) {
-            'x' | 'X' => {
+            'x', 'X' => {
                 self.readChar();
                 self.readChar();
                 while (ascii.isHex(self.ch)) self.readChar();
                 const literal = self.input[start..self.pos];
                 return Token.init(.hexadecimal, literal, .{ .start = start, .end = self.pos - 1 });
             },
-            'b' | 'B' => {
+            'b', 'B' => {
                 self.readChar();
                 self.readChar();
                 while (ascii.isHex(self.ch)) self.readChar();
                 const literal = self.input[start..self.pos];
                 return Token.init(.binary, literal, .{ .start = start, .end = self.pos - 1 });
             },
-            'o' | 'O' => {
+            'o', 'O' => {
                 self.readChar();
                 self.readChar();
                 while (ascii.isHex(self.ch)) self.readChar();
