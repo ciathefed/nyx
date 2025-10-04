@@ -43,7 +43,7 @@ program: []ast.Statement,
 bytecode: Bytecode,
 labels: std.StringHashMap(Label),
 fixups: std.AutoHashMap(Label, Fixup),
-entry: Entry,
+entry: ?Entry,
 filename: []const u8,
 input: []const u8,
 reporter: *fehler.ErrorReporter,
@@ -61,7 +61,7 @@ pub fn init(
         .bytecode = try .init(4 * program.len, allocator),
         .labels = .init(allocator),
         .fixups = .init(allocator),
-        .entry = .{ .address = 0x00 },
+        .entry = null,
         .filename = filename,
         .input = input,
         .reporter = reporter,
@@ -81,6 +81,9 @@ pub fn compile(self: *Compiler) ![]u8 {
             .label => |v| {
                 const offset = self.bytecode.len(self.bytecode.current_section);
                 try self.labels.put(v.name, .{ .section = self.bytecode.current_section, .addr = offset });
+                if (mem.eql(u8, v.name, "_start") and self.entry == null) {
+                    self.entry = .{ .fixup = .{ .label = v.name, .span = v.span } };
+                }
             },
             .section => |v| self.bytecode.current_section = switch (v.type) {
                 .text => .text,
@@ -203,7 +206,7 @@ pub fn compile(self: *Compiler) ![]u8 {
         }
     }
 
-    const entry: u64 = switch (self.entry) {
+    const entry: u64 = if (self.entry) |entry| switch (entry) {
         .address => |v| v,
         .fixup => |v| blk: {
             if (self.labels.get(v.label)) |label| {
@@ -217,7 +220,7 @@ pub fn compile(self: *Compiler) ![]u8 {
                 return error.CompilerError;
             }
         },
-    };
+    } else 0x00;
 
     var bytecode = ArrayList(u8).init(self.allocator);
     try bytecode.appendSlice(&mem.toBytes(entry));
