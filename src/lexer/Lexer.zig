@@ -7,6 +7,7 @@ const Span = @import("../Span.zig");
 
 const Lexer = @This();
 
+filename: []const u8,
 input: []const u8,
 pos: usize = 0,
 read_pos: usize = 0,
@@ -14,8 +15,9 @@ ch: u8 = 0,
 strings: ArrayList([]const u8),
 allocator: Allocator,
 
-pub fn init(input: []const u8, allocator: Allocator) Lexer {
+pub fn init(filename: []const u8, input: []const u8, allocator: Allocator) Lexer {
     var lexer = Lexer{
+        .filename = filename,
         .input = input,
         .strings = .init(allocator),
         .allocator = allocator,
