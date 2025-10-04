@@ -18,7 +18,7 @@ fn lex(allocator: std.mem.Allocator, input: []const u8) !LexResult {
     var tokens = ArrayList(Token).init(allocator);
     errdefer tokens.deinit();
 
-    var lexer = Lexer.init(input, allocator);
+    var lexer = Lexer.init("test.nyx", input, allocator);
     errdefer lexer.deinit();
 
     while (true) {
