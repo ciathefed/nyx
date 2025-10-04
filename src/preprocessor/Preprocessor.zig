@@ -410,10 +410,11 @@ fn report(
     span: Span,
     status: ?u8,
 ) void {
+    const source = self.reporter.sources.get(span.filename).?;
     self.reporter.report(.{
         .severity = severity,
         .message = message,
-        .range = span.toSourceRange(self.input),
+        .range = span.toSourceRange(source),
     });
     if (status) |code| {
         std.process.exit(code);
