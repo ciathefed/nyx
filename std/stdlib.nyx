@@ -2,6 +2,7 @@
 #define SYS_CLOSE 0x01
 #define SYS_READ  0x02
 #define SYS_WRITE 0x03
+#define SYS_EXIT  0xFF
 
 #define STDIN  0x00
 #define STDOUT 0x01

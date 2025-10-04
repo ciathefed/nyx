@@ -15,6 +15,7 @@ pub fn collectSyscalls(allocator: Allocator) !Syscalls {
     try syscalls.put(0x01, sysClose);
     try syscalls.put(0x02, sysRead);
     try syscalls.put(0x03, sysWrite);
+    try syscalls.put(0xFF, sysExit);
 
     return syscalls;
 }
@@ -65,4 +66,9 @@ fn sysWrite(self: *Machine) anyerror!void {
     const n = try posix.write(fd, buf);
 
     self.regs.set(.q0, .{ .qword = @intCast(n) });
+}
+
+fn sysExit(self: *Machine) anyerror!void {
+    const status = self.regs.get(.b0).asU8();
+    posix.exit(status);
 }
