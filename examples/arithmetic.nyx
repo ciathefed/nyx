@@ -1,0 +1,39 @@
+.section text
+_start:
+    ; Load some initial values into registers
+    mov q0, 20          ; q0 = 20
+    mov q1, 5           ; q1 = 5
+
+    ; Basic arithmetic operations
+    add q2, q0, q1      ; q2 = 20 + 5 = 25
+    sub q3, q0, q1      ; q3 = 20 - 5 = 15
+    mul q4, q0, q1      ; q4 = 20 * 5 = 100
+    div q5, q0, q1      ; q5 = 20 / 5 = 4
+
+    ; Bitwise operations with binary patterns
+    mov q6, 15          ; q6 = 15 (0b1111 in binary)
+    mov q7, 10          ; q7 = 10 (0b1010 in binary)
+    and q8, q6, q7      ; q8 = 15 & 10 = 10 (0b1010)
+    or q9, q6, q7       ; q9 = 15 | 10 = 15 (0b1111)
+    xor q10, q6, q7     ; q10 = 15 ^ 10 = 5 (0b0101)
+
+    ; Shift operations for multiplication/division by powers of 2
+    mov q11, 8          ; q11 = 8
+    shl q12, q11, 2     ; q12 = 8 << 2 = 32 (multiply by 4)
+    shr q13, q12, 1     ; q13 = 32 >> 1 = 16 (divide by 2)
+
+    ; Arithmetic with immediate values
+    add q14, q0, 100    ; q14 = 20 + 100 = 120
+    mul q15, q1, 8      ; q15 = 5 * 8 = 40
+
+    ; Floating point arithmetic operations
+    mov ff0, 3.5        ; ff0 = 3.5
+    mov ff1, 2.0        ; ff1 = 2.0
+    add ff2, ff0, ff1   ; ff2 = 3.5 + 2.0 = 5.5
+    mul ff3, ff0, ff1   ; ff3 = 3.5 * 2.0 = 7.0
+
+    ; Program termination
+    hlt                 ; halt the virtual machine
+
+.section data
+    ; No data needed for this example

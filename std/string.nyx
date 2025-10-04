@@ -1,0 +1,135 @@
+.section text
+; strcpy(q0: *mut u8, q1: *const u8) -> void
+; Copies null-terminated string from q1 to q0
+strcpy:
+    ldr b3, [q1]
+    str b3, [q0]
+    inc q0
+    inc q1
+    cmp b3, 0
+    jne strcpy
+    ret
+
+
+.section text
+; strcat(q0: *mut u8, q1: *const u8) -> void
+; Appends null-terminated string q1 to the end of q0
+strcat:
+    ldr b3, [q0]
+    cmp b3, 0
+    jeq strcat_copy
+    inc q0
+    jmp strcat
+
+strcat_copy:
+    ldr b3, [q1]
+    str b3, [q0]
+    inc q0
+    inc q1
+    cmp b3, 0
+    jne strcat_copy
+    ret
+
+
+.section text
+; strlen(q0: *const u8) -> q0: usize
+; Calculates the length of a null-terminated string
+strlen:
+    mov q1, 0
+
+strlen_loop:
+    ldr b3, [q0]
+    cmp b3, 0
+    jeq strlen_end
+
+    inc q1
+    inc q0
+    jmp strlen_loop
+
+strlen_end:
+    mov q0, q1
+    ret
+
+
+.section text
+; strcmp(q0: *const u8, q1: *const u8) -> q0: i32
+; Compares two null-terminated strings
+; Returns 0 if equal, non-zero otherwise
+strcmp:
+    ldr b3, [q0]
+    ldr b4, [q1]
+    cmp b3, b4
+    jne strcmp_diff
+    cmp b3, 0
+    jeq strcmp_equal
+    inc q0
+    inc q1
+    jmp strcmp
+
+strcmp_diff:
+    sub q0, q0, q1
+    ret
+
+strcmp_equal:
+    mov q0, 0
+    ret
+
+
+.section text
+; memcpy(q0: *mut u8, q1: *const u8, q2: usize) -> void
+; Copies q2 bytes from q1 to q0
+memcpy:
+    cmp q2, 0
+    jeq memcpy_end
+
+    ldr b3, [q1]
+    str b3, [q0]
+    inc q0
+    inc q1
+    dec q2
+
+    jmp memcpy
+
+memcpy_end:
+    ret
+
+
+.section text
+; memset(q0: *mut u8, b1: u8, q2: usize) -> void
+; Sets q2 bytes at q0 to the byte value in b1
+memset:
+    cmp q2, 0
+    jeq memset_end
+    str b1, [q0]
+    inc q0
+    dec q2
+    jmp memset
+memset_end:
+    ret
+
+
+.section text
+; memcmp(q0: *const u8, q1: *const u8, q2: usize) -> q0: i32
+; Compares q2 bytes from q0 and q1
+; Returns 0 if equal, non-zero otherwise
+memcmp:
+    cmp q2, 0
+    jeq memcmp_equal
+
+    ldr b3, [q0]
+    ldr b4, [q1]
+    cmp b3, b4
+    jne memcmp_diff
+
+    inc q0
+    inc q1
+    dec q2
+    jmp memcmp
+
+memcmp_diff:
+    sub q0, q0, q1
+    ret
+
+memcmp_equal:
+    mov q0, 0
+    ret

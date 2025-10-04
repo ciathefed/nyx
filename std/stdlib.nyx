@@ -1,0 +1,36 @@
+#define SYS_OPEN  0x00
+#define SYS_CLOSE 0x01
+#define SYS_READ  0x02
+#define SYS_WRITE 0x03
+
+#define STDIN  0x00
+#define STDOUT 0x01
+#define STDERR 0x02
+
+#define TRUE 1
+#define FALSE 0
+
+#ifdef __MACOS__
+    #ifdef __AARCH64__
+        #define O_ACCMODE 0x3
+        #define O_RDONLY 0
+        #define O_WRONLY 1
+        #define O_RDWR 2
+        #define O_APPEND 8
+        #define O_CREAT 512
+        #define O_TRUNC 1024
+        #define O_EXCL 2048
+        #define O_ASYNC 0x40
+        #define O_SYNC 0x80
+        #define O_NONBLOCK 0x4
+        #define O_NOFOLLOW 0x100
+        #define O_SHLOCK 0x10
+        #define O_EXLOCK 0x20
+        #define O_FSYNC O_SYNC
+        #define O_NDELAY O_NONBLOCK
+    #else
+        #error "unsupported architecture"
+    #endif
+#else
+    #error "unsupported operating system"
+#endif

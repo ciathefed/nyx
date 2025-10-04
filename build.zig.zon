@@ -1,0 +1,21 @@
+.{
+    .name = .nyx,
+    .version = "0.1.0",
+    .fingerprint = 0x1d2b0489d3cba10c,
+    .minimum_zig_version = "0.15.1",
+    .dependencies = .{
+        .fehler = .{
+            .url = "git+https://github.com/ciathefed/fehler?ref=v0.6.1#acd4123ab5761d6fbc465445008e29588b3136b0",
+            .hash = "fehler-0.6.1-8HnVmRibAAAYzcUVtt2ax69nqfRf6sHNbLGonPN1IA6T",
+        },
+        .yazap = .{
+            .url = "git+https://github.com/prajwalch/yazap#5aad02aed585bd791c2592e1979417428a055ec4",
+            .hash = "yazap-0.6.3-Z1t-EmrzAQA-8vFR-JGpI7vCSpHv5_6z6PAIDq2X4PoH",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}

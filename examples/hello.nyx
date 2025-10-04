@@ -1,0 +1,17 @@
+.section text
+_start:
+    ; Set up system call parameters for write()
+    mov q0, 1           ; file descriptor (stdout)
+    mov q1, message     ; pointer to message string
+    mov q2, 14          ; number of bytes to write
+    mov q15, 3          ; system call number (sys_write)
+
+    ; Make the system call
+    syscall
+
+    ; Halt the program
+    hlt
+
+.section data
+message:
+    db "Hello, world!\n", 0x00  ; null-terminated string
