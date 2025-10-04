@@ -1,4 +1,8 @@
 .section text
+
+#include "string.nyx"
+#include "stdlib.nyx"
+
 ; print_string(q0: i64) -> void
 ; Prints a null terminated string
 print_string:
@@ -22,7 +26,6 @@ print_string:
     ret
 
 
-.section text
 ; print_number(q0: i64) -> void
 ; Converts a signed 64-bit integer to string and prints it
 print_number:
