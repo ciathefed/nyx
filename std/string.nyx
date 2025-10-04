@@ -1,4 +1,5 @@
 .section text
+
 ; strcpy(q0: *mut u8, q1: *const u8) -> void
 ; Copies null-terminated string from q1 to q0
 strcpy:
@@ -11,7 +12,6 @@ strcpy:
     ret
 
 
-.section text
 ; strcat(q0: *mut u8, q1: *const u8) -> void
 ; Appends null-terminated string q1 to the end of q0
 strcat:
@@ -31,7 +31,6 @@ strcat_copy:
     ret
 
 
-.section text
 ; strlen(q0: *const u8) -> q0: usize
 ; Calculates the length of a null-terminated string
 strlen:
@@ -51,7 +50,6 @@ strlen_end:
     ret
 
 
-.section text
 ; strcmp(q0: *const u8, q1: *const u8) -> q0: i32
 ; Compares two null-terminated strings
 ; Returns 0 if equal, non-zero otherwise
@@ -75,7 +73,6 @@ strcmp_equal:
     ret
 
 
-.section text
 ; memcpy(q0: *mut u8, q1: *const u8, q2: usize) -> void
 ; Copies q2 bytes from q1 to q0
 memcpy:
@@ -94,7 +91,6 @@ memcpy_end:
     ret
 
 
-.section text
 ; memset(q0: *mut u8, b1: u8, q2: usize) -> void
 ; Sets q2 bytes at q0 to the byte value in b1
 memset:
@@ -108,7 +104,6 @@ memset_end:
     ret
 
 
-.section text
 ; memcmp(q0: *const u8, q1: *const u8, q2: usize) -> q0: i32
 ; Compares q2 bytes from q0 and q1
 ; Returns 0 if equal, non-zero otherwise
