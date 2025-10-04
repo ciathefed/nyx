@@ -65,7 +65,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 self.nextToken();
                 return .{ .label = .{
                     .name = ident,
-                    .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                    .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
                 } };
             } else {
                 self.report(.err, "unexpected token", self.cur_token.span, 1);
@@ -77,7 +77,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const message = try self.parseExpression();
             return .{ .@"error" = .{
                 .expr = message,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_define => {
@@ -87,7 +87,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             return .{ .define = .{
                 .expr1 = name,
                 .expr2 = value,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_include => {
@@ -95,7 +95,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const path = try self.parseExpression();
             return .{ .include = .{
                 .expr = path,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_ifdef => {
@@ -103,7 +103,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .ifdef = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_ifndef => {
@@ -111,16 +111,16 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .ifndef = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_else => {
             self.nextToken();
-            return .{ .@"else" = .{ .start = cur_span.start, .end = self.prev_token.span.end } };
+            return .{ .@"else" = .init(cur_span.start, self.prev_token.span.end, cur_span.filename) };
         },
         .kw_endif => {
             self.nextToken();
-            return .{ .endif = .{ .start = cur_span.start, .end = self.prev_token.span.end } };
+            return .{ .endif = .init(cur_span.start, self.prev_token.span.end, cur_span.filename) };
         },
         .kw_section => {
             self.nextToken();
@@ -146,7 +146,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
 
             return .{ .section = .{
                 .type = section_type,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_entry => {
@@ -154,7 +154,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .entry = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_ascii => {
@@ -162,7 +162,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .ascii = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_asciz => {
@@ -170,15 +170,12 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .asciz = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_nop => {
             self.nextToken();
-            return .{ .nop = .{
-                .start = cur_span.start,
-                .end = self.prev_token.span.end,
-            } };
+            return .{ .nop = .init(cur_span.start, self.prev_token.span.end, cur_span.filename) };
         },
         .kw_mov => {
             self.nextToken();
@@ -188,7 +185,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             return .{ .mov = .{
                 .expr1 = dest,
                 .expr2 = src,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_ldr => {
@@ -199,7 +196,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             return .{ .ldr = .{
                 .expr1 = dest,
                 .expr2 = src,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_str => {
@@ -210,7 +207,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             return .{ .str = .{
                 .expr1 = src,
                 .expr2 = dest,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_sti => {
@@ -223,7 +220,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .expr1 = size,
                 .expr2 = src,
                 .expr3 = dest,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_push => {
@@ -236,7 +233,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             return .{ .push = .{
                 .data_size = size,
                 .expr = src,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_pop => {
@@ -249,7 +246,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             return .{ .pop = .{
                 .data_size = size,
                 .expr = dest,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_add => {
@@ -263,7 +260,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .expr1 = dest,
                 .expr2 = lhs,
                 .expr3 = rhs,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_sub => {
@@ -277,7 +274,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .expr1 = dest,
                 .expr2 = lhs,
                 .expr3 = rhs,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_mul => {
@@ -291,7 +288,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .expr1 = dest,
                 .expr2 = lhs,
                 .expr3 = rhs,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_div => {
@@ -305,7 +302,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .expr1 = dest,
                 .expr2 = lhs,
                 .expr3 = rhs,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_and => {
@@ -319,7 +316,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .expr1 = dest,
                 .expr2 = lhs,
                 .expr3 = rhs,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_or => {
@@ -333,7 +330,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .expr1 = dest,
                 .expr2 = lhs,
                 .expr3 = rhs,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_xor => {
@@ -347,7 +344,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .expr1 = dest,
                 .expr2 = lhs,
                 .expr3 = rhs,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_shl => {
@@ -361,7 +358,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .expr1 = dest,
                 .expr2 = lhs,
                 .expr3 = rhs,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_shr => {
@@ -375,7 +372,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .expr1 = dest,
                 .expr2 = lhs,
                 .expr3 = rhs,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_cmp => {
@@ -386,7 +383,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             return .{ .cmp = .{
                 .expr1 = lhs,
                 .expr2 = rhs,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_jmp => {
@@ -394,7 +391,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .jmp = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_jeq => {
@@ -402,7 +399,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .jeq = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_jne => {
@@ -410,7 +407,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .jne = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_jlt => {
@@ -418,7 +415,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .jlt = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_jgt => {
@@ -426,7 +423,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .jgt = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_jle => {
@@ -434,7 +431,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .jle = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_jge => {
@@ -442,7 +439,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .jge = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_call => {
@@ -450,19 +447,19 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .call = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_ret => {
             self.nextToken();
-            return .{ .ret = .{ .start = cur_span.start, .end = self.prev_token.span.end } };
+            return .{ .ret = .init(cur_span.start, self.prev_token.span.end, cur_span.filename) };
         },
         .kw_inc => {
             self.nextToken();
             const expr = try self.parseExpression();
             return .{ .inc = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_dec => {
@@ -470,7 +467,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .dec = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_neg => {
@@ -478,19 +475,19 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .neg = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_syscall => {
             self.nextToken();
             return .{
-                .syscall = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .syscall = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             };
         },
         .kw_hlt => {
             self.nextToken();
             return .{
-                .hlt = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .hlt = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             };
         },
         .kw_db => {
@@ -508,7 +505,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
 
             return .{ .db = .{
                 .exprs = try exprs.toOwnedSlice(),
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         .kw_resb => {
@@ -516,7 +513,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
             const expr = try self.parseExpression();
             return .{ .resb = .{
                 .expr = expr,
-                .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
         else => {
@@ -564,7 +561,7 @@ fn parseBinaryExpression(self: *Parser, min_prec: u8) anyerror!ast.Expression {
             .lhs = lhs_ptr,
             .op = op,
             .rhs = rhs_ptr,
-            .span = .{ .start = cur_span.start, .end = self.prev_token.span.end },
+            .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
         } };
     }
 
@@ -698,7 +695,7 @@ fn report(
     self.reporter.report(.{
         .severity = severity,
         .message = message,
-        .range = span.toSourceRange(self.lexer.filename, self.lexer.input),
+        .range = span.toSourceRange(self.lexer.input),
     });
     if (status) |code| {
         process.exit(code);

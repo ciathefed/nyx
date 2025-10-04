@@ -2,10 +2,15 @@ const fehler = @import("fehler");
 
 const Span = @This();
 
+filename: []const u8,
 start: usize,
 end: usize,
 
-pub fn toSourceRange(self: *const Span, filename: []const u8, source: []const u8) fehler.SourceRange {
+pub fn init(start: usize, end: usize, filename: []const u8) Span {
+    return Span{ .start = start, .end = end, .filename = filename };
+}
+
+pub fn toSourceRange(self: *const Span, source: []const u8) fehler.SourceRange {
     var line: usize = 1;
     var column: usize = 1;
     var start_pos: ?fehler.Position = null;
@@ -47,7 +52,7 @@ pub fn toSourceRange(self: *const Span, filename: []const u8, source: []const u8
     }
 
     return fehler.SourceRange{
-        .file = filename,
+        .file = self.filename,
         .start = start_pos.?,
         .end = end_pos.?,
     };

@@ -39,20 +39,20 @@ pub fn nextToken(self: *Lexer) Token {
     const start = self.pos;
 
     const token = switch (self.ch) {
-        0 => Token.init(.eof, "", .{ .start = start, .end = start }),
-        ',' => Token.init(.comma, ",", .{ .start = start, .end = start }),
-        ':' => Token.init(.colon, ":", .{ .start = start, .end = start }),
-        '+' => Token.init(.plus, "+", .{ .start = start, .end = start }),
-        '-' => Token.init(.minus, "-", .{ .start = start, .end = start }),
-        '*' => Token.init(.asterisk, "*", .{ .start = start, .end = start }),
-        '/' => Token.init(.slash, "/", .{ .start = start, .end = start }),
-        '|' => Token.init(.pipe, "|", .{ .start = start, .end = start }),
-        '&' => Token.init(.ampersand, "&", .{ .start = start, .end = start }),
-        '^' => Token.init(.caret, "^", .{ .start = start, .end = start }),
-        '(' => Token.init(.lparen, "(", .{ .start = start, .end = start }),
-        ')' => Token.init(.rparen, ")", .{ .start = start, .end = start }),
-        '[' => Token.init(.lbracket, "[", .{ .start = start, .end = start }),
-        ']' => Token.init(.rbracket, "]", .{ .start = start, .end = start }),
+        0 => Token.init(.eof, "", .init(start, start, self.filename)),
+        ',' => Token.init(.comma, ",", .init(start, start, self.filename)),
+        ':' => Token.init(.colon, ":", .init(start, start, self.filename)),
+        '+' => Token.init(.plus, "+", .init(start, start, self.filename)),
+        '-' => Token.init(.minus, "-", .init(start, start, self.filename)),
+        '*' => Token.init(.asterisk, "*", .init(start, start, self.filename)),
+        '/' => Token.init(.slash, "/", .init(start, start, self.filename)),
+        '|' => Token.init(.pipe, "|", .init(start, start, self.filename)),
+        '&' => Token.init(.ampersand, "&", .init(start, start, self.filename)),
+        '^' => Token.init(.caret, "^", .init(start, start, self.filename)),
+        '(' => Token.init(.lparen, "(", .init(start, start, self.filename)),
+        ')' => Token.init(.rparen, ")", .init(start, start, self.filename)),
+        '[' => Token.init(.lbracket, "[", .init(start, start, self.filename)),
+        ']' => Token.init(.rbracket, "]", .init(start, start, self.filename)),
         '#' => return self.readDirective(),
         '.' => return self.readDirective(),
         '"' => return self.readString(),
@@ -60,7 +60,7 @@ pub fn nextToken(self: *Lexer) Token {
         else => {
             if (ascii.isDigit(self.ch)) return self.readNumber();
             if (ascii.isAlphabetic(self.ch) or self.ch == '_') return self.readIdentifier();
-            return Token.init(.illegal, "", .{ .start = start, .end = start });
+            return Token.init(.illegal, "", .init(start, start, self.filename));
         },
     };
 
@@ -88,21 +88,21 @@ fn readNumber(self: *Lexer) Token {
                 self.readChar();
                 while (ascii.isHex(self.ch)) self.readChar();
                 const literal = self.input[start..self.pos];
-                return Token.init(.hexadecimal, literal, .{ .start = start, .end = self.pos - 1 });
+                return Token.init(.hexadecimal, literal, .init(start, self.pos - 1, self.filename));
             },
             'b', 'B' => {
                 self.readChar();
                 self.readChar();
                 while (ascii.isHex(self.ch)) self.readChar();
                 const literal = self.input[start..self.pos];
-                return Token.init(.binary, literal, .{ .start = start, .end = self.pos - 1 });
+                return Token.init(.binary, literal, .init(start, self.pos - 1, self.filename));
             },
             'o', 'O' => {
                 self.readChar();
                 self.readChar();
                 while (ascii.isHex(self.ch)) self.readChar();
                 const literal = self.input[start..self.pos];
-                return Token.init(.octal, literal, .{ .start = start, .end = self.pos - 1 });
+                return Token.init(.octal, literal, .init(start, self.pos - 1, self.filename));
             },
             else => {},
         }
@@ -115,10 +115,10 @@ fn readNumber(self: *Lexer) Token {
         while (ascii.isDigit(self.ch)) self.readChar();
 
         const literal = self.input[start..self.pos];
-        return Token.init(.float, literal, .{ .start = start, .end = self.pos - 1 });
+        return Token.init(.float, literal, .init(start, self.pos - 1, self.filename));
     } else {
         const literal = self.input[start..self.pos];
-        return Token.init(.integer, literal, .{ .start = start, .end = self.pos - 1 });
+        return Token.init(.integer, literal, .init(start, self.pos - 1, self.filename));
     }
 }
 
@@ -131,7 +131,7 @@ fn readIdentifier(self: *Lexer) Token {
     const literal = self.input[start..self.pos];
     const kind = Token.lookupIdent(literal);
 
-    return Token.init(kind, literal, .{ .start = start, .end = self.pos - 1 });
+    return Token.init(kind, literal, .init(start, self.pos - 1, self.filename));
 }
 
 fn readDirective(self: *Lexer) Token {
@@ -144,7 +144,7 @@ fn readDirective(self: *Lexer) Token {
     const literal = self.input[start..self.pos];
     const kind = Token.lookupIdent(literal);
 
-    return Token.init(kind, literal, .{ .start = start, .end = self.pos - 1 });
+    return Token.init(kind, literal, .init(start, self.pos - 1, self.filename));
 }
 
 fn readString(self: *Lexer) Token {
@@ -188,7 +188,7 @@ fn readString(self: *Lexer) Token {
     const literal = result.toOwnedSlice() catch unreachable;
     self.strings.append(literal) catch unreachable;
 
-    return Token.init(.string, literal, .{ .start = start, .end = end });
+    return Token.init(.string, literal, .init(start, end, self.filename));
 }
 
 fn peekChar(self: *Lexer) u8 {

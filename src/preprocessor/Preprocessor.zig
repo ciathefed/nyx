@@ -413,7 +413,7 @@ fn report(
     self.reporter.report(.{
         .severity = severity,
         .message = message,
-        .range = span.toSourceRange(self.filename, self.input),
+        .range = span.toSourceRange(self.input),
     });
     if (status) |code| {
         std.process.exit(code);
