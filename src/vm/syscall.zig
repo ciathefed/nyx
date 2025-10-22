@@ -15,6 +15,8 @@ pub fn collectSyscalls(allocator: Allocator) !Syscalls {
     try syscalls.put(0x01, sysClose);
     try syscalls.put(0x02, sysRead);
     try syscalls.put(0x03, sysWrite);
+    try syscalls.put(0x04, sysMalloc);
+    try syscalls.put(0x05, sysFree);
     try syscalls.put(0xFF, sysExit);
 
     return syscalls;
@@ -71,6 +73,45 @@ fn sysWrite(self: *Vm) anyerror!void {
     const n = try posix.write(fd, buf);
 
     self.regs.set(.q0, .{ .qword = @intCast(n) });
+}
+
+fn sysMalloc(self: *Vm) anyerror!void {
+    const size: usize = self.regs.get(.q0).asUsize();
+    const addr = try self.mmu.addBlock("Block", size);
+    self.regs.set(.q0, .{ .qword = @intCast(addr) });
+}
+
+pub fn sysFree(self: *Vm) !void {
+    const addr: usize = self.regs.get(.q0).asUsize();
+
+    if (self.mmu.blocks.items.len <= 2) return error.NoDynamicBlocks;
+
+    var start: usize = blk: {
+        var s: usize = 0;
+        for (self.mmu.blocks.items[0..2]) |b| {
+            var bus = b.bus();
+            s += bus.size();
+        }
+        break :blk s;
+    };
+    var i: usize = 2;
+    while (i < self.mmu.blocks.items.len) : (i += 1) {
+        const block = self.mmu.blocks.items[i];
+        var bus = block.bus();
+        const end = start + bus.size();
+
+        if (addr == start) {
+            _ = self.mmu.buses.orderedRemove(i);
+            _ = self.mmu.blocks.orderedRemove(i);
+            block.deinit();
+            self.mmu.allocator.destroy(block);
+            return;
+        }
+
+        start = end;
+    }
+
+    return error.InvalidFreeAddress;
 }
 
 fn sysExit(self: *Vm) anyerror!void {
