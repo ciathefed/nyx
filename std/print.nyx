@@ -26,9 +26,9 @@ print_string:
     ret
 
 
-; print_number(q0: i64) -> void
+; print_integer(q0: i64) -> void
 ; Converts a signed 64-bit integer to string and prints it
-print_number:
+print_integer:
     push q10
     push q11
     push q12
@@ -47,41 +47,41 @@ print_number:
     mov q13, 0
 
     cmp q12, 0
-    jge print_number_convert
+    jge print_integer_convert
 
     mov q13, 1
     mov q15, 0
     sub q12, q15, q12
 
-print_number_convert:
+print_integer_convert:
     mov q14, 10
 
-print_number_loop:
+print_integer_loop:
     mov q0, q12
     mov q1, 0
 
-print_number_divide:
+print_integer_divide:
     cmp q0, q14
-    jle print_number_divide_done
+    jle print_integer_divide_done
     sub q0, q0, q14
     add q1, q1, 1
-    jmp print_number_divide
+    jmp print_integer_divide
 
-print_number_divide_done:
+print_integer_divide_done:
     add q0, q0, 48
     str b0, [q11]
     sub q11, q11, 1
 
     mov q12, q1
     cmp q12, 0
-    jne print_number_loop
+    jne print_integer_loop
 
     cmp q13, 1
-    jne print_number_output
+    jne print_integer_output
     sti byte 45, [q11]
     sub q11, q11, 1
 
-print_number_output:
+print_integer_output:
     add q0, q11, 1
     call print_string
 
