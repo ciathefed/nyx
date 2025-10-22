@@ -369,8 +369,10 @@ test "complex program" {
     try testing.expect(result.tokens.len > 0);
     try testing.expectEqual(Token.Kind.kw_entry, result.tokens[0].kind);
     try testing.expectEqual(Token.Kind.identifier, result.tokens[1].kind);
-    try testing.expectEqual(Token.Kind.kw_section, result.tokens[2].kind);
-    try testing.expectEqual(Token.Kind.section_name, result.tokens[3].kind);
+    try testing.expectEqual(Token.Kind.newline, result.tokens[2].kind);
+    try testing.expectEqual(Token.Kind.kw_section, result.tokens[3].kind);
+    try testing.expectEqual(Token.Kind.section_name, result.tokens[4].kind);
+    try testing.expectEqual(Token.Kind.newline, result.tokens[5].kind);
 
     var instruction_count: usize = 0;
     for (result.tokens) |token| {
@@ -399,16 +401,16 @@ test "comments" {
     var result2 = try lex(testing.allocator, input2);
     defer result2.deinit(testing.allocator);
 
-    try testing.expectEqual(@as(usize, 5), result2.tokens.len);
-    try testing.expectEqual(Token.Kind.kw_mov, result2.tokens[0].kind);
+    try testing.expectEqual(@as(usize, 6), result2.tokens.len);
+    try testing.expectEqual(Token.Kind.kw_mov, result2.tokens[1].kind);
 
     const input3 = "nop ; comment\nhlt ; another comment";
     var result3 = try lex(testing.allocator, input3);
     defer result3.deinit(testing.allocator);
 
-    try testing.expectEqual(@as(usize, 3), result3.tokens.len);
+    try testing.expectEqual(@as(usize, 4), result3.tokens.len);
     try testing.expectEqual(Token.Kind.kw_nop, result3.tokens[0].kind);
-    try testing.expectEqual(Token.Kind.kw_hlt, result3.tokens[1].kind);
+    try testing.expectEqual(Token.Kind.kw_hlt, result3.tokens[2].kind);
 }
 
 test "strings" {
