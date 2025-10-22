@@ -12,9 +12,11 @@ storage: []u8,
 allocator: Allocator,
 
 pub fn init(block_name: []const u8, len: usize, allocator: Allocator) !Block {
+    var storage = try allocator.alloc(u8, len);
+    @memset(storage[0..], 0x00);
     return Block{
         .block_name = block_name,
-        .storage = try allocator.alloc(u8, len),
+        .storage = storage,
         .allocator = allocator,
     };
 }
