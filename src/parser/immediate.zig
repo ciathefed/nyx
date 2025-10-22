@@ -71,11 +71,11 @@ pub const Immediate = union(enum) {
     pub fn asU8(self: Immediate) u8 {
         return switch (self) {
             .byte => |v| v,
-            .word => |v| @intCast(v),
-            .dword => |v| @intCast(v),
-            .qword => |v| @intCast(v),
-            .float => |v| @intFromFloat(v),
-            .double => |v| @intFromFloat(v),
+            .word => |v| @truncate(v),
+            .dword => |v| @truncate(v),
+            .qword => |v| @truncate(v),
+            .float => |v| @truncate(@as(u8, @intFromFloat(v))),
+            .double => |v| @truncate(@as(u8, @intFromFloat(v))),
         };
     }
 
@@ -83,10 +83,10 @@ pub const Immediate = union(enum) {
         return switch (self) {
             .byte => |v| @intCast(v),
             .word => |v| v,
-            .dword => |v| @intCast(v),
-            .qword => |v| @intCast(v),
-            .float => |v| @intFromFloat(v),
-            .double => |v| @intFromFloat(v),
+            .dword => |v| @truncate(v),
+            .qword => |v| @truncate(v),
+            .float => |v| @truncate(@as(u16, @intFromFloat(v))),
+            .double => |v| @truncate(@as(u16, @intFromFloat(v))),
         };
     }
 
@@ -95,9 +95,9 @@ pub const Immediate = union(enum) {
             .byte => |v| @intCast(v),
             .word => |v| @intCast(v),
             .dword => |v| v,
-            .qword => |v| @intCast(v),
-            .float => |v| @intFromFloat(v),
-            .double => |v| @intFromFloat(v),
+            .qword => |v| @truncate(v),
+            .float => |v| @truncate(@as(u32, @intFromFloat(v))),
+            .double => |v| @truncate(@as(u32, @intFromFloat(v))),
         };
     }
 
@@ -107,8 +107,8 @@ pub const Immediate = union(enum) {
             .word => |v| @intCast(v),
             .dword => |v| @intCast(v),
             .qword => |v| v,
-            .float => |v| @intFromFloat(v),
-            .double => |v| @intFromFloat(v),
+            .float => |v| @truncate(@as(u64, @intFromFloat(v))),
+            .double => |v| @truncate(@as(u64, @intFromFloat(v))),
         };
     }
 

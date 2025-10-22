@@ -455,9 +455,9 @@ pub const Registers = struct {
             .general_purpose => {
                 const value = self.gpr[info.index];
                 return switch (info.view) {
-                    .byte => .{ .byte = @intCast(value) },
-                    .word => .{ .word = @intCast(value) },
-                    .dword => .{ .dword = @intCast(value) },
+                    .byte => .{ .byte = @intCast(value & 0xFF) },
+                    .word => .{ .word = @intCast(value & 0xFFFF) },
+                    .dword => .{ .dword = @intCast(value & 0xFFFFFFFF) },
                     .qword => .{ .qword = value },
                     else => unreachable,
                 };
@@ -465,8 +465,8 @@ pub const Registers = struct {
             .floating_point => {
                 const value = self.fpr[info.index];
                 return switch (info.view) {
-                    .float => .{ .float = @floatFromInt(value) },
-                    .double => .{ .double = @floatFromInt(value) },
+                    .float => .{ .float = @bitCast(@as(u32, @truncate(value))) },
+                    .double => .{ .double = @bitCast(value) },
                     else => unreachable,
                 };
             },
