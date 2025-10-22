@@ -3,9 +3,9 @@
 const std = @import("std");
 const posix = std.posix;
 const Allocator = std.mem.Allocator;
-const Machine = @import("Machine.zig");
+const Vm = @import("Vm.zig");
 
-pub const SyscallFn = *const fn (self: *Machine) anyerror!void;
+pub const SyscallFn = *const fn (self: *Vm) anyerror!void;
 pub const Syscalls = std.AutoHashMap(usize, SyscallFn);
 
 pub fn collectSyscalls(allocator: Allocator) !Syscalls {
@@ -20,7 +20,7 @@ pub fn collectSyscalls(allocator: Allocator) !Syscalls {
     return syscalls;
 }
 
-fn sysOpen(self: *Machine) anyerror!void {
+fn sysOpen(self: *Vm) anyerror!void {
     const path_addr = self.regs.get(.q0).asUsize();
     const flags = self.regs.get(.d1).asU32();
     const mode = self.regs.get(.w2).asU16();
@@ -38,12 +38,12 @@ fn sysOpen(self: *Machine) anyerror!void {
     self.regs.set(.q0, .{ .qword = @intCast(fd) });
 }
 
-fn sysClose(self: *Machine) anyerror!void {
+fn sysClose(self: *Vm) anyerror!void {
     const fd: i32 = @intCast(self.regs.get(.d0).asU32());
     posix.close(fd);
 }
 
-fn sysRead(self: *Machine) anyerror!void {
+fn sysRead(self: *Vm) anyerror!void {
     const fd: i32 = @intCast(self.regs.get(.d0).asU32());
     const addr = self.regs.get(.q1).asUsize();
     const count = self.regs.get(.q2).asUsize();
@@ -55,7 +55,7 @@ fn sysRead(self: *Machine) anyerror!void {
     self.regs.set(.q0, .{ .qword = @intCast(n) });
 }
 
-fn sysWrite(self: *Machine) anyerror!void {
+fn sysWrite(self: *Vm) anyerror!void {
     const fd: i32 = @intCast(self.regs.get(.d0).asU32());
     const addr = self.regs.get(.q1).asUsize();
     const count = self.regs.get(.q2).asUsize();
@@ -68,7 +68,7 @@ fn sysWrite(self: *Machine) anyerror!void {
     self.regs.set(.q0, .{ .qword = @intCast(n) });
 }
 
-fn sysExit(self: *Machine) anyerror!void {
+fn sysExit(self: *Vm) anyerror!void {
     const status = self.regs.get(.b0).asU8();
     posix.exit(status);
 }

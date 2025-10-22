@@ -11,7 +11,7 @@ const yazap = @import("yazap");
 const Lexer = @import("lexer/Lexer.zig");
 const Parser = @import("parser/Parser.zig");
 const Compiler = @import("compiler/Compiler.zig");
-const Machine = @import("vm/Machine.zig");
+const Vm = @import("vm/Vm.zig");
 const Preprocessor = @import("preprocessor/Preprocessor.zig");
 const utils = @import("utils.zig");
 
@@ -147,9 +147,9 @@ fn runBytecode(
     memory_size: usize,
     allocator: Allocator,
 ) !void {
-    var machine = try Machine.init(bytecode, memory_size, allocator);
-    defer machine.deinit();
-    try machine.run();
+    var vm = try Vm.init(bytecode, memory_size, allocator);
+    defer vm.deinit();
+    try vm.run();
 }
 
 fn executeBuildCommand(

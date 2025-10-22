@@ -12,7 +12,7 @@ const Opcode = @import("../compiler/opcode.zig").Opcode;
 const addressing_variant_1 = @import("../compiler/Compiler.zig").addressing_variant_1;
 const addressing_variant_2 = @import("../compiler/Compiler.zig").addressing_variant_2;
 
-const Machine = @This();
+const Vm = @This();
 
 regs: Registers,
 memory: Memory,
@@ -20,7 +20,7 @@ flags: Flags,
 syscalls: syscall.Syscalls,
 halted: bool,
 
-pub fn init(program: []const u8, mem_size: usize, allocator: Allocator) !Machine {
+pub fn init(program: []const u8, mem_size: usize, allocator: Allocator) !Vm {
     if (program.len < 8) return error.ProgramTooSmall;
     if (program.len >= mem_size) return error.ProgramTooLarge;
 
@@ -38,7 +38,7 @@ pub fn init(program: []const u8, mem_size: usize, allocator: Allocator) !Machine
 
     @memcpy(memory.storage.items[0..program_data.len], program_data);
 
-    return Machine{
+    return Vm{
         .regs = regs,
         .memory = memory,
         .flags = .init(),
@@ -47,12 +47,12 @@ pub fn init(program: []const u8, mem_size: usize, allocator: Allocator) !Machine
     };
 }
 
-pub fn deinit(self: *Machine) void {
+pub fn deinit(self: *Vm) void {
     self.memory.deinit();
     self.syscalls.deinit();
 }
 
-pub fn step(self: *Machine) !void {
+pub fn step(self: *Vm) !void {
     if (self.halted) return;
 
     const byte = try self.readByte();
@@ -342,11 +342,11 @@ pub fn step(self: *Machine) !void {
     }
 }
 
-pub fn run(self: *Machine) !void {
+pub fn run(self: *Vm) !void {
     while (!self.halted) try self.step();
 }
 
-inline fn readByte(self: *Machine) !u8 {
+inline fn readByte(self: *Vm) !u8 {
     const ip = self.regs.ip();
     if (ip >= self.memory.len()) return error.InstructionPointerOutOfBounds;
     const byte = self.memory.storage.items[ip];
@@ -354,7 +354,7 @@ inline fn readByte(self: *Machine) !u8 {
     return byte;
 }
 
-inline fn readWord(self: *Machine) !u16 {
+inline fn readWord(self: *Vm) !u16 {
     const ip = self.regs.ip();
     if (ip + 2 >= self.memory.len()) return error.InstructionPointerOutOfBounds;
     const word = mem.readInt(u16, self.memory.storage.items[ip .. ip + 2][0..2], .little);
@@ -362,7 +362,7 @@ inline fn readWord(self: *Machine) !u16 {
     return word;
 }
 
-inline fn readDword(self: *Machine) !u32 {
+inline fn readDword(self: *Vm) !u32 {
     const ip = self.regs.ip();
     if (ip + 4 >= self.memory.len()) return error.InstructionPointerOutOfBounds;
     const dword = mem.readInt(u32, self.memory.storage.items[ip .. ip + 4][0..4], .little);
@@ -370,7 +370,7 @@ inline fn readDword(self: *Machine) !u32 {
     return dword;
 }
 
-inline fn readQword(self: *Machine) !u64 {
+inline fn readQword(self: *Vm) !u64 {
     const ip = self.regs.ip();
     if (ip + 8 >= self.memory.len()) return error.InstructionPointerOutOfBounds;
     const qword = mem.readInt(u64, self.memory.storage.items[ip .. ip + 8][0..8], .little);
@@ -378,7 +378,7 @@ inline fn readQword(self: *Machine) !u64 {
     return qword;
 }
 
-inline fn readFloat(self: *Machine) !f32 {
+inline fn readFloat(self: *Vm) !f32 {
     const ip = self.regs.ip();
     if (ip + 4 >= self.memory.len()) return error.InstructionPointerOutOfBounds;
     const bits = mem.readInt(u32, self.memory.storage.items[ip .. ip + 4][0..4], .little);
@@ -387,7 +387,7 @@ inline fn readFloat(self: *Machine) !f32 {
     return float;
 }
 
-inline fn readDouble(self: *Machine) !f64 {
+inline fn readDouble(self: *Vm) !f64 {
     const ip = self.regs.ip();
     if (ip + 8 >= self.memory.len()) return error.InstructionPointerOutOfBounds;
     const bits = mem.readInt(u64, self.memory.storage.items[ip .. ip + 8][0..8], .little);
@@ -396,17 +396,17 @@ inline fn readDouble(self: *Machine) !f64 {
     return double;
 }
 
-inline fn readRegister(self: *Machine) !Register {
+inline fn readRegister(self: *Vm) !Register {
     const byte = try self.readByte();
     return Register.fromU8(byte);
 }
 
-inline fn readDataSize(self: *Machine) !DataSize {
+inline fn readDataSize(self: *Vm) !DataSize {
     const byte = try self.readByte();
     return DataSize.fromU8(byte);
 }
 
-fn push(self: *Machine, imm: Immediate) !void {
+fn push(self: *Vm, imm: Immediate) !void {
     const size = imm.size();
     const size_bytes = size.sizeInBytes();
     const current_sp = self.regs.sp();
@@ -420,7 +420,7 @@ fn push(self: *Machine, imm: Immediate) !void {
     return self.memory.write(new_sp, imm, size);
 }
 
-fn pop(self: *Machine, size: DataSize) !Immediate {
+fn pop(self: *Vm, size: DataSize) !Immediate {
     const current_sp = self.regs.sp();
     if (current_sp + size.sizeInBytes() > self.memory.len()) {
         return error.StackUnderflow;
@@ -432,7 +432,7 @@ fn pop(self: *Machine, size: DataSize) !Immediate {
 }
 
 fn executeBinaryOp(
-    self: *Machine,
+    self: *Vm,
     comptime op: anytype,
     read_rhs_from_reg: bool,
 ) !void {
@@ -483,7 +483,7 @@ inline fn div(a: anytype, b: anytype) @TypeOf(a, b) {
 }
 
 fn executeBitwiseOp(
-    self: *Machine,
+    self: *Vm,
     comptime op: anytype,
     read_rhs_from_reg: bool,
 ) !void {
