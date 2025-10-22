@@ -28,8 +28,13 @@ pub fn init(
     reporter: *fehler.ErrorReporter,
     allocator: Allocator,
 ) Parser {
-    const cur_token = lexer.nextToken();
-    const peek_token = lexer.nextToken();
+    var cur_token = lexer.nextToken();
+    var peek_token = lexer.nextToken();
+
+    while (cur_token.kind == .newline) {
+        cur_token = peek_token;
+        peek_token = lexer.nextToken();
+    }
 
     const arena = heap.ArenaAllocator.init(allocator);
 
@@ -82,11 +87,28 @@ fn parseStatement(self: *Parser) !ast.Statement {
         },
         .kw_define => {
             self.nextToken();
-            const name = try self.parseExpression();
-            const value = try self.parseExpression();
+
+            if (!self.curTokenIs(.identifier)) {
+                self.report(.err, "expected identifier after #define", self.cur_token.span, 1);
+                return error.ParserError;
+            }
+
+            const name_ident = try self.arena.allocator().dupe(u8, self.cur_token.literal);
+            const name = try self.arena.allocator().create(ast.Expression);
+            name.* = .{ .identifier = name_ident };
+
+            self.nextTokenRaw();
+
+            var expr: ?*ast.Expression = null;
+            if (self.curTokenIs(.newline) or self.curTokenIs(.eof)) {
+                self.nextToken();
+            } else {
+                expr = try self.parseExpression();
+            }
+
             return .{ .define = .{
-                .expr1 = name,
-                .expr2 = value,
+                .name = name,
+                .expr = expr,
                 .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
@@ -713,10 +735,21 @@ fn binaryPrecedence(op: ast.Expression.BinaryOp.Op) u8 {
     };
 }
 
+fn nextTokenRaw(self: *Parser) void {
+    self.prev_token = self.cur_token;
+    self.cur_token = self.peek_token;
+    self.peek_token = self.lexer.nextToken();
+}
+
 fn nextToken(self: *Parser) void {
     self.prev_token = self.cur_token;
     self.cur_token = self.peek_token;
     self.peek_token = self.lexer.nextToken();
+
+    while (self.cur_token.kind == .newline) {
+        self.cur_token = self.peek_token;
+        self.peek_token = self.lexer.nextToken();
+    }
 }
 
 fn curTokenIs(self: *Parser, kind: Token.Kind) bool {

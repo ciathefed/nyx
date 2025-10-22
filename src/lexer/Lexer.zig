@@ -34,9 +34,14 @@ pub fn deinit(self: *Lexer) void {
 }
 
 pub fn nextToken(self: *Lexer) Token {
-    self.skipWhitespace();
-
     const start = self.pos;
+
+    if (self.ch == '\n') {
+        self.readChar();
+        return Token.init(.newline, "\n", .init(start, start, self.filename));
+    }
+
+    self.skipWhitespace();
 
     const token = switch (self.ch) {
         0 => Token.init(.eof, "", .init(start, start, self.filename)),

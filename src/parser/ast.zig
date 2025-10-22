@@ -8,7 +8,7 @@ const Register = @import("../vm/register.zig").Register;
 pub const Statement = union(enum) {
     label: Label,
     @"error": Expr1,
-    define: Expr2,
+    define: Define,
     include: Expr1,
     ifdef: Expr1,
     ifndef: Expr1,
@@ -72,6 +72,12 @@ pub const Statement = union(enum) {
 
     pub const Label = struct {
         name: []const u8,
+        span: Span,
+    };
+
+    pub const Define = struct {
+        name: *Expression,
+        expr: ?*Expression,
         span: Span,
     };
 

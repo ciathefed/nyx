@@ -6,6 +6,7 @@ const Token = @This();
 pub const Kind = enum {
     eof,
     illegal,
+    newline,
 
     identifier,
     register,

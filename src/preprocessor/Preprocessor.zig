@@ -27,9 +27,9 @@ const ConditionalInfo = struct {
 filename: []const u8,
 input: []const u8,
 program: []ast.Statement,
-definitions: std.StringHashMap(*ast.Expression),
+definitions: std.StringHashMap(?*ast.Expression),
 include_paths: ArrayList([]const u8),
-included_files: std.StringHashMap(void),
+// included_files: std.StringHashMap(void),
 reporter: *fehler.ErrorReporter,
 arena: std.heap.ArenaAllocator,
 
@@ -43,7 +43,7 @@ pub fn init(
 ) !Preprocessor {
     var default_definitions = try defaults.getDefaultDefinitons(allocator);
     defer default_definitions.deinit();
-    var definitions = std.StringHashMap(*ast.Expression).init(allocator);
+    var definitions = std.StringHashMap(?*ast.Expression).init(allocator);
     errdefer definitions.deinit();
 
     var arena = std.heap.ArenaAllocator.init(allocator);
@@ -69,7 +69,7 @@ pub fn init(
             ArrayList([]const u8).fromOwnedSlice(allocator, paths)
         else
             ArrayList([]const u8).init(allocator),
-        .included_files = std.StringHashMap(void).init(allocator),
+        // .included_files = std.StringHashMap(void).init(allocator),
         .reporter = reporter,
         .arena = arena,
     };
@@ -78,7 +78,7 @@ pub fn init(
 pub fn deinit(self: *Preprocessor) void {
     self.definitions.deinit();
     self.include_paths.deinit();
-    self.included_files.deinit();
+    // self.included_files.deinit();
     self.arena.deinit();
 }
 
@@ -89,11 +89,11 @@ pub fn process(self: *Preprocessor) ![]ast.Statement {
     for (self.program) |stmt| {
         switch (stmt) {
             .define => |v| {
-                const name = switch (v.expr1.*) {
+                const name = switch (v.name.*) {
                     .identifier => |ident| ident,
                     else => return self.reportError("invalid define key", v.span),
                 };
-                try self.definitions.put(name, v.expr2);
+                try self.definitions.put(name, v.expr);
             },
             .include => |v| {
                 const file_path = switch (v.expr.*) {
@@ -132,8 +132,8 @@ fn processStatement(self: *Preprocessor, stmt: ast.Statement) !?ast.Statement {
             else => return self.reportError("expected string literal in #error directive", v.span),
         },
         .define => |v| .{ .define = .{
-            .expr1 = try self.substituteExpr(v.expr1),
-            .expr2 = try self.substituteExpr(v.expr2),
+            .name = try self.substituteExpr(v.name),
+            .expr = if (v.expr) |expr| try self.substituteExpr(expr) else null,
             .span = v.span,
         } },
         .include, .ifdef, .ifndef, .@"else", .endif => null,
@@ -207,12 +207,12 @@ fn processInclude(self: *Preprocessor, file_path: []const u8, span: Span) anyerr
 
     const path = found_path orelse return self.reportError("include file not found", span);
 
-    if (self.included_files.contains(path)) {
-        return self.reportError("circular include", span);
-    }
+    // if (self.included_files.contains(path)) {
+    //     return self.reportError("circular include", span);
+    // }
 
     const content = try utils.readFromFile(path, arena_alloc);
-    try self.included_files.put(path, {});
+    // try self.included_files.put(path, {});
     try self.reporter.addSource(path, content);
 
     const included_statements = try self.parseFileContent(content, path);
@@ -223,14 +223,14 @@ fn processInclude(self: *Preprocessor, file_path: []const u8, span: Span) anyerr
         .program = included_statements,
         .definitions = try self.definitions.clone(),
         .include_paths = try self.include_paths.clone(),
-        .included_files = try self.included_files.clone(),
+        // .included_files = try self.included_files.clone(),
         .reporter = self.reporter,
         .arena = std.heap.ArenaAllocator.init(arena_alloc),
     };
     defer {
         sub_preprocessor.definitions.deinit();
         sub_preprocessor.include_paths.deinit();
-        sub_preprocessor.included_files.deinit();
+        // sub_preprocessor.included_files.deinit();
     }
 
     const processed = try sub_preprocessor.process();
@@ -240,10 +240,10 @@ fn processInclude(self: *Preprocessor, file_path: []const u8, span: Span) anyerr
         try self.definitions.put(entry.key_ptr.*, entry.value_ptr.*);
     }
 
-    var included_files_iter = sub_preprocessor.included_files.iterator();
-    while (included_files_iter.next()) |entry| {
-        try self.included_files.put(entry.key_ptr.*, entry.value_ptr.*);
-    }
+    // var included_files_iter = sub_preprocessor.included_files.iterator();
+    // while (included_files_iter.next()) |entry| {
+    //     try self.included_files.put(entry.key_ptr.*, entry.value_ptr.*);
+    // }
 
     return processed;
 }
@@ -330,10 +330,14 @@ fn processConditionals(self: *Preprocessor, statements: []ast.Statement) ![]ast.
 
 fn substituteExpr(self: *Preprocessor, expr: *ast.Expression) anyerror!*ast.Expression {
     return switch (expr.*) {
-        .identifier => |name| if (self.definitions.get(name)) |replacement|
-            self.substituteExpr(replacement)
-        else
-            expr,
+        .identifier => |name| blk: {
+            if (self.definitions.get(name)) |replacement| {
+                if (replacement) |r| {
+                    break :blk self.substituteExpr(r);
+                }
+            }
+            break :blk expr;
+        },
         .address => |v| blk: {
             const new_base = try self.substituteExpr(v.base);
             const new_offset = if (v.offset) |offset|
