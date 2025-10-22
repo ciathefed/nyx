@@ -1,3 +1,6 @@
+#ifndef _PRINT
+#define _PRINT
+
 .section text
 
 #include "string.nyx"
@@ -93,3 +96,5 @@ print_integer_output:
     pop q11
     pop q10
     ret
+
+#endif ; _PRINT

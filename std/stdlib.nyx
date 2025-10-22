@@ -1,3 +1,6 @@
+#ifndef _STDLIB
+#define _STDLIB
+
 #define SYS_OPEN  0x00
 #define SYS_CLOSE 0x01
 #define SYS_READ  0x02
@@ -35,3 +38,5 @@
 #else
     #error "unsupported operating system"
 #endif
+
+#endif ; _STDLIB

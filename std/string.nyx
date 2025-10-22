@@ -1,3 +1,6 @@
+#ifndef _STRING
+#define _STRING
+
 .section text
 
 ; strcpy(q0: *mut u8, q1: *const u8) -> void
@@ -128,3 +131,5 @@ memcmp_diff:
 memcmp_equal:
     mov q0, 0
     ret
+
+#endif ; _STRING
