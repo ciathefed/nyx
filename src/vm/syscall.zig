@@ -25,12 +25,12 @@ fn sysOpen(self: *Vm) anyerror!void {
     const flags = self.regs.get(.d1).asU32();
     const mode = self.regs.get(.w2).asU16();
 
-    if (path_addr >= self.memory.len()) return error.InstructionPointerOutOfBounds;
+    if (path_addr >= self.mmu.size()) return error.AddressOutOfBounds;
 
     const path = blk: {
         var i = path_addr;
-        while (self.memory.storage.items[i] != 0) i += 1;
-        break :blk self.memory.storage.items[path_addr..i];
+        while ((try self.mmu.read(i, .byte)).asU8() != 0) i += 1;
+        break :blk try self.mmu.readSlice(path_addr, i - path_addr);
     };
 
     const fd = try posix.open(path, @bitCast(flags), mode);
@@ -48,9 +48,14 @@ fn sysRead(self: *Vm) anyerror!void {
     const addr = self.regs.get(.q1).asUsize();
     const count = self.regs.get(.q2).asUsize();
 
-    if (addr + count >= self.memory.len()) return error.InstructionPointerOutOfBounds;
+    if (addr + count >= self.mmu.size()) return error.AddressOutOfBounds;
 
-    const n = try posix.read(fd, self.memory.storage.items[addr .. addr + count]);
+    var buf = try self.mmu.allocator.alloc(u8, count);
+    defer self.mmu.allocator.free(buf);
+
+    const n = try posix.read(fd, buf);
+
+    try self.mmu.writeSlice(addr, buf[0..n]);
 
     self.regs.set(.q0, .{ .qword = @intCast(n) });
 }
@@ -60,9 +65,9 @@ fn sysWrite(self: *Vm) anyerror!void {
     const addr = self.regs.get(.q1).asUsize();
     const count = self.regs.get(.q2).asUsize();
 
-    if (addr + count >= self.memory.len()) return error.InstructionPointerOutOfBounds;
+    if (addr + count >= self.mmu.size()) return error.AddressOutOfBounds;
 
-    const buf = self.memory.storage.items[addr .. addr + count];
+    const buf = try self.mmu.readSlice(addr, count);
     const n = try posix.write(fd, buf);
 
     self.regs.set(.q0, .{ .qword = @intCast(n) });

@@ -26,36 +26,36 @@ pub fn len(self: *Memory) usize {
 pub fn read(self: *Memory, addr: usize, size: DataSize) !Immediate {
     switch (size) {
         .byte => {
-            if (addr + 1 > self.len()) return error.InstructionPointerOutOfBounds;
+            if (addr + 1 > self.len()) return error.AddressOutOfBounds;
             return .{ .byte = self.storage.items[addr] };
         },
         .word => {
-            if (addr + 2 > self.len()) return error.InstructionPointerOutOfBounds;
+            if (addr + 2 > self.len()) return error.AddressOutOfBounds;
             return .{
                 .word = mem.readInt(u16, self.storage.items[addr .. addr + 2][0..2], .little),
             };
         },
         .dword => {
-            if (addr + 4 > self.len()) return error.InstructionPointerOutOfBounds;
+            if (addr + 4 > self.len()) return error.AddressOutOfBounds;
             return .{
                 .dword = mem.readInt(u32, self.storage.items[addr .. addr + 4][0..4], .little),
             };
         },
         .qword => {
-            if (addr + 8 > self.len()) return error.InstructionPointerOutOfBounds;
+            if (addr + 8 > self.len()) return error.AddressOutOfBounds;
             return .{
                 .qword = mem.readInt(u64, self.storage.items[addr .. addr + 8][0..8], .little),
             };
         },
         .float => {
-            if (addr + 4 > self.len()) return error.InstructionPointerOutOfBounds;
+            if (addr + 4 > self.len()) return error.AddressOutOfBounds;
             const bytes = self.storage.items[addr .. addr + 4][0..4];
             return .{
                 .float = @bitCast(mem.readInt(u32, bytes, .little)),
             };
         },
         .double => {
-            if (addr + 8 > self.len()) return error.InstructionPointerOutOfBounds;
+            if (addr + 8 > self.len()) return error.AddressOutOfBounds;
             const bytes = self.storage.items[addr .. addr + 8][0..8];
             return .{
                 .double = @bitCast(mem.readInt(u64, bytes, .little)),
@@ -67,27 +67,27 @@ pub fn read(self: *Memory, addr: usize, size: DataSize) !Immediate {
 pub fn write(self: *Memory, addr: usize, value: Immediate, size: DataSize) !void {
     switch (size) {
         .byte => {
-            if (addr + 1 > self.len()) return error.InstructionPointerOutOfBounds;
+            if (addr + 1 > self.len()) return error.AddressOutOfBounds;
             self.storage.items[addr] = value.asU8();
         },
         .word => {
-            if (addr + 2 > self.len()) return error.InstructionPointerOutOfBounds;
+            if (addr + 2 > self.len()) return error.AddressOutOfBounds;
             @memcpy(self.storage.items[addr .. addr + 2], &mem.toBytes(value.asU16()));
         },
         .dword => {
-            if (addr + 4 > self.len()) return error.InstructionPointerOutOfBounds;
+            if (addr + 4 > self.len()) return error.AddressOutOfBounds;
             @memcpy(self.storage.items[addr .. addr + 4], &mem.toBytes(value.asU32()));
         },
         .qword => {
-            if (addr + 8 > self.len()) return error.InstructionPointerOutOfBounds;
+            if (addr + 8 > self.len()) return error.AddressOutOfBounds;
             @memcpy(self.storage.items[addr .. addr + 8], &mem.toBytes(value.asU64()));
         },
         .float => {
-            if (addr + 4 > self.len()) return error.InstructionPointerOutOfBounds;
+            if (addr + 4 > self.len()) return error.AddressOutOfBounds;
             @memcpy(self.storage.items[addr .. addr + 4], &mem.toBytes(value.asF32()));
         },
         .double => {
-            if (addr + 8 > self.len()) return error.InstructionPointerOutOfBounds;
+            if (addr + 8 > self.len()) return error.AddressOutOfBounds;
             @memcpy(self.storage.items[addr .. addr + 8], &mem.toBytes(value.asF64()));
         },
     }

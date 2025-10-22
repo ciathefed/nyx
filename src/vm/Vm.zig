@@ -5,7 +5,8 @@ const Registers = @import("register.zig").Registers;
 const Register = @import("register.zig").Register;
 const DataSize = @import("../parser/immediate.zig").DataSize;
 const Immediate = @import("../parser/immediate.zig").Immediate;
-const Memory = @import("Memory.zig");
+const Mmu = @import("memory/Mmu.zig");
+const Block = @import("memory/Block.zig");
 const Flags = @import("Flags.zig");
 const syscall = @import("syscall.zig");
 const Opcode = @import("../compiler/opcode.zig").Opcode;
@@ -15,7 +16,7 @@ const addressing_variant_2 = @import("../compiler/Compiler.zig").addressing_vari
 const Vm = @This();
 
 regs: Registers,
-memory: Memory,
+mmu: Mmu,
 flags: Flags,
 syscalls: syscall.Syscalls,
 halted: bool,
@@ -34,13 +35,16 @@ pub fn init(program: []const u8, mem_size: usize, allocator: Allocator) !Vm {
     regs.setBp(0);
     regs.setIp(entry_point);
 
-    const memory = try Memory.init(mem_size, allocator);
+    var mmu = Mmu.init(allocator);
+    errdefer mmu.deinit();
 
-    @memcpy(memory.storage.items[0..program_data.len], program_data);
+    _ = try mmu.addBlock("Program", program_data.len);
+    _ = try mmu.addBlock("Memory", mem_size - program_data.len);
+    try mmu.writeSlice(0x00, program_data);
 
     return Vm{
         .regs = regs,
-        .memory = memory,
+        .mmu = mmu,
         .flags = .init(),
         .syscalls = try syscall.collectSyscalls(allocator),
         .halted = false,
@@ -48,7 +52,7 @@ pub fn init(program: []const u8, mem_size: usize, allocator: Allocator) !Vm {
 }
 
 pub fn deinit(self: *Vm) void {
-    self.memory.deinit();
+    self.mmu.deinit();
     self.syscalls.deinit();
 }
 
@@ -88,7 +92,7 @@ pub fn step(self: *Vm) !void {
             };
             const offset = try self.readQword();
             const addr: usize = @intCast(base + offset);
-            const imm = try self.memory.read(addr, DataSize.fromRegister(dest));
+            const imm = try self.mmu.read(addr, DataSize.fromRegister(dest));
             self.regs.set(dest, imm);
         },
         .str => {
@@ -102,7 +106,7 @@ pub fn step(self: *Vm) !void {
             };
             const offset = try self.readQword();
             const addr: usize = @intCast(base + offset);
-            try self.memory.write(addr, value, DataSize.fromRegister(src));
+            try self.mmu.write(addr, value, DataSize.fromRegister(src));
         },
         .sti => {
             const size = try self.readDataSize();
@@ -122,7 +126,7 @@ pub fn step(self: *Vm) !void {
             };
             const offset = try self.readQword();
             const addr: usize = @intCast(base + offset);
-            try self.memory.write(addr, value, size);
+            try self.mmu.write(addr, value, size);
         },
         .push_imm => {
             const size = try self.readDataSize();
@@ -159,7 +163,7 @@ pub fn step(self: *Vm) !void {
             };
             const offset = try self.readQword();
             const addr: usize = @intCast(base + offset);
-            const value = try self.memory.read(addr, size);
+            const value = try self.mmu.read(addr, size);
             try self.push(value);
         },
         .pop_reg => {
@@ -179,7 +183,7 @@ pub fn step(self: *Vm) !void {
             const offset = try self.readQword();
             const addr: usize = @intCast(base + offset);
             const value = try self.pop(size);
-            try self.memory.write(addr, value, size);
+            try self.mmu.write(addr, value, size);
         },
         .add_reg_reg_reg => try self.executeBinaryOp(add, true),
         .add_reg_reg_imm => try self.executeBinaryOp(add, false),
@@ -348,40 +352,40 @@ pub fn run(self: *Vm) !void {
 
 inline fn readByte(self: *Vm) !u8 {
     const ip = self.regs.ip();
-    if (ip >= self.memory.len()) return error.InstructionPointerOutOfBounds;
-    const byte = self.memory.storage.items[ip];
+    if (ip >= self.mmu.size()) return error.InstructionPointerOutOfBounds;
+    const byte = (try self.mmu.read(ip, .byte)).asU8();
     self.regs.setIp(ip + 1);
     return byte;
 }
 
 inline fn readWord(self: *Vm) !u16 {
     const ip = self.regs.ip();
-    if (ip + 2 >= self.memory.len()) return error.InstructionPointerOutOfBounds;
-    const word = mem.readInt(u16, self.memory.storage.items[ip .. ip + 2][0..2], .little);
+    if (ip + 2 >= self.mmu.size()) return error.InstructionPointerOutOfBounds;
+    const word = (try self.mmu.read(ip, .word)).asU16();
     self.regs.setIp(ip + 2);
     return word;
 }
 
 inline fn readDword(self: *Vm) !u32 {
     const ip = self.regs.ip();
-    if (ip + 4 >= self.memory.len()) return error.InstructionPointerOutOfBounds;
-    const dword = mem.readInt(u32, self.memory.storage.items[ip .. ip + 4][0..4], .little);
+    if (ip + 4 >= self.mmu.size()) return error.InstructionPointerOutOfBounds;
+    const dword = (try self.mmu.read(ip, .dword)).asU32();
     self.regs.setIp(ip + 4);
     return dword;
 }
 
 inline fn readQword(self: *Vm) !u64 {
     const ip = self.regs.ip();
-    if (ip + 8 >= self.memory.len()) return error.InstructionPointerOutOfBounds;
-    const qword = mem.readInt(u64, self.memory.storage.items[ip .. ip + 8][0..8], .little);
+    if (ip + 8 >= self.mmu.size()) return error.InstructionPointerOutOfBounds;
+    const qword = (try self.mmu.read(ip, .qword)).asU64();
     self.regs.setIp(ip + 8);
     return qword;
 }
 
 inline fn readFloat(self: *Vm) !f32 {
     const ip = self.regs.ip();
-    if (ip + 4 >= self.memory.len()) return error.InstructionPointerOutOfBounds;
-    const bits = mem.readInt(u32, self.memory.storage.items[ip .. ip + 4][0..4], .little);
+    if (ip + 4 >= self.mmu.size()) return error.InstructionPointerOutOfBounds;
+    const bits = (try self.mmu.read(ip, .dword)).asU32();
     const float = @as(f32, @bitCast(bits));
     self.regs.setIp(ip + 4);
     return float;
@@ -389,8 +393,8 @@ inline fn readFloat(self: *Vm) !f32 {
 
 inline fn readDouble(self: *Vm) !f64 {
     const ip = self.regs.ip();
-    if (ip + 8 >= self.memory.len()) return error.InstructionPointerOutOfBounds;
-    const bits = mem.readInt(u64, self.memory.storage.items[ip .. ip + 8][0..8], .little);
+    if (ip + 8 >= self.mmu.size()) return error.InstructionPointerOutOfBounds;
+    const bits = (try self.mmu.read(ip, .qword)).asU64();
     const double = @as(f64, @bitCast(bits));
     self.regs.setIp(ip + 8);
     return double;
@@ -417,16 +421,16 @@ fn push(self: *Vm, imm: Immediate) !void {
 
     const new_sp = current_sp - size_bytes;
     self.regs.setSp(new_sp);
-    return self.memory.write(new_sp, imm, size);
+    return self.mmu.write(new_sp, imm, size);
 }
 
 fn pop(self: *Vm, size: DataSize) !Immediate {
     const current_sp = self.regs.sp();
-    if (current_sp + size.sizeInBytes() > self.memory.len()) {
+    if (current_sp + size.sizeInBytes() > self.mmu.size()) {
         return error.StackUnderflow;
     }
 
-    const value = try self.memory.read(current_sp, size);
+    const value = try self.mmu.read(current_sp, size);
     self.regs.setSp(current_sp + size.sizeInBytes());
     return value;
 }
