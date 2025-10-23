@@ -81,17 +81,11 @@ pub fn deinit(self: *Preprocessor) void {
 
 pub fn process(self: *Preprocessor) ![]ast.Statement {
     const arena_alloc = self.arena.allocator();
+
     var processed_statements = try ArrayList(ast.Statement).initCapacity(arena_alloc, self.program.len);
 
     for (self.program) |stmt| {
         switch (stmt) {
-            .define => |v| {
-                const name = switch (v.name.*) {
-                    .identifier => |ident| ident,
-                    else => return self.reportError("invalid define key", v.span),
-                };
-                try self.definitions.put(name, v.expr);
-            },
             .include => |v| {
                 const file_path = switch (v.expr.*) {
                     .string_literal => |str| str,
@@ -110,9 +104,20 @@ pub fn process(self: *Preprocessor) ![]ast.Statement {
     var final_statements = try ArrayList(ast.Statement).initCapacity(arena_alloc, conditional_statements.len);
 
     for (conditional_statements) |stmt| {
-        const new_stmt = try self.processStatement(stmt);
-        if (new_stmt) |s| {
-            try final_statements.append(s);
+        switch (stmt) {
+            .define => |v| {
+                const name = switch (v.name.*) {
+                    .identifier => |ident| ident,
+                    else => return self.reportError("invalid define key", v.span),
+                };
+                try self.definitions.put(name, v.expr);
+            },
+            else => {
+                const new_stmt = try self.processStatement(stmt);
+                if (new_stmt) |s| {
+                    try final_statements.append(s);
+                }
+            },
         }
     }
 
