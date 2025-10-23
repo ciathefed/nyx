@@ -113,4 +113,12 @@ double vm_get_reg_float(Vm *vm, uint8_t index);
 void vm_set_reg_int(Vm *vm, uint8_t index, int64_t value);
 void vm_set_reg_float(Vm *vm, uint8_t index, double value);
 
+uint8_t vm_mem_read_byte(Vm *vm, size_t addr);
+uint16_t vm_mem_read_word(Vm *vm, size_t addr);
+uint32_t vm_mem_read_dword(Vm *vm, size_t addr);
+uint64_t vm_mem_read_qword(Vm *vm, size_t addr);
+float vm_mem_read_float(Vm *vm, size_t addr);
+double vm_mem_read_double(Vm *vm, size_t addr);
+const char *vm_mem_read_cstr(Vm *vm, size_t addr);
+
 #endif // NYX_H
