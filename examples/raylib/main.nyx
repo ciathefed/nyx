@@ -1,0 +1,48 @@
+.extern init_window
+.extern close_window
+.extern set_target_fps
+.extern window_should_close
+.extern begin_drawing
+.extern end_drawing
+.extern clear_background
+.extern draw_text
+
+#include "stdlib.nyx"
+
+.section text
+_start:
+    mov d0, 800
+    mov d1, 450
+    mov q2, title
+    call init_window
+
+    mov d0, 60
+    call set_target_fps
+
+.loop:
+    call begin_drawing
+        mov q0, RAYWHITE
+        call clear_background
+
+        mov q0, message
+        mov d1, 190
+        mov d2, 200
+        mov d3, 20
+        mov q4, LIGHTGRAY
+        call draw_text
+    call end_drawing
+
+    call window_should_close
+    cmp b0, TRUE
+    jne .loop
+
+
+    call close_window
+    hlt
+
+.section data
+title:      .asciz "raylib [core] example - basic window"
+message:    .asciz "Congrats! You created your first window!"
+
+RAYWHITE:   db 245, 245, 245, 255
+LIGHTGRAY:  db 200, 200, 200, 255
