@@ -600,6 +600,20 @@ fn parseBinaryExpression(self: *Parser, min_prec: u8) anyerror!ast.Expression {
 
 fn parsePrimary(self: *Parser) anyerror!ast.Expression {
     switch (self.cur_token.kind) {
+        .minus => {
+            const cur_span = self.cur_token.span;
+            self.nextToken();
+            const expr = try self.parsePrimary();
+
+            const expr_ptr = try self.arena.allocator().create(ast.Expression);
+            expr_ptr.* = expr;
+
+            return .{ .unary_op = .{
+                .op = .neg,
+                .expr = expr_ptr,
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+            } };
+        },
         .identifier => {
             const ident = try self.arena.allocator().dupe(u8, self.cur_token.literal);
             self.nextToken();

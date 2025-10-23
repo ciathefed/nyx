@@ -160,11 +160,22 @@ pub const Expression = union(enum) {
     string_literal: []const u8,
     data_size: DataSize,
     address: Address,
+    unary_op: UnaryOp,
     binary_op: BinaryOp,
 
     pub const Address = struct {
         base: *Expression,
         offset: ?*Expression,
+    };
+
+    pub const UnaryOp = struct {
+        expr: *Expression,
+        op: Op,
+        span: Span,
+
+        pub const Op = enum {
+            neg,
+        };
     };
 
     pub const BinaryOp = struct {

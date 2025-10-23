@@ -349,14 +349,14 @@ fn compileLdrOrStr(
             try self.bytecode.push(l);
             try self.bytecode.push(addressing_variant_1);
             try self.bytecode.push(base);
-            try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(offset))));
+            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
         },
         .integer_literal => |base| {
             try self.bytecode.push(opcode);
             try self.bytecode.push(l);
             try self.bytecode.push(addressing_variant_2);
-            try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(base))));
-            try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(offset))));
+            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(base))));
+            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
         },
         .identifier => |base| {
             try self.bytecode.push(opcode);
@@ -367,7 +367,7 @@ fn compileLdrOrStr(
                 .{ .size = .qword, .label = base, .span = span },
             );
             try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00)));
-            try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(offset))));
+            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
         },
         else => return self.reportError("unsupported address base type", span),
     }
@@ -428,15 +428,15 @@ fn compileSti(
             try self.bytecode.extend(value_bytes);
             try self.bytecode.push(addressing_variant_1);
             try self.bytecode.push(base);
-            try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(offset))));
+            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
         },
         .integer_literal => |base| {
             try self.bytecode.push(Opcode.sti);
             try self.bytecode.push(s);
             try self.bytecode.extend(value_bytes);
             try self.bytecode.push(addressing_variant_2);
-            try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(base))));
-            try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(offset))));
+            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(base))));
+            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
         },
         .identifier => |base| {
             try self.bytecode.push(Opcode.sti);
@@ -448,7 +448,7 @@ fn compileSti(
                 .{ .size = .qword, .label = base, .span = span },
             );
             try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00)));
-            try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(offset))));
+            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
         },
         else => return self.reportError("unsupported address base type", span),
     }
@@ -539,12 +539,12 @@ fn compilePush(self: *Compiler, data_size: ?*ast.Expression, expr: *ast.Expressi
                 .register => |base| {
                     try self.bytecode.push(addressing_variant_1);
                     try self.bytecode.push(base);
-                    try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(offset))));
+                    try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
                 },
                 .integer_literal => |base| {
                     try self.bytecode.push(addressing_variant_2);
-                    try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(base))));
-                    try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(offset))));
+                    try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(base))));
+                    try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
                 },
                 .identifier => |base| {
                     try self.bytecode.push(addressing_variant_2);
@@ -553,7 +553,7 @@ fn compilePush(self: *Compiler, data_size: ?*ast.Expression, expr: *ast.Expressi
                         .{ .size = .qword, .label = base, .span = span },
                     );
                     try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00)));
-                    try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(offset))));
+                    try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
                 },
                 else => return self.reportError("unsupported address base type", span),
             }
@@ -598,12 +598,12 @@ fn compilePop(self: *Compiler, data_size: ?*ast.Expression, expr: *ast.Expressio
                 .register => |base| {
                     try self.bytecode.push(addressing_variant_1);
                     try self.bytecode.push(base);
-                    try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(offset))));
+                    try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
                 },
                 .integer_literal => |base| {
                     try self.bytecode.push(addressing_variant_2);
-                    try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(base))));
-                    try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(offset))));
+                    try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(base))));
+                    try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
                 },
                 .identifier => |base| {
                     try self.bytecode.push(addressing_variant_2);
@@ -612,7 +612,7 @@ fn compilePop(self: *Compiler, data_size: ?*ast.Expression, expr: *ast.Expressio
                         .{ .size = .qword, .label = base, .span = span },
                     );
                     try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00)));
-                    try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(offset))));
+                    try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
                 },
                 else => return self.reportError("unsupported address base type", span),
             }

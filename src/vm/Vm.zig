@@ -93,12 +93,12 @@ pub fn step(self: *Vm) !void {
         .ldr => {
             const dest = try self.readRegister();
             const variant = try self.readByte();
-            const base = switch (variant) {
+            const base: i64 = @bitCast(switch (variant) {
                 addressing_variant_1 => self.regs.get(try self.readRegister()).asU64(),
                 addressing_variant_2 => try self.readQword(),
                 else => return error.UnknownAddressingVariant,
-            };
-            const offset = try self.readQword();
+            });
+            const offset: i64 = @bitCast(try self.readQword());
             const addr: usize = @intCast(base + offset);
             const imm = try self.mmu.read(addr, DataSize.fromRegister(dest));
             self.regs.set(dest, imm);
@@ -107,12 +107,12 @@ pub fn step(self: *Vm) !void {
             const src = try self.readRegister();
             const value = self.regs.get(src);
             const variant = try self.readByte();
-            const base = switch (variant) {
+            const base: i64 = @bitCast(switch (variant) {
                 addressing_variant_1 => self.regs.get(try self.readRegister()).asU64(),
                 addressing_variant_2 => try self.readQword(),
                 else => return error.UnknownAddressingVariant,
-            };
-            const offset = try self.readQword();
+            });
+            const offset: i64 = @bitCast(try self.readQword());
             const addr: usize = @intCast(base + offset);
             try self.mmu.write(addr, value, DataSize.fromRegister(src));
         },
@@ -164,12 +164,12 @@ pub fn step(self: *Vm) !void {
         .push_addr => {
             const size = try self.readDataSize();
             const variant = try self.readByte();
-            const base = switch (variant) {
+            const base: i64 = @bitCast(switch (variant) {
                 addressing_variant_1 => self.regs.get(try self.readRegister()).asU64(),
                 addressing_variant_2 => try self.readQword(),
                 else => return error.UnknownAddressingVariant,
-            };
-            const offset = try self.readQword();
+            });
+            const offset: i64 = @bitCast(try self.readQword());
             const addr: usize = @intCast(base + offset);
             const value = try self.mmu.read(addr, size);
             try self.push(value);
@@ -183,12 +183,12 @@ pub fn step(self: *Vm) !void {
         .pop_addr => {
             const size = try self.readDataSize();
             const variant = try self.readByte();
-            const base = switch (variant) {
+            const base: i64 = @bitCast(switch (variant) {
                 addressing_variant_1 => self.regs.get(try self.readRegister()).asU64(),
                 addressing_variant_2 => try self.readQword(),
                 else => return error.UnknownAddressingVariant,
-            };
-            const offset = try self.readQword();
+            });
+            const offset: i64 = @bitCast(try self.readQword());
             const addr: usize = @intCast(base + offset);
             const value = try self.pop(size);
             try self.mmu.write(addr, value, size);
@@ -360,8 +360,6 @@ pub fn step(self: *Vm) !void {
 }
 
 pub fn run(self: *Vm) !void {
-    self.regs.set(.q0, .{ .qword = 1300 });
-    self.regs.set(.q1, .{ .qword = 37 });
     while (!self.halted) try self.step();
 }
 

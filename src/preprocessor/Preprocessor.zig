@@ -338,8 +338,35 @@ fn substituteExpr(self: *Preprocessor, expr: *ast.Expression) anyerror!*ast.Expr
             break :blk try self.createExpr(.{ .address = .{ .base = new_base, .offset = new_offset } });
         },
         .register, .integer_literal, .float_literal, .string_literal, .data_size => expr,
+        .unary_op => |v| try self.evaluateUnaryOp(v),
         .binary_op => |v| try self.evaluateBinaryOp(v),
     };
+}
+
+fn evaluateUnaryOp(self: *Preprocessor, v: ast.Expression.UnaryOp) !*ast.Expression {
+    const expr = try self.substituteExpr(v.expr);
+    switch (expr.*) {
+        .integer_literal => |int| {
+            const result = switch (v.op) {
+                .neg => blk: {
+                    if (int == std.math.minInt(i64)) {
+                        return self.reportError("integer overflow: cannot negate minimum value", v.span);
+                    }
+                    break :blk -int;
+                },
+            };
+            return self.createExpr(.{ .integer_literal = result });
+        },
+        .float_literal => |float| {
+            const result = switch (v.op) {
+                .neg => -float,
+            };
+            return self.createExpr(.{ .float_literal = result });
+        },
+        else => {
+            return self.reportError("cannot apply unary operator to non-literal expression", v.span);
+        },
+    }
 }
 
 fn evaluateBinaryOp(self: *Preprocessor, v: ast.Expression.BinaryOp) !*ast.Expression {
@@ -350,35 +377,79 @@ fn evaluateBinaryOp(self: *Preprocessor, v: ast.Expression.BinaryOp) !*ast.Expre
         const l_val = lhs.integer_literal;
         const r_val = rhs.integer_literal;
 
-        return self.createExpr(.{
-            .integer_literal = switch (v.op) {
-                .add => l_val + r_val,
-                .sub => l_val - r_val,
-                .mul => l_val * r_val,
-                .div => @divTrunc(l_val, r_val),
-                .bit_or => l_val | r_val,
-                .bit_and => l_val & r_val,
-                .bit_xor => l_val ^ r_val,
+        if ((v.op == .div) and r_val == 0) {
+            return self.reportError("division by zero", v.span);
+        }
+
+        const result = switch (v.op) {
+            .add => blk: {
+                const res = @addWithOverflow(l_val, r_val);
+                if (res[1] != 0) {
+                    return self.reportError("integer overflow in addition", v.span);
+                }
+                break :blk res[0];
             },
-        });
+            .sub => blk: {
+                const res = @subWithOverflow(l_val, r_val);
+                if (res[1] != 0) {
+                    return self.reportError("integer overflow in subtraction", v.span);
+                }
+                break :blk res[0];
+            },
+            .mul => blk: {
+                const res = @mulWithOverflow(l_val, r_val);
+                if (res[1] != 0) {
+                    return self.reportError("integer overflow in multiplication", v.span);
+                }
+                break :blk res[0];
+            },
+            .div => @divTrunc(l_val, r_val),
+            .bit_or => l_val | r_val,
+            .bit_and => l_val & r_val,
+            .bit_xor => l_val ^ r_val,
+        };
+
+        return self.createExpr(.{ .integer_literal = result });
     }
 
     if (lhs.* == .float_literal and rhs.* == .float_literal) {
         const l_val = lhs.float_literal;
         const r_val = rhs.float_literal;
 
+        if (v.op == .div and r_val == 0.0) {
+            return self.reportError("division by zero", v.span);
+        }
+
         const result = switch (v.op) {
             .add => l_val + r_val,
             .sub => l_val - r_val,
             .mul => l_val * r_val,
             .div => l_val / r_val,
-            else => return self.reportError("invalid operator for float", v.span),
+            else => return self.reportError("invalid operator for float operands", v.span),
         };
+
+        if (std.math.isNan(result)) {
+            return self.reportError("operation resulted in NaN", v.span);
+        }
+        if (std.math.isInf(result)) {
+            return self.reportError("floating point overflow", v.span);
+        }
 
         return self.createExpr(.{ .float_literal = result });
     }
 
-    return self.createExpr(.{ .binary_op = .{ .lhs = lhs, .op = v.op, .rhs = rhs, .span = v.span } });
+    if ((lhs.* == .integer_literal and rhs.* == .float_literal) or
+        (lhs.* == .float_literal and rhs.* == .integer_literal))
+    {
+        return self.reportError("type mismatch: cannot operate on integer and float", v.span);
+    }
+
+    return self.createExpr(.{ .binary_op = .{
+        .lhs = lhs,
+        .op = v.op,
+        .rhs = rhs,
+        .span = v.span,
+    } });
 }
 
 inline fn shouldIncludeStatementWithInfo(stack: []const ConditionalInfo) bool {
