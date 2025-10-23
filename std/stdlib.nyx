@@ -1,11 +1,13 @@
 #ifndef NYX_STDLIB
 #define NYX_STDLIB
 
-#define SYS_OPEN  0x00
-#define SYS_CLOSE 0x01
-#define SYS_READ  0x02
-#define SYS_WRITE 0x03
-#define SYS_EXIT  0xFF
+#define SYS_OPEN   0x00
+#define SYS_CLOSE  0x01
+#define SYS_READ   0x02
+#define SYS_WRITE  0x03
+#define SYS_MALLOC 0x04
+#define SYS_FREE   0x05
+#define SYS_EXIT   0xFF
 
 #define STDIN  0x00
 #define STDOUT 0x01
