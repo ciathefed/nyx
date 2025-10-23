@@ -56,7 +56,6 @@ pub const Opcode = enum(u8) {
     dec,
     neg,
     syscall,
-    load_external,
     hlt,
 
     pub fn intoU8(self: Opcode) u8 {
@@ -118,7 +117,6 @@ pub const Opcode = enum(u8) {
             @intFromEnum(Opcode.dec) => .dec,
             @intFromEnum(Opcode.neg) => .neg,
             @intFromEnum(Opcode.syscall) => .syscall,
-            @intFromEnum(Opcode.load_external) => .load_external,
             @intFromEnum(Opcode.hlt) => .hlt,
             else => error.InvalidOpcode,
         };

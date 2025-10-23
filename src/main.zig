@@ -54,7 +54,6 @@ fn createBuildCommand(app: *yazap.App) !yazap.Command {
     try build_cmd.addArgs(&.{
         yazap.Arg.positional("FILE", "Path to the source file to compile", null),
         yazap.Arg.singleValueOption("output", 'o', "Optional path to write the compiled bytecode output"),
-        yazap.Arg.multiValuesOption("library", 'l', "Link a dynamic librarie", 65536),
     });
     build_cmd.setProperty(.positional_arg_required);
     build_cmd.setProperty(.help_on_empty_args);
@@ -65,6 +64,7 @@ fn createExecCommand(app: *yazap.App) !yazap.Command {
     var exec_cmd = app.createCommand("exec", "Execute existing bytecode in the virtual machine");
     try exec_cmd.addArgs(&.{
         yazap.Arg.positional("FILE", "Path to the precompiled bytecode file to execute", null),
+        yazap.Arg.multiValuesOption("library", 'l', "Link a dynamic librarie", 65536),
         yazap.Arg.singleValueOption("memory-size", 'm', "Size of virtual machine memory in bytes"),
     });
     exec_cmd.setProperty(.positional_arg_required);
@@ -87,7 +87,6 @@ fn createRunCommand(app: *yazap.App) !yazap.Command {
 
 fn compileSourceFile(
     input_file_path: []const u8,
-    external_libraires: [][]const u8,
     reporter: *fehler.ErrorReporter,
     allocator: Allocator,
 ) ![]const u8 {
@@ -137,7 +136,6 @@ fn compileSourceFile(
         new_stmts,
         input_file_path,
         input,
-        external_libraires,
         reporter,
         allocator,
     );
@@ -148,10 +146,11 @@ fn compileSourceFile(
 
 fn runBytecode(
     bytecode: []const u8,
+    external_libraires: [][]const u8,
     memory_size: usize,
     allocator: Allocator,
 ) !void {
-    var vm = try Vm.init(bytecode, memory_size, allocator);
+    var vm = try Vm.init(bytecode, memory_size, external_libraires, allocator);
     defer vm.deinit();
     try vm.run();
 }
@@ -163,14 +162,8 @@ fn executeBuildCommand(
 ) !void {
     const input_file_path = matches.getSingleValue("FILE").?;
     const output_file_path = if (matches.getSingleValue("output")) |output| output else "out.nyb";
-    const external_libraires: [][]const u8 = matches.getMultiValues("library") orelse &.{};
 
-    const bytecode = try compileSourceFile(
-        input_file_path,
-        external_libraires,
-        reporter,
-        allocator,
-    );
+    const bytecode = try compileSourceFile(input_file_path, reporter, allocator);
     defer allocator.free(bytecode);
 
     try utils.writeToFile(output_file_path, bytecode);
@@ -182,6 +175,7 @@ fn executeExecCommand(
     allocator: Allocator,
 ) !void {
     const input_file_path = matches.getSingleValue("FILE").?;
+    const external_libraires: [][]const u8 = matches.getMultiValues("library") orelse &.{};
     const memory_size = if (matches.getSingleValue("memory-size")) |size|
         fmt.parseInt(usize, size, 10) catch {
             logError(reporter, "{s}: not a valid number", .{size});
@@ -193,7 +187,7 @@ fn executeExecCommand(
     const bytecode = try utils.readFromFile(input_file_path, allocator);
     defer allocator.free(bytecode);
 
-    try runBytecode(bytecode, memory_size, allocator);
+    try runBytecode(bytecode, external_libraires, memory_size, allocator);
 }
 
 fn executeRunCommand(
@@ -212,19 +206,14 @@ fn executeRunCommand(
     else
         65536;
 
-    const bytecode = try compileSourceFile(
-        input_file_path,
-        external_libraires,
-        reporter,
-        allocator,
-    );
+    const bytecode = try compileSourceFile(input_file_path, reporter, allocator);
     defer allocator.free(bytecode);
 
     if (output_file_path) |path| {
         try utils.writeToFile(path, bytecode);
     }
 
-    try runBytecode(bytecode, memory_size, allocator);
+    try runBytecode(bytecode, external_libraires, memory_size, allocator);
 }
 
 fn logError(reporter: *fehler.ErrorReporter, comptime format: []const u8, args: anytype) void {

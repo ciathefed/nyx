@@ -23,7 +23,12 @@ syscalls: syscall.Syscalls,
 external_loader: ExternalLoader,
 halted: bool,
 
-pub fn init(program: []const u8, mem_size: usize, allocator: Allocator) !Vm {
+pub fn init(
+    program: []const u8,
+    mem_size: usize,
+    external_libraries: [][]const u8,
+    allocator: Allocator,
+) !Vm {
     if (program.len < 8) return error.ProgramTooSmall;
     if (program.len >= mem_size) return error.ProgramTooLarge;
 
@@ -44,12 +49,15 @@ pub fn init(program: []const u8, mem_size: usize, allocator: Allocator) !Vm {
     _ = try mmu.addBlock("Memory", mem_size - program_data.len);
     try mmu.writeSlice(0x00, program_data);
 
+    var external_loader = ExternalLoader.init(allocator);
+    for (external_libraries) |lib| try external_loader.load(lib);
+
     return Vm{
         .regs = regs,
         .mmu = mmu,
         .flags = .init(),
         .syscalls = try syscall.collectSyscalls(allocator),
-        .external_loader = .init(allocator),
+        .external_loader = external_loader,
         .halted = false,
     };
 }
@@ -69,10 +77,6 @@ pub fn step(self: *Vm) !void {
 
     switch (opcode) {
         .nop => {},
-        .load_external => {
-            const path = try self.readString();
-            try self.external_loader.load(path);
-        },
         .mov_reg_reg => {
             const dest = try self.readRegister();
             const src = try self.readRegister();

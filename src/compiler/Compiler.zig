@@ -44,7 +44,6 @@ bytecode: Bytecode,
 labels: std.StringHashMap(Label),
 fixups: std.AutoHashMap(Label, Fixup),
 externs: ArrayList([]const u8),
-external_libraires: [][]const u8,
 entry: ?Entry,
 filename: []const u8,
 input: []const u8,
@@ -55,7 +54,6 @@ pub fn init(
     program: []ast.Statement,
     filename: []const u8,
     input: []const u8,
-    external_libraires: [][]const u8,
     reporter: *fehler.ErrorReporter,
     allocator: Allocator,
 ) !Compiler {
@@ -65,7 +63,6 @@ pub fn init(
         .labels = .init(allocator),
         .fixups = .init(allocator),
         .externs = .init(allocator),
-        .external_libraires = external_libraires,
         .entry = null,
         .filename = filename,
         .input = input,
@@ -200,20 +197,12 @@ pub fn compile(self: *Compiler) ![]u8 {
         }
     }
 
-    var external_libraires_bytecode = ArrayList(u8).init(self.allocator);
-    defer external_libraires_bytecode.deinit();
-    for (self.external_libraires) |path| {
-        try external_libraires_bytecode.append(@intFromEnum(Opcode.load_external));
-        try external_libraires_bytecode.appendSlice(path);
-        try external_libraires_bytecode.append(0x00);
-    }
-
     var fixup_iter = self.fixups.iterator();
     while (fixup_iter.next()) |fixup| {
         if (self.labels.get(fixup.value_ptr.label)) |label| {
             const pos = switch (label.section) {
-                .text => label.addr + external_libraires_bytecode.items.len,
-                .data => self.bytecode.len(.text) + label.addr + external_libraires_bytecode.items.len,
+                .text => label.addr,
+                .data => self.bytecode.len(.text) + label.addr,
             };
 
             switch (fixup.value_ptr.size) {
@@ -246,8 +235,7 @@ pub fn compile(self: *Compiler) ![]u8 {
     } else 0x00;
 
     var bytecode = ArrayList(u8).init(self.allocator);
-    try bytecode.appendSlice(&mem.toBytes(entry + external_libraires_bytecode.items.len));
-    try bytecode.appendSlice(external_libraires_bytecode.items);
+    try bytecode.appendSlice(&mem.toBytes(entry));
     const final = try self.bytecode.finalize(self.allocator);
     defer self.allocator.free(final);
     try bytecode.appendSlice(final);
