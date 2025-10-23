@@ -44,15 +44,12 @@ pub fn init(program: []const u8, mem_size: usize, allocator: Allocator) !Vm {
     _ = try mmu.addBlock("Memory", mem_size - program_data.len);
     try mmu.writeSlice(0x00, program_data);
 
-    var external_loader = ExternalLoader.init(allocator);
-    try external_loader.load("libtest.dylib");
-
     return Vm{
         .regs = regs,
         .mmu = mmu,
         .flags = .init(),
         .syscalls = try syscall.collectSyscalls(allocator),
-        .external_loader = external_loader,
+        .external_loader = .init(allocator),
         .halted = false,
     };
 }
