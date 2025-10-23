@@ -4,6 +4,9 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const fehler_dep = b.dependency("fehler", .{ .target = target, .optimize = optimize });
+    const yazap_dep = b.dependency("yazap", .{});
+
     const exe = b.addExecutable(.{
         .name = "nyx",
         .root_module = b.createModule(.{
@@ -13,13 +16,22 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    const fehler_dep = b.dependency("fehler", .{ .target = target, .optimize = optimize });
-    const yazap_dep = b.dependency("yazap", .{});
-
     exe.root_module.addImport("fehler", fehler_dep.module("fehler"));
     exe.root_module.addImport("yazap", yazap_dep.module("yazap"));
 
     b.installArtifact(exe);
+
+    const lib = b.addLibrary(.{
+        .name = "nyx",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/c_api.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+        .linkage = .dynamic,
+    });
+
+    b.installArtifact(lib);
 
     const run_step = b.step("run", "Run the app");
 

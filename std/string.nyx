@@ -1,5 +1,5 @@
-#ifndef _STRING
-#define _STRING
+#ifndef NYX_STRING
+#define NYX_STRING
 
 .section text
 
@@ -132,4 +132,4 @@ memcmp_equal:
     mov q0, 0
     ret
 
-#endif ; _STRING
+#endif ; NYX_STRING

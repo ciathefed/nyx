@@ -1,5 +1,5 @@
-#ifndef _PRINT
-#define _PRINT
+#ifndef NYX_PRINT
+#define NYX_PRINT
 
 .section text
 
@@ -97,4 +97,4 @@ print_integer_output:
     pop q10
     ret
 
-#endif ; _PRINT
+#endif ; NYX_PRINT

@@ -195,6 +195,14 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
+        .kw_extern => {
+            self.nextToken();
+            const expr = try self.parseExpression();
+            return .{ .@"extern" = .{
+                .expr = expr,
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+            } };
+        },
         .kw_nop => {
             self.nextToken();
             return .{ .nop = .init(cur_span.start, self.prev_token.span.end, cur_span.filename) };

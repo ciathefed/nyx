@@ -29,7 +29,6 @@ input: []const u8,
 program: []ast.Statement,
 definitions: std.StringHashMap(?*ast.Expression),
 include_paths: ArrayList([]const u8),
-// included_files: std.StringHashMap(void),
 reporter: *fehler.ErrorReporter,
 arena: std.heap.ArenaAllocator,
 
@@ -69,7 +68,6 @@ pub fn init(
             ArrayList([]const u8).fromOwnedSlice(allocator, paths)
         else
             ArrayList([]const u8).init(allocator),
-        // .included_files = std.StringHashMap(void).init(allocator),
         .reporter = reporter,
         .arena = arena,
     };
@@ -78,7 +76,6 @@ pub fn init(
 pub fn deinit(self: *Preprocessor) void {
     self.definitions.deinit();
     self.include_paths.deinit();
-    // self.included_files.deinit();
     self.arena.deinit();
 }
 
@@ -140,6 +137,7 @@ fn processStatement(self: *Preprocessor, stmt: ast.Statement) !?ast.Statement {
         .entry => |v| .{ .entry = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
         .ascii => |v| .{ .ascii = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
         .asciz => |v| .{ .asciz = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
+        .@"extern" => |v| .{ .@"extern" = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
         .jmp => |v| .{ .jmp = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
         .jeq => |v| .{ .jeq = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
         .jne => |v| .{ .jne = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
@@ -207,12 +205,7 @@ fn processInclude(self: *Preprocessor, file_path: []const u8, span: Span) anyerr
 
     const path = found_path orelse return self.reportError("include file not found", span);
 
-    // if (self.included_files.contains(path)) {
-    //     return self.reportError("circular include", span);
-    // }
-
     const content = try utils.readFromFile(path, arena_alloc);
-    // try self.included_files.put(path, {});
     try self.reporter.addSource(path, content);
 
     const included_statements = try self.parseFileContent(content, path);
@@ -223,14 +216,12 @@ fn processInclude(self: *Preprocessor, file_path: []const u8, span: Span) anyerr
         .program = included_statements,
         .definitions = try self.definitions.clone(),
         .include_paths = try self.include_paths.clone(),
-        // .included_files = try self.included_files.clone(),
         .reporter = self.reporter,
         .arena = std.heap.ArenaAllocator.init(arena_alloc),
     };
     defer {
         sub_preprocessor.definitions.deinit();
         sub_preprocessor.include_paths.deinit();
-        // sub_preprocessor.included_files.deinit();
     }
 
     const processed = try sub_preprocessor.process();
@@ -239,11 +230,6 @@ fn processInclude(self: *Preprocessor, file_path: []const u8, span: Span) anyerr
     while (definitions_iter.next()) |entry| {
         try self.definitions.put(entry.key_ptr.*, entry.value_ptr.*);
     }
-
-    // var included_files_iter = sub_preprocessor.included_files.iterator();
-    // while (included_files_iter.next()) |entry| {
-    //     try self.included_files.put(entry.key_ptr.*, entry.value_ptr.*);
-    // }
 
     return processed;
 }

@@ -1,5 +1,5 @@
-#ifndef _STDLIB
-#define _STDLIB
+#ifndef NYX_STDLIB
+#define NYX_STDLIB
 
 #define SYS_OPEN  0x00
 #define SYS_CLOSE 0x01
@@ -39,4 +39,4 @@
     #error "unsupported operating system"
 #endif
 
-#endif ; _STDLIB
+#endif ; NYX_STDLIB

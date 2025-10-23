@@ -9,6 +9,7 @@ const Mmu = @import("memory/Mmu.zig");
 const Block = @import("memory/Block.zig");
 const Flags = @import("Flags.zig");
 const syscall = @import("syscall.zig");
+const ExternalLoader = @import("ExternalLoader.zig");
 const Opcode = @import("../compiler/opcode.zig").Opcode;
 const addressing_variant_1 = @import("../compiler/Compiler.zig").addressing_variant_1;
 const addressing_variant_2 = @import("../compiler/Compiler.zig").addressing_variant_2;
@@ -19,6 +20,7 @@ regs: Registers,
 mmu: Mmu,
 flags: Flags,
 syscalls: syscall.Syscalls,
+external_loader: ExternalLoader,
 halted: bool,
 
 pub fn init(program: []const u8, mem_size: usize, allocator: Allocator) !Vm {
@@ -42,11 +44,15 @@ pub fn init(program: []const u8, mem_size: usize, allocator: Allocator) !Vm {
     _ = try mmu.addBlock("Memory", mem_size - program_data.len);
     try mmu.writeSlice(0x00, program_data);
 
+    var external_loader = ExternalLoader.init(allocator);
+    try external_loader.load("libtest.dylib");
+
     return Vm{
         .regs = regs,
         .mmu = mmu,
         .flags = .init(),
         .syscalls = try syscall.collectSyscalls(allocator),
+        .external_loader = external_loader,
         .halted = false,
     };
 }
@@ -54,6 +60,7 @@ pub fn init(program: []const u8, mem_size: usize, allocator: Allocator) !Vm {
 pub fn deinit(self: *Vm) void {
     self.mmu.deinit();
     self.syscalls.deinit();
+    self.external_loader.deinit();
 }
 
 pub fn step(self: *Vm) !void {
@@ -65,6 +72,10 @@ pub fn step(self: *Vm) !void {
 
     switch (opcode) {
         .nop => {},
+        .load_external => {
+            const path = try self.readString();
+            try self.external_loader.load(path);
+        },
         .mov_reg_reg => {
             const dest = try self.readRegister();
             const src = try self.readRegister();
@@ -290,6 +301,11 @@ pub fn step(self: *Vm) !void {
             try self.push(.{ .qword = @intCast(self.regs.ip()) });
             self.regs.setIp(addr);
         },
+        .call_ex => {
+            const name = try self.readString();
+            const func = try self.external_loader.lookup(name);
+            _ = func(self);
+        },
         .inc => {
             const reg = try self.readRegister();
             const value = self.regs.get(reg);
@@ -347,6 +363,8 @@ pub fn step(self: *Vm) !void {
 }
 
 pub fn run(self: *Vm) !void {
+    self.regs.set(.q0, .{ .qword = 1300 });
+    self.regs.set(.q1, .{ .qword = 37 });
     while (!self.halted) try self.step();
 }
 
@@ -408,6 +426,16 @@ inline fn readRegister(self: *Vm) !Register {
 inline fn readDataSize(self: *Vm) !DataSize {
     const byte = try self.readByte();
     return DataSize.fromU8(byte);
+}
+
+inline fn readString(self: *Vm) ![]const u8 {
+    const string = blk: {
+        const addr = self.regs.get(.ip).asUsize();
+        var i: usize = 0;
+        while (try self.readByte() != 0x00) i += 1;
+        break :blk try self.mmu.readSlice(addr, i);
+    };
+    return string;
 }
 
 fn push(self: *Vm, imm: Immediate) !void {

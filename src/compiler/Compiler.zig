@@ -43,6 +43,8 @@ program: []ast.Statement,
 bytecode: Bytecode,
 labels: std.StringHashMap(Label),
 fixups: std.AutoHashMap(Label, Fixup),
+externs: ArrayList([]const u8),
+external_libraires: [][]const u8,
 entry: ?Entry,
 filename: []const u8,
 input: []const u8,
@@ -53,6 +55,7 @@ pub fn init(
     program: []ast.Statement,
     filename: []const u8,
     input: []const u8,
+    external_libraires: [][]const u8,
     reporter: *fehler.ErrorReporter,
     allocator: Allocator,
 ) !Compiler {
@@ -61,6 +64,8 @@ pub fn init(
         .bytecode = try .init(4 * program.len, allocator),
         .labels = .init(allocator),
         .fixups = .init(allocator),
+        .externs = .init(allocator),
+        .external_libraires = external_libraires,
         .entry = null,
         .filename = filename,
         .input = input,
@@ -73,6 +78,7 @@ pub fn deinit(self: *Compiler) void {
     self.bytecode.deinit();
     self.labels.deinit();
     self.fixups.deinit();
+    self.externs.deinit();
 }
 
 pub fn compile(self: *Compiler) ![]u8 {
@@ -116,6 +122,15 @@ pub fn compile(self: *Compiler) ![]u8 {
                         try self.bytecode.extend(str);
                         try self.bytecode.push(0x00);
                     },
+                    else => {
+                        self.report(.err, "unsupported operand", v.span, 1);
+                        return error.CompilerError;
+                    },
+                }
+            },
+            .@"extern" => |v| {
+                switch (v.expr.*) {
+                    .identifier => |str| try self.externs.append(str),
                     else => {
                         self.report(.err, "unsupported operand", v.span, 1);
                         return error.CompilerError;
@@ -185,12 +200,20 @@ pub fn compile(self: *Compiler) ![]u8 {
         }
     }
 
+    var external_libraires_bytecode = ArrayList(u8).init(self.allocator);
+    defer external_libraires_bytecode.deinit();
+    for (self.external_libraires) |path| {
+        try external_libraires_bytecode.append(@intFromEnum(Opcode.load_external));
+        try external_libraires_bytecode.appendSlice(path);
+        try external_libraires_bytecode.append(0x00);
+    }
+
     var fixup_iter = self.fixups.iterator();
     while (fixup_iter.next()) |fixup| {
         if (self.labels.get(fixup.value_ptr.label)) |label| {
             const pos = switch (label.section) {
-                .text => label.addr,
-                .data => self.bytecode.len(.text) + label.addr,
+                .text => label.addr + external_libraires_bytecode.items.len,
+                .data => self.bytecode.len(.text) + label.addr + external_libraires_bytecode.items.len,
             };
 
             switch (fixup.value_ptr.size) {
@@ -223,7 +246,8 @@ pub fn compile(self: *Compiler) ![]u8 {
     } else 0x00;
 
     var bytecode = ArrayList(u8).init(self.allocator);
-    try bytecode.appendSlice(&mem.toBytes(entry));
+    try bytecode.appendSlice(&mem.toBytes(entry + external_libraires_bytecode.items.len));
+    try bytecode.appendSlice(external_libraires_bytecode.items);
     const final = try self.bytecode.finalize(self.allocator);
     defer self.allocator.free(final);
     try bytecode.appendSlice(final);
@@ -885,6 +909,15 @@ fn compileCall(self: *Compiler, expr: *ast.Expression, span: Span) !void {
             return;
         },
         .identifier => |src| {
+            for (self.externs.items) |ex| {
+                if (mem.eql(u8, src, ex)) {
+                    try self.bytecode.push(Opcode.call_ex);
+                    try self.bytecode.extend(src);
+                    try self.bytecode.push(0x00);
+                    return;
+                }
+            }
+
             try self.bytecode.push(Opcode.call_imm);
             const offset = self.bytecode.len(self.bytecode.current_section);
             try self.fixups.put(

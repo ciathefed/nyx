@@ -49,12 +49,14 @@ pub const Opcode = enum(u8) {
     jge_reg,
     call_imm,
     call_reg,
+    call_ex,
     ret,
     // TODO: inc -> inc_reg, dec -> dec_reg, neg -> neg_reg, inc_addr, dec_addr, neg_addr
     inc,
     dec,
     neg,
     syscall,
+    load_external,
     hlt,
 
     pub fn intoU8(self: Opcode) u8 {
@@ -110,11 +112,13 @@ pub const Opcode = enum(u8) {
             @intFromEnum(Opcode.jge_reg) => .jge_reg,
             @intFromEnum(Opcode.call_imm) => .call_imm,
             @intFromEnum(Opcode.call_reg) => .call_reg,
+            @intFromEnum(Opcode.call_ex) => .call_ex,
             @intFromEnum(Opcode.ret) => .ret,
             @intFromEnum(Opcode.inc) => .inc,
             @intFromEnum(Opcode.dec) => .dec,
             @intFromEnum(Opcode.neg) => .neg,
             @intFromEnum(Opcode.syscall) => .syscall,
+            @intFromEnum(Opcode.load_external) => .load_external,
             @intFromEnum(Opcode.hlt) => .hlt,
             else => error.InvalidOpcode,
         };
@@ -148,7 +152,7 @@ pub const Opcode = enum(u8) {
             .jgt_imm, .jgt_reg => "jgt",
             .jle_imm, .jle_reg => "jle",
             .jge_imm, .jge_reg => "jge",
-            .call_imm, .call_reg => "call",
+            .call_imm, .call_reg, .call_ex => "call",
             .ret => "ret",
             .inc => "inc",
             .dec => "dec",
