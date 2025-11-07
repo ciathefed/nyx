@@ -54,6 +54,7 @@ fn createBuildCommand(app: *yazap.App) !yazap.Command {
     try build_cmd.addArgs(&.{
         yazap.Arg.positional("FILE", "Path to the source file to compile", null),
         yazap.Arg.singleValueOption("output", 'o', "Optional path to write the compiled bytecode output"),
+        yazap.Arg.multiValuesOption("include", 'i', "Adds an include directory to the search path", 65536),
     });
     build_cmd.setProperty(.positional_arg_required);
     build_cmd.setProperty(.help_on_empty_args);
@@ -78,6 +79,7 @@ fn createRunCommand(app: *yazap.App) !yazap.Command {
         yazap.Arg.positional("FILE", "Path to the source file to compile and execute", null),
         yazap.Arg.singleValueOption("output", 'o', "Optional path to write the compiled bytecode output"),
         yazap.Arg.multiValuesOption("library", 'l', "Link a dynamic librarie", 65536),
+        yazap.Arg.multiValuesOption("include", 'i', "Adds an include directory to the search path", 65536),
         yazap.Arg.singleValueOption("memory-size", 'm', "Size of virtual machine memory in bytes"),
     });
     run_cmd.setProperty(.positional_arg_required);
@@ -87,6 +89,7 @@ fn createRunCommand(app: *yazap.App) !yazap.Command {
 
 fn compileSourceFile(
     input_file_path: []const u8,
+    include_paths: []const []const u8,
     reporter: *fehler.ErrorReporter,
     allocator: Allocator,
 ) ![]const u8 {
@@ -108,15 +111,15 @@ fn compileSourceFile(
 
     const stmts = try parser.parse();
 
-    // TODO: add -I arg so we can add other paths
-    var include_paths = ArrayList([]const u8).init(allocator);
-    try include_paths.append("");
-    try include_paths.append(fs.path.basename(input_file_path));
+    var all_include_paths = ArrayList([]const u8).init(allocator);
+    try all_include_paths.append("");
+    try all_include_paths.append(fs.path.basename(input_file_path));
+    try all_include_paths.appendSlice(include_paths);
     const stdlib_path = std.process.getEnvVarOwned(allocator, "NYX_STDLIB_PATH") catch |err| switch (err) {
         error.EnvironmentVariableNotFound => null,
         else => return err,
     };
-    if (stdlib_path) |path| try include_paths.append(path);
+    if (stdlib_path) |path| try all_include_paths.append(path);
     defer if (stdlib_path) |path| allocator.free(path);
 
     // TODO: add flag to disable preprocessing
@@ -125,7 +128,7 @@ fn compileSourceFile(
         input,
         stmts,
         reporter,
-        try include_paths.toOwnedSlice(),
+        try all_include_paths.toOwnedSlice(),
         allocator,
     );
     defer preprocessor.deinit();
@@ -162,8 +165,14 @@ fn executeBuildCommand(
 ) !void {
     const input_file_path = matches.getSingleValue("FILE").?;
     const output_file_path = if (matches.getSingleValue("output")) |output| output else "out.nyb";
+    const include_paths = matches.getMultiValues("include") orelse &.{};
 
-    const bytecode = try compileSourceFile(input_file_path, reporter, allocator);
+    const bytecode = try compileSourceFile(
+        input_file_path,
+        include_paths,
+        reporter,
+        allocator,
+    );
     defer allocator.free(bytecode);
 
     try utils.writeToFile(output_file_path, bytecode);
@@ -198,6 +207,7 @@ fn executeRunCommand(
     const input_file_path = matches.getSingleValue("FILE").?;
     const output_file_path = if (matches.getSingleValue("output")) |output| output else null;
     const external_libraires: [][]const u8 = matches.getMultiValues("library") orelse &.{};
+    const include_paths = matches.getMultiValues("include") orelse &.{};
     const memory_size = if (matches.getSingleValue("memory-size")) |size|
         fmt.parseInt(usize, size, 10) catch {
             logError(reporter, "{s}: not a valid number", .{size});
@@ -206,7 +216,12 @@ fn executeRunCommand(
     else
         65536;
 
-    const bytecode = try compileSourceFile(input_file_path, reporter, allocator);
+    const bytecode = try compileSourceFile(
+        input_file_path,
+        include_paths,
+        reporter,
+        allocator,
+    );
     defer allocator.free(bytecode);
 
     if (output_file_path) |path| {
