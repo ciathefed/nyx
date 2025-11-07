@@ -55,6 +55,7 @@ fn createBuildCommand(app: *yazap.App) !yazap.Command {
         yazap.Arg.positional("FILE", "Path to the source file to compile", null),
         yazap.Arg.singleValueOption("output", 'o', "Optional path to write the compiled bytecode output"),
         yazap.Arg.multiValuesOption("include", 'i', "Adds an include directory to the search path", 65536),
+        yazap.Arg.booleanOption("disable-preprocessor", null, "Stop the preprocessor from running"),
     });
     build_cmd.setProperty(.positional_arg_required);
     build_cmd.setProperty(.help_on_empty_args);
@@ -81,6 +82,7 @@ fn createRunCommand(app: *yazap.App) !yazap.Command {
         yazap.Arg.multiValuesOption("library", 'l', "Link a dynamic librarie", 65536),
         yazap.Arg.multiValuesOption("include", 'i', "Adds an include directory to the search path", 65536),
         yazap.Arg.singleValueOption("memory-size", 'm', "Size of virtual machine memory in bytes"),
+        yazap.Arg.booleanOption("disable-preprocessor", null, "Stop the preprocessor from running"),
     });
     run_cmd.setProperty(.positional_arg_required);
     run_cmd.setProperty(.help_on_empty_args);
@@ -90,6 +92,7 @@ fn createRunCommand(app: *yazap.App) !yazap.Command {
 fn compileSourceFile(
     input_file_path: []const u8,
     include_paths: []const []const u8,
+    run_preprocessor: bool,
     reporter: *fehler.ErrorReporter,
     allocator: Allocator,
 ) ![]const u8 {
@@ -122,18 +125,23 @@ fn compileSourceFile(
     if (stdlib_path) |path| try all_include_paths.append(path);
     defer if (stdlib_path) |path| allocator.free(path);
 
-    // TODO: add flag to disable preprocessing
-    var preprocessor = try Preprocessor.init(
-        input_file_path,
-        input,
-        stmts,
-        reporter,
-        try all_include_paths.toOwnedSlice(),
-        allocator,
-    );
-    defer preprocessor.deinit();
+    var preprocessor: ?Preprocessor = if (run_preprocessor)
+        try Preprocessor.init(
+            input_file_path,
+            input,
+            stmts,
+            reporter,
+            try all_include_paths.toOwnedSlice(),
+            allocator,
+        )
+    else
+        null;
+    defer if (preprocessor) |*p| p.deinit();
 
-    const new_stmts = try preprocessor.process();
+    const new_stmts = if (preprocessor) |*p|
+        try p.process()
+    else
+        stmts;
 
     var compiler = try Compiler.init(
         new_stmts,
@@ -166,10 +174,12 @@ fn executeBuildCommand(
     const input_file_path = matches.getSingleValue("FILE").?;
     const output_file_path = if (matches.getSingleValue("output")) |output| output else "out.nyb";
     const include_paths = matches.getMultiValues("include") orelse &.{};
+    const run_preprocessor = !matches.containsArg("disable-preprocessor");
 
     const bytecode = try compileSourceFile(
         input_file_path,
         include_paths,
+        run_preprocessor,
         reporter,
         allocator,
     );
@@ -215,10 +225,12 @@ fn executeRunCommand(
         }
     else
         65536;
+    const run_preprocessor = !matches.containsArg("disable-preprocessor");
 
     const bytecode = try compileSourceFile(
         input_file_path,
         include_paths,
+        run_preprocessor,
         reporter,
         allocator,
     );
