@@ -2,7 +2,7 @@
 
 64-bit register-based virtual machine and compiler written in [Zig](https://ziglang.org/). Nyx supports compiling a simple assembly-like language into bytecode and executing it on a custom VM.
 
-![Static Badge](https://img.shields.io/badge/Zig-0.15.1-ec915c?style=flat-square&logo=zig)
+![Static Badge](https://img.shields.io/badge/Zig-0.15.2-ec915c?style=flat-square&logo=zig)
 ![Tests](https://img.shields.io/github/actions/workflow/status/ciathefed/nyx/zig.yml?label=Tests%20%F0%9F%A7%AA&style=flat-square)
 
 > [!WARNING]

@@ -2,7 +2,7 @@
     .name = .nyx,
     .version = "0.1.0",
     .fingerprint = 0x1d2b0489d3cba10c,
-    .minimum_zig_version = "0.15.1",
+    .minimum_zig_version = "0.15.2",
     .dependencies = .{
         .fehler = .{
             .url = "git+https://github.com/ciathefed/fehler?ref=v0.6.1#acd4123ab5761d6fbc465445008e29588b3136b0",
