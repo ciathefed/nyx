@@ -289,7 +289,10 @@ const keywords = std.StaticStringMap(Kind).initComptime(.{
 });
 
 pub fn lookupIdent(ident: []const u8) Kind {
-    if (keywords.get(ident)) |kind| {
+    const allocator = std.heap.page_allocator;
+    const lower = std.ascii.allocLowerString(allocator, ident) catch unreachable;
+    defer allocator.free(lower);
+    if (keywords.get(lower)) |kind| {
         return kind;
     } else {
         return .identifier;
