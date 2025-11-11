@@ -148,10 +148,11 @@ fn parseStatement(self: *Parser) !ast.Statement {
             self.nextToken();
 
             const section_type: ast.Statement.Section.Type = switch (self.cur_token.kind) {
-                .section_name => blk: {
-                    if (mem.eql(u8, self.cur_token.literal, "text")) {
+                .identifier => blk: {
+                    const ident = self.lexer.interner.get(self.cur_token.string_id).?;
+                    if (mem.eql(u8, ident, "text")) {
                         break :blk .text;
-                    } else if (mem.eql(u8, self.cur_token.literal, "data")) {
+                    } else if (mem.eql(u8, ident, "data")) {
                         break :blk .data;
                     } else {
                         self.report(.err, "unknown section", self.cur_token.span, 1);

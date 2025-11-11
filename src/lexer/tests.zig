@@ -349,8 +349,10 @@ test "section names" {
     defer result.deinit(testing.allocator);
 
     try testing.expectEqual(@as(usize, 3), result.tokens.len);
-    try testing.expectEqual(Token.Kind.section_name, result.tokens[0].kind);
-    try testing.expectEqual(Token.Kind.section_name, result.tokens[1].kind);
+    try testing.expectEqual(Token.Kind.identifier, result.tokens[0].kind);
+    try testing.expectEqualStrings("text", result.interner.get(result.tokens[0].string_id).?);
+    try testing.expectEqual(Token.Kind.identifier, result.tokens[1].kind);
+    try testing.expectEqualStrings("data", result.interner.get(result.tokens[1].string_id).?);
 }
 
 test "complex program" {
@@ -377,7 +379,7 @@ test "complex program" {
     try testing.expectEqual(Token.Kind.identifier, result.tokens[1].kind);
     try testing.expectEqual(Token.Kind.newline, result.tokens[2].kind);
     try testing.expectEqual(Token.Kind.kw_section, result.tokens[3].kind);
-    try testing.expectEqual(Token.Kind.section_name, result.tokens[4].kind);
+    try testing.expectEqual(Token.Kind.identifier, result.tokens[4].kind);
     try testing.expectEqual(Token.Kind.newline, result.tokens[5].kind);
 
     var instruction_count: usize = 0;

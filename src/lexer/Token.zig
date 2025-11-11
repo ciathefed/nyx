@@ -19,7 +19,6 @@ pub const Kind = enum {
     float,
     string,
     data_size,
-    section_name,
 
     colon,
     comma,
@@ -174,9 +173,6 @@ const keywords = std.StaticStringMap(Kind).initComptime(.{
     // Data Declaration Directives
     .{ "db", Kind.kw_db },
     .{ "resb", Kind.kw_resb },
-    // Section Names
-    .{ "text", Kind.section_name },
-    .{ "data", Kind.section_name },
     // Registers b0..b15
     .{ "b0", Kind.register },
     .{ "b1", Kind.register },
