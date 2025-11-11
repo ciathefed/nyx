@@ -45,8 +45,14 @@ pub fn build(b: *std.Build) void {
     }
 
     const exe_tests = b.addTest(.{
-        .root_module = exe.root_module,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
+
+    exe_tests.root_module.addImport("fehler", fehler_dep.module("fehler"));
 
     const run_exe_tests = b.addRunArtifact(exe_tests);
 
