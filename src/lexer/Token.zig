@@ -1,5 +1,7 @@
 const std = @import("std");
 const Span = @import("../Span.zig");
+const StringInterner = @import("../StringInterner.zig");
+const StringId = StringInterner.StringId;
 
 const Token = @This();
 
@@ -85,12 +87,23 @@ pub const Kind = enum {
 
 kind: Kind,
 literal: []const u8,
+string_id: StringId,
 span: Span,
 
 pub fn init(kind: Kind, literal: []const u8, span: Span) Token {
     return Token{
         .kind = kind,
         .literal = literal,
+        .string_id = StringInterner.INVALID_ID,
+        .span = span,
+    };
+}
+
+pub fn initWithId(kind: Kind, id: StringId, span: Span) Token {
+    return Token{
+        .kind = kind,
+        .literal = "",
+        .string_id = id,
         .span = span,
     };
 }
@@ -100,8 +113,15 @@ pub fn format(
     writer: *std.Io.Writer,
 ) std.Io.Writer.Error!void {
     try writer.print(
-        ".{{ .kind = .{s}, .literal = \"{s}\", .span = {any} }}",
-        .{ @tagName(self.kind), self.literal, self.span },
+        ".{{ .kind = .{s}, .literal = \"{s}\", .string_id = {d}, .span = .{{ .start = {d}, .end = {d}, .filename = \"{s}\" }} }}",
+        .{
+            @tagName(self.kind),
+            self.literal,
+            self.string_id,
+            self.span.start,
+            self.span.start,
+            self.span.filename,
+        },
     );
 }
 

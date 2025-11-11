@@ -6,6 +6,8 @@ const process = std.process;
 const mem = std.mem;
 const Allocator = mem.Allocator;
 const ArrayList = std.array_list.Managed;
+const StringInterner = @import("../StringInterner.zig");
+const StringId = StringInterner.StringId;
 const Bytecode = @import("Bytecode.zig");
 const Opcode = @import("opcode.zig").Opcode;
 const Span = @import("../Span.zig");
@@ -23,7 +25,7 @@ pub const Entry = union(enum) {
     fixup: Entry.Fixup,
 
     pub const Fixup = struct {
-        label: []const u8,
+        label: StringId,
         span: Span,
     };
 };
@@ -35,15 +37,16 @@ const Label = struct {
 
 const Fixup = struct {
     size: DataSize,
-    label: []const u8,
+    label: StringId,
     span: Span,
 };
 
 program: []ast.Statement,
 bytecode: Bytecode,
-labels: std.StringHashMap(Label),
+interner: *StringInterner,
+labels: std.AutoHashMap(StringId, Label),
 fixups: std.AutoHashMap(Label, Fixup),
-externs: ArrayList([]const u8),
+externs: ArrayList(StringId),
 entry: ?Entry,
 filename: []const u8,
 input: []const u8,
@@ -52,6 +55,7 @@ allocator: Allocator,
 
 pub fn init(
     program: []ast.Statement,
+    interner: *StringInterner,
     filename: []const u8,
     input: []const u8,
     reporter: *fehler.ErrorReporter,
@@ -60,6 +64,7 @@ pub fn init(
     return Compiler{
         .program = program,
         .bytecode = try .init(4 * program.len, allocator),
+        .interner = interner,
         .labels = .init(allocator),
         .fixups = .init(allocator),
         .externs = .init(allocator),
@@ -84,7 +89,8 @@ pub fn compile(self: *Compiler) ![]u8 {
             .label => |v| {
                 const offset = self.bytecode.len(self.bytecode.current_section);
                 try self.labels.put(v.name, .{ .section = self.bytecode.current_section, .addr = offset });
-                if (mem.eql(u8, v.name, "_start") and self.entry == null) {
+                const label_name = self.interner.get(v.name).?;
+                if (mem.eql(u8, label_name, "_start") and self.entry == null) {
                     self.entry = .{ .fixup = .{ .label = v.name, .span = v.span } };
                 }
             },
@@ -95,7 +101,7 @@ pub fn compile(self: *Compiler) ![]u8 {
             .entry => |v| {
                 switch (v.expr.*) {
                     .integer_literal => |int| self.entry = .{ .address = @intCast(int) },
-                    .identifier => |ident| self.entry = .{ .fixup = .{ .label = ident, .span = v.span } },
+                    .identifier => |ident_id| self.entry = .{ .fixup = .{ .label = ident_id, .span = v.span } },
                     else => {
                         self.report(.err, "unsupported operand", v.span, 1);
                         return error.CompilerError;
@@ -104,7 +110,8 @@ pub fn compile(self: *Compiler) ![]u8 {
             },
             .ascii => |v| {
                 switch (v.expr.*) {
-                    .string_literal => |str| {
+                    .string_literal => |str_id| {
+                        const str = self.interner.get(str_id).?;
                         try self.bytecode.extend(str);
                     },
                     else => {
@@ -115,7 +122,8 @@ pub fn compile(self: *Compiler) ![]u8 {
             },
             .asciz => |v| {
                 switch (v.expr.*) {
-                    .string_literal => |str| {
+                    .string_literal => |str_id| {
+                        const str = self.interner.get(str_id).?;
                         try self.bytecode.extend(str);
                         try self.bytecode.push(0x00);
                     },
@@ -127,7 +135,7 @@ pub fn compile(self: *Compiler) ![]u8 {
             },
             .@"extern" => |v| {
                 switch (v.expr.*) {
-                    .identifier => |str| try self.externs.append(str),
+                    .identifier => |ident_id| try self.externs.append(ident_id),
                     else => {
                         self.report(.err, "unsupported operand", v.span, 1);
                         return error.CompilerError;
@@ -170,9 +178,10 @@ pub fn compile(self: *Compiler) ![]u8 {
                         .integer_literal => |int| try self.bytecode.push(
                             @as(u8, @intCast(int)),
                         ),
-                        .string_literal => |str| try self.bytecode.extend(
-                            str,
-                        ),
+                        .string_literal => |str_id| {
+                            const str = self.interner.get(str_id).?;
+                            try self.bytecode.extend(str);
+                        },
                         else => {
                             self.report(.err, "unsupported operand", v.span, 1);
                             return error.CompilerError;
@@ -279,14 +288,14 @@ fn compileMov(self: *Compiler, lhs: *ast.Expression, rhs: *ast.Expression, span:
                     }
                     return;
                 },
-                .identifier => |ident| {
+                .identifier => |ident_id| {
                     try self.bytecode.push(Opcode.mov_reg_imm);
                     try self.bytecode.push(dest);
                     const size = DataSize.fromRegister(dest);
                     const offset = self.bytecode.len(self.bytecode.current_section);
                     try self.fixups.put(
                         .{ .section = self.bytecode.current_section, .addr = offset },
-                        .{ .size = size, .label = ident, .span = span },
+                        .{ .size = size, .label = ident_id, .span = span },
                     );
                     switch (size) {
                         .byte => try self.bytecode.push(@as(u8, 0x00)),
@@ -346,13 +355,13 @@ fn compileLdrOrStr(
             try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(base))));
             try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
         },
-        .identifier => |base| {
+        .identifier => |base_id| {
             try self.bytecode.push(opcode);
             try self.bytecode.push(l);
             try self.bytecode.push(addressing_variant_2);
             try self.fixups.put(
                 .{ .section = self.bytecode.current_section, .addr = self.bytecode.len(self.bytecode.current_section) },
-                .{ .size = .qword, .label = base, .span = span },
+                .{ .size = .qword, .label = base_id, .span = span },
             );
             try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00)));
             try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
@@ -426,17 +435,25 @@ fn compileSti(
             try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(base))));
             try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
         },
-        .identifier => |base| {
-            try self.bytecode.push(Opcode.sti);
-            try self.bytecode.push(s);
-            try self.bytecode.extend(value_bytes);
-            try self.bytecode.push(addressing_variant_2);
+        .identifier => |src_id| {
+            for (self.externs.items) |ex_id| {
+                if (src_id == ex_id) {
+                    try self.bytecode.push(Opcode.call_ex);
+                    const name = self.interner.get(src_id).?;
+                    try self.bytecode.extend(name);
+                    try self.bytecode.push(0x00);
+                    return;
+                }
+            }
+
+            try self.bytecode.push(Opcode.call_imm);
+            const addr = self.bytecode.len(self.bytecode.current_section);
             try self.fixups.put(
-                .{ .section = self.bytecode.current_section, .addr = self.bytecode.len(self.bytecode.current_section) },
-                .{ .size = .qword, .label = base, .span = span },
+                .{ .section = self.bytecode.current_section, .addr = addr },
+                .{ .size = .qword, .label = src_id, .span = span },
             );
             try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00)));
-            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
+            return;
         },
         else => return self.reportError("unsupported address base type", span),
     }
@@ -896,11 +913,12 @@ fn compileCall(self: *Compiler, expr: *ast.Expression, span: Span) !void {
             try self.bytecode.push(src);
             return;
         },
-        .identifier => |src| {
+        .identifier => |src_id| {
             for (self.externs.items) |ex| {
-                if (mem.eql(u8, src, ex)) {
+                if (src_id == ex) {
                     try self.bytecode.push(Opcode.call_ex);
-                    try self.bytecode.extend(src);
+                    const name = self.interner.get(src_id).?;
+                    try self.bytecode.extend(name);
                     try self.bytecode.push(0x00);
                     return;
                 }
@@ -910,7 +928,7 @@ fn compileCall(self: *Compiler, expr: *ast.Expression, span: Span) !void {
             const offset = self.bytecode.len(self.bytecode.current_section);
             try self.fixups.put(
                 .{ .section = self.bytecode.current_section, .addr = offset },
-                .{ .size = .qword, .label = src, .span = span },
+                .{ .size = .qword, .label = src_id, .span = span },
             );
             try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00)));
             return;

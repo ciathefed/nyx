@@ -8,6 +8,7 @@ const Allocator = std.mem.Allocator;
 const ArrayList = std.array_list.Managed;
 const fehler = @import("fehler");
 const yazap = @import("yazap");
+const StringInterner = @import("StringInterner.zig");
 const Lexer = @import("lexer/Lexer.zig");
 const Parser = @import("parser/Parser.zig");
 const Compiler = @import("compiler/Compiler.zig");
@@ -106,8 +107,10 @@ fn compileSourceFile(
 
     try reporter.addSource(input_file_path, input);
 
-    var lexer = Lexer.init(input_file_path, input, allocator);
-    defer lexer.deinit();
+    var interner = StringInterner.init(allocator);
+    defer interner.deinit();
+
+    var lexer = Lexer.init(input_file_path, input, &interner, allocator);
 
     var parser = Parser.init(&lexer, reporter, allocator);
     defer parser.deinit();
@@ -130,6 +133,7 @@ fn compileSourceFile(
             input_file_path,
             input,
             stmts,
+            &interner,
             reporter,
             try all_include_paths.toOwnedSlice(),
             allocator,
@@ -145,6 +149,7 @@ fn compileSourceFile(
 
     var compiler = try Compiler.init(
         new_stmts,
+        &interner,
         input_file_path,
         input,
         reporter,

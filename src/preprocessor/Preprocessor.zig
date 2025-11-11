@@ -3,6 +3,8 @@ const fs = std.fs;
 const fehler = @import("fehler");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.array_list.Managed;
+const StringInterner = @import("../StringInterner.zig");
+const StringId = StringInterner.StringId;
 const Lexer = @import("../lexer/Lexer.zig");
 const Parser = @import("../parser/Parser.zig");
 const Span = @import("../Span.zig");
@@ -27,7 +29,8 @@ const ConditionalInfo = struct {
 filename: []const u8,
 input: []const u8,
 program: []ast.Statement,
-definitions: std.StringHashMap(?*ast.Expression),
+interner: *StringInterner,
+definitions: std.AutoHashMap(StringId, ?*ast.Expression),
 include_paths: ArrayList([]const u8),
 reporter: *fehler.ErrorReporter,
 arena: std.heap.ArenaAllocator,
@@ -36,13 +39,15 @@ pub fn init(
     filename: []const u8,
     input: []const u8,
     program: []ast.Statement,
+    interner: *StringInterner,
     reporter: *fehler.ErrorReporter,
     include_paths: ?[][]const u8,
     allocator: Allocator,
 ) !Preprocessor {
-    var default_definitions = try defaults.getDefaultDefinitons(allocator);
+    var default_definitions = try defaults.getDefaultDefinitons(allocator, interner);
     defer default_definitions.deinit();
-    var definitions = std.StringHashMap(?*ast.Expression).init(allocator);
+
+    var definitions = std.AutoHashMap(StringId, ?*ast.Expression).init(allocator);
     errdefer definitions.deinit();
 
     var arena = std.heap.ArenaAllocator.init(allocator);
@@ -63,6 +68,7 @@ pub fn init(
         .filename = filename,
         .input = input,
         .program = program,
+        .interner = interner,
         .definitions = definitions,
         .include_paths = if (include_paths) |paths|
             ArrayList([]const u8).fromOwnedSlice(allocator, paths)
@@ -87,10 +93,12 @@ pub fn process(self: *Preprocessor) ![]ast.Statement {
     for (self.program) |stmt| {
         switch (stmt) {
             .include => |v| {
-                const file_path = switch (v.expr.*) {
-                    .string_literal => |str| str,
+                const file_path_id = switch (v.expr.*) {
+                    .string_literal => |str_id| str_id,
                     else => return self.reportError("invalid include path", v.span),
                 };
+                const file_path = self.interner.get(file_path_id) orelse
+                    return self.reportError("invalid include path", v.span);
                 const included_statements = try self.processInclude(file_path, v.span);
                 try processed_statements.appendSlice(included_statements);
             },
@@ -106,11 +114,11 @@ pub fn process(self: *Preprocessor) ![]ast.Statement {
     for (conditional_statements) |stmt| {
         switch (stmt) {
             .define => |v| {
-                const name = switch (v.name.*) {
-                    .identifier => |ident| ident,
+                const name_id = switch (v.name.*) {
+                    .identifier => |ident_id| ident_id,
                     else => return self.reportError("invalid define key", v.span),
                 };
-                try self.definitions.put(name, v.expr);
+                try self.definitions.put(name_id, v.expr);
             },
             else => {
                 const new_stmt = try self.processStatement(stmt);
@@ -130,7 +138,11 @@ fn processStatement(self: *Preprocessor, stmt: ast.Statement) !?ast.Statement {
     return switch (stmt) {
         .label, .section, .nop, .ret, .syscall, .hlt => stmt,
         .@"error" => |v| switch (v.expr.*) {
-            .string_literal => |message| return self.reportError(message, v.span),
+            .string_literal => |message_id| {
+                const message = self.interner.get(message_id) orelse
+                    return self.reportError("invalid error message", v.span);
+                return self.reportError(message, v.span);
+            },
             else => return self.reportError("expected string literal in #error directive", v.span),
         },
         .define => |v| .{ .define = .{
@@ -219,6 +231,7 @@ fn processInclude(self: *Preprocessor, file_path: []const u8, span: Span) anyerr
         .filename = path,
         .input = content,
         .program = included_statements,
+        .interner = self.interner,
         .definitions = try self.definitions.clone(),
         .include_paths = try self.include_paths.clone(),
         .reporter = self.reporter,
@@ -240,7 +253,7 @@ fn processInclude(self: *Preprocessor, file_path: []const u8, span: Span) anyerr
 }
 
 fn parseFileContent(self: *Preprocessor, content: []const u8, path: []const u8) ![]ast.Statement {
-    var lexer = Lexer.init(path, content, self.arena.allocator());
+    var lexer = Lexer.init(path, content, self.interner, self.arena.allocator());
     var parser = Parser.init(&lexer, self.reporter, self.arena.allocator());
     return parser.parse();
 }
@@ -257,7 +270,7 @@ fn processConditionals(self: *Preprocessor, statements: []ast.Statement) ![]ast.
         switch (stmt) {
             .ifdef => |v| {
                 const condition_name = switch (v.expr.*) {
-                    .identifier => |ident| ident,
+                    .identifier => |ident_id| ident_id,
                     else => {
                         self.report(.err, "expected identifier for condition name", v.span, 1);
                         return error.PreProcessorError;
@@ -274,7 +287,7 @@ fn processConditionals(self: *Preprocessor, statements: []ast.Statement) ![]ast.
             },
             .ifndef => |v| {
                 const condition_name = switch (v.expr.*) {
-                    .identifier => |ident| ident,
+                    .identifier => |ident_id| ident_id,
                     else => {
                         self.report(.err, "expected identifier for condition name", v.span, 1);
                         return error.PreProcessorError;
@@ -321,8 +334,8 @@ fn processConditionals(self: *Preprocessor, statements: []ast.Statement) ![]ast.
 
 fn substituteExpr(self: *Preprocessor, expr: *ast.Expression) anyerror!*ast.Expression {
     return switch (expr.*) {
-        .identifier => |name| blk: {
-            if (self.definitions.get(name)) |replacement| {
+        .identifier => |name_id| blk: {
+            if (self.definitions.get(name_id)) |replacement| {
                 if (replacement) |r| {
                     break :blk self.substituteExpr(r);
                 }

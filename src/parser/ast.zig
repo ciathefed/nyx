@@ -2,6 +2,8 @@
 
 const std = @import("std");
 const Span = @import("../Span.zig");
+const StringInterner = @import("../StringInterner.zig");
+const StringId = StringInterner.StringId;
 const DataSize = @import("immediate.zig").DataSize;
 const Register = @import("../vm/register.zig").Register;
 
@@ -72,7 +74,7 @@ pub const Statement = union(enum) {
     };
 
     pub const Label = struct {
-        name: []const u8,
+        name: StringId,
         span: Span,
     };
 
@@ -153,11 +155,11 @@ pub const Statement = union(enum) {
 };
 
 pub const Expression = union(enum) {
-    identifier: []const u8,
+    identifier: StringId,
     register: Register,
     integer_literal: i64,
     float_literal: f64,
-    string_literal: []const u8,
+    string_literal: StringId,
     data_size: DataSize,
     address: Address,
     unary_op: UnaryOp,

@@ -65,11 +65,11 @@ fn parseStatement(self: *Parser) !ast.Statement {
     switch (self.cur_token.kind) {
         .identifier => {
             if (self.peekTokenIs(.colon)) {
-                const ident = self.cur_token.literal;
+                const name_id = self.cur_token.string_id;
                 self.nextToken();
                 self.nextToken();
                 return .{ .label = .{
-                    .name = ident,
+                    .name = name_id,
                     .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
                 } };
             } else {
@@ -93,9 +93,9 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 return error.ParserError;
             }
 
-            const name_ident = try self.arena.allocator().dupe(u8, self.cur_token.literal);
+            const name_id = self.cur_token.string_id;
             const name = try self.arena.allocator().create(ast.Expression);
-            name.* = .{ .identifier = name_ident };
+            name.* = .{ .identifier = name_id };
 
             self.nextTokenRaw();
 
@@ -615,9 +615,9 @@ fn parsePrimary(self: *Parser) anyerror!ast.Expression {
             } };
         },
         .identifier => {
-            const ident = try self.arena.allocator().dupe(u8, self.cur_token.literal);
+            const id = self.cur_token.string_id;
             self.nextToken();
-            return .{ .identifier = ident };
+            return .{ .identifier = id };
         },
         .register => {
             const reg = Register.fromString(self.cur_token.literal) catch {
@@ -668,9 +668,9 @@ fn parsePrimary(self: *Parser) anyerror!ast.Expression {
             return .{ .float_literal = float };
         },
         .string => {
-            const str = try self.arena.allocator().dupe(u8, self.cur_token.literal);
+            const id = self.cur_token.string_id;
             self.nextToken();
-            return .{ .string_literal = str };
+            return .{ .string_literal = id };
         },
         .data_size => {
             const literal = self.cur_token.literal;

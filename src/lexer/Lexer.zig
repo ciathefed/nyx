@@ -4,6 +4,7 @@ const Allocator = std.mem.Allocator;
 const ArrayList = std.array_list.Managed;
 const Token = @import("Token.zig");
 const Span = @import("../Span.zig");
+const StringInterner = @import("../StringInterner.zig");
 
 const Lexer = @This();
 
@@ -12,25 +13,18 @@ input: []const u8,
 pos: usize = 0,
 read_pos: usize = 0,
 ch: u8 = 0,
-strings: ArrayList([]const u8),
+interner: *StringInterner,
 allocator: Allocator,
 
-pub fn init(filename: []const u8, input: []const u8, allocator: Allocator) Lexer {
+pub fn init(filename: []const u8, input: []const u8, interner: *StringInterner, allocator: Allocator) Lexer {
     var lexer = Lexer{
         .filename = filename,
         .input = input,
-        .strings = .init(allocator),
+        .interner = interner,
         .allocator = allocator,
     };
     lexer.readChar();
     return lexer;
-}
-
-pub fn deinit(self: *Lexer) void {
-    for (self.strings.items) |string| {
-        self.allocator.free(string);
-    }
-    self.strings.deinit();
 }
 
 pub fn nextToken(self: *Lexer) Token {
@@ -136,6 +130,11 @@ fn readIdentifier(self: *Lexer) Token {
     const literal = self.input[start..self.pos];
     const kind = Token.lookupIdent(literal);
 
+    if (kind == .identifier) {
+        const id = self.interner.intern(literal) catch unreachable;
+        return Token.initWithId(kind, id, .init(start, self.pos - 1, self.filename));
+    }
+
     return Token.init(kind, literal, .init(start, self.pos - 1, self.filename));
 }
 
@@ -149,6 +148,11 @@ fn readDirective(self: *Lexer) Token {
     const literal = self.input[start..self.pos];
     const kind = Token.lookupIdent(literal);
 
+    if (kind == .identifier) {
+        const id = self.interner.intern(literal) catch unreachable;
+        return Token.initWithId(kind, id, .init(start, self.pos - 1, self.filename));
+    }
+
     return Token.init(kind, literal, .init(start, self.pos - 1, self.filename));
 }
 
@@ -157,6 +161,7 @@ fn readString(self: *Lexer) Token {
     self.readChar();
 
     var result = ArrayList(u8).init(self.allocator);
+    defer result.deinit();
     var escaped = false;
 
     while (true) {
@@ -187,13 +192,11 @@ fn readString(self: *Lexer) Token {
     }
 
     const end = self.read_pos - 1;
-
     if (self.ch == '"') self.readChar();
 
-    const literal = result.toOwnedSlice() catch unreachable;
-    self.strings.append(literal) catch unreachable;
+    const id = self.interner.intern(result.items) catch unreachable;
 
-    return Token.init(.string, literal, .init(start, end, self.filename));
+    return Token.initWithId(.string, id, .init(start, end, self.filename));
 }
 
 fn peekChar(self: *Lexer) u8 {
