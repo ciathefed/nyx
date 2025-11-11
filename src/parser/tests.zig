@@ -1,6 +1,8 @@
 const std = @import("std");
 const testing = std.testing;
 const ArrayList = std.array_list.Managed;
+const StringInterner = @import("../StringInterner.zig");
+const StringId = StringInterner.StringId;
 const Token = @import("../lexer/Token.zig");
 const Lexer = @import("../lexer/Lexer.zig");
 const Parser = @import("Parser.zig");
@@ -12,14 +14,16 @@ const ParseResult = struct {
     reporter: fehler.ErrorReporter,
     lexer: *Lexer,
     parser: *Parser,
+    interner: *StringInterner,
     stmts: []ast.Statement,
 
     fn deinit(self: *ParseResult, allocator: std.mem.Allocator) void {
+        defer allocator.destroy(self.parser);
+        defer allocator.destroy(self.lexer);
+        defer allocator.destroy(self.interner);
         self.parser.deinit();
-        allocator.destroy(self.parser);
-        self.lexer.deinit();
-        allocator.destroy(self.lexer);
         self.reporter.deinit();
+        self.interner.deinit();
     }
 };
 
@@ -27,8 +31,11 @@ fn parse(allocator: std.mem.Allocator, input: []const u8) !ParseResult {
     var reporter = fehler.ErrorReporter.init(allocator);
     try reporter.addSource("test.nyx", input);
 
+    const interner: *StringInterner = try allocator.create(StringInterner);
+    interner.* = .init(allocator);
+
     const lexer: *Lexer = try allocator.create(Lexer);
-    lexer.* = .init("test.nyx", input, allocator);
+    lexer.* = .init("test.nyx", input, interner, allocator);
 
     var parser: *Parser = try allocator.create(Parser);
     parser.* = .init(lexer, &reporter, allocator);
@@ -37,6 +44,7 @@ fn parse(allocator: std.mem.Allocator, input: []const u8) !ParseResult {
         .reporter = reporter,
         .lexer = lexer,
         .parser = parser,
+        .interner = interner,
         .stmts = try parser.parse(),
     };
 }
@@ -61,7 +69,7 @@ test "label" {
 
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
         try testing.expect(res.stmts[0] == .label);
-        try testing.expectEqualStrings(t.name, res.stmts[0].label.name);
+        try testing.expectEqualStrings(t.name, res.interner.get(res.stmts[0].label.name).?);
         try testing.expectEqual(t.start, res.stmts[0].label.span.start);
         try testing.expectEqual(t.end, res.stmts[0].label.span.end);
         try testing.expectEqualStrings("test.nyx", res.stmts[0].label.span.filename);
@@ -71,12 +79,12 @@ test "label" {
 test "instructions" {
     const tests = [_]struct {
         input: []const u8,
-        check: *const fn (ast.Statement) anyerror!void,
+        check: *const fn (ast.Statement, *const StringInterner) anyerror!void,
     }{
         .{
             .input = "nop",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .nop);
                     try testing.expectEqual(@as(usize, 0), stmt.nop.start);
                     try testing.expectEqual(@as(usize, 2), stmt.nop.end);
@@ -86,7 +94,7 @@ test "instructions" {
         .{
             .input = "mov q0, 1337",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .mov);
                     try testing.expect(stmt.mov.expr1.* == .register);
                     try testing.expect(stmt.mov.expr1.* == .register);
@@ -98,7 +106,7 @@ test "instructions" {
         .{
             .input = "ldr q0, [w0, 10]",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .ldr);
                     try testing.expect(stmt.ldr.expr1.* == .register);
                     try testing.expect(stmt.ldr.expr2.* == .address);
@@ -112,12 +120,12 @@ test "instructions" {
         .{
             .input = "str d0, [buffer]",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, interner: *const StringInterner) !void {
                     try testing.expect(stmt == .str);
                     try testing.expect(stmt.str.expr1.* == .register);
                     try testing.expect(stmt.str.expr2.* == .address);
                     try testing.expect(stmt.str.expr2.address.base.* == .identifier);
-                    try testing.expectEqualStrings("buffer", stmt.str.expr2.address.base.identifier);
+                    try testing.expectEqualStrings("buffer", interner.get(stmt.str.expr2.address.base.identifier).?);
                     try testing.expect(stmt.str.expr2.address.offset == null);
                 }
             }.f,
@@ -125,7 +133,7 @@ test "instructions" {
         .{
             .input = "push q0",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .push);
                     try testing.expect(stmt.push.data_size == null);
                     try testing.expect(stmt.push.expr.* == .register);
@@ -135,7 +143,7 @@ test "instructions" {
         .{
             .input = "pop float ff0",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .pop);
                     try testing.expect(stmt.pop.data_size != null);
                     try testing.expect(stmt.pop.data_size.?.* == .data_size);
@@ -147,7 +155,7 @@ test "instructions" {
         .{
             .input = "cmp q0, 13",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .cmp);
                     try testing.expect(stmt.cmp.expr1.* == .register);
                     try testing.expect(stmt.cmp.expr2.* == .integer_literal);
@@ -158,17 +166,17 @@ test "instructions" {
         .{
             .input = "call function_name",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, interner: *const StringInterner) !void {
                     try testing.expect(stmt == .call);
                     try testing.expect(stmt.call.expr.* == .identifier);
-                    try testing.expectEqualStrings("function_name", stmt.call.expr.identifier);
+                    try testing.expectEqualStrings("function_name", interner.get(stmt.call.expr.identifier).?);
                 }
             }.f,
         },
         .{
             .input = "inc q0",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .inc);
                     try testing.expect(stmt.inc.expr.* == .register);
                 }
@@ -177,7 +185,7 @@ test "instructions" {
         .{
             .input = "dec q0",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .dec);
                     try testing.expect(stmt.dec.expr.* == .register);
                 }
@@ -186,7 +194,7 @@ test "instructions" {
         .{
             .input = "ret",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .ret);
                 }
             }.f,
@@ -194,7 +202,7 @@ test "instructions" {
         .{
             .input = "hlt",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .hlt);
                 }
             }.f,
@@ -205,7 +213,7 @@ test "instructions" {
         var res = try parse(testing.allocator, t.input);
         defer res.deinit(testing.allocator);
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
-        try t.check(res.stmts[0]);
+        try t.check(res.stmts[0], res.interner);
     }
 }
 
@@ -360,12 +368,12 @@ test "shift operations" {
 test "jump operations" {
     const tests = [_]struct {
         input: []const u8,
-        check: *const fn (ast.Statement) anyerror!void,
+        check: *const fn (ast.Statement, *const StringInterner) anyerror!void,
     }{
         .{
             .input = "jmp 0x37",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .jmp);
                     try testing.expect(stmt.jmp.expr.* == .integer_literal);
                     try testing.expectEqual(@as(i64, 0x37), stmt.jmp.expr.integer_literal);
@@ -375,17 +383,17 @@ test "jump operations" {
         .{
             .input = "jne _exit",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, interner: *const StringInterner) !void {
                     try testing.expect(stmt == .jne);
                     try testing.expect(stmt.jne.expr.* == .identifier);
-                    try testing.expectEqualStrings("_exit", stmt.jne.expr.identifier);
+                    try testing.expectEqualStrings("_exit", interner.get(stmt.jne.expr.identifier).?);
                 }
             }.f,
         },
         .{
             .input = "jge q0",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .jge);
                     try testing.expect(stmt.jge.expr.* == .register);
                 }
@@ -397,7 +405,7 @@ test "jump operations" {
         var res = try parse(testing.allocator, t.input);
         defer res.deinit(testing.allocator);
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
-        try t.check(res.stmts[0]);
+        try t.check(res.stmts[0], res.interner);
     }
 }
 
@@ -459,12 +467,12 @@ test "expressions" {
 test "addressing modes" {
     const tests = [_]struct {
         input: []const u8,
-        check: *const fn (ast.Statement) anyerror!void,
+        check: *const fn (ast.Statement, *const StringInterner) anyerror!void,
     }{
         .{
             .input = "ldr q0, [q1]",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .ldr);
                     try testing.expect(stmt.ldr.expr2.* == .address);
                     try testing.expect(stmt.ldr.expr2.address.base.* == .register);
@@ -475,7 +483,7 @@ test "addressing modes" {
         .{
             .input = "str b0, [1000]",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .str);
                     try testing.expect(stmt.str.expr2.* == .address);
                     try testing.expect(stmt.str.expr2.address.base.* == .integer_literal);
@@ -487,11 +495,11 @@ test "addressing modes" {
         .{
             .input = "ldr w0, [buffer, 16]",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, interner: *const StringInterner) !void {
                     try testing.expect(stmt == .ldr);
                     try testing.expect(stmt.ldr.expr2.* == .address);
                     try testing.expect(stmt.ldr.expr2.address.base.* == .identifier);
-                    try testing.expectEqualStrings("buffer", stmt.ldr.expr2.address.base.identifier);
+                    try testing.expectEqualStrings("buffer", interner.get(stmt.ldr.expr2.address.base.identifier).?);
                     try testing.expect(stmt.ldr.expr2.address.offset != null);
                     try testing.expect(stmt.ldr.expr2.address.offset.?.* == .integer_literal);
                     try testing.expectEqual(@as(i64, 16), stmt.ldr.expr2.address.offset.?.integer_literal);
@@ -504,19 +512,19 @@ test "addressing modes" {
         var res = try parse(testing.allocator, t.input);
         defer res.deinit(testing.allocator);
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
-        try t.check(res.stmts[0]);
+        try t.check(res.stmts[0], res.interner);
     }
 }
 
 test "data declarations" {
     const tests = [_]struct {
         input: []const u8,
-        check: *const fn (ast.Statement) anyerror!void,
+        check: *const fn (ast.Statement, *const StringInterner) anyerror!void,
     }{
         .{
             .input = "db 42",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .db);
                     try testing.expectEqual(@as(usize, 1), stmt.db.exprs.len);
                     try testing.expect(stmt.db.exprs[0].* == .integer_literal);
@@ -527,11 +535,11 @@ test "data declarations" {
         .{
             .input = "db \"Hello\", 0x00",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, interner: *const StringInterner) !void {
                     try testing.expect(stmt == .db);
                     try testing.expectEqual(@as(usize, 2), stmt.db.exprs.len);
                     try testing.expect(stmt.db.exprs[0].* == .string_literal);
-                    try testing.expectEqualStrings("Hello", stmt.db.exprs[0].string_literal);
+                    try testing.expectEqualStrings("Hello", interner.get(stmt.db.exprs[0].string_literal).?);
                     try testing.expect(stmt.db.exprs[1].* == .integer_literal);
                     try testing.expectEqual(@as(i64, 0), stmt.db.exprs[1].integer_literal);
                 }
@@ -540,7 +548,7 @@ test "data declarations" {
         .{
             .input = "db 1, 2, 3, 4",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .db);
                     try testing.expectEqual(@as(usize, 4), stmt.db.exprs.len);
                     try testing.expectEqual(@as(i64, 1), stmt.db.exprs[0].integer_literal);
@@ -553,7 +561,7 @@ test "data declarations" {
         .{
             .input = "resb 69",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .resb);
                     try testing.expect(stmt.resb.expr.* == .integer_literal);
                     try testing.expectEqual(@as(i64, 69), stmt.resb.expr.integer_literal);
@@ -563,7 +571,7 @@ test "data declarations" {
         .{
             .input = "resb 1024",
             .check = struct {
-                fn f(stmt: ast.Statement) !void {
+                fn f(stmt: ast.Statement, _: *const StringInterner) !void {
                     try testing.expect(stmt == .resb);
                     try testing.expect(stmt.resb.expr.* == .integer_literal);
                     try testing.expectEqual(@as(i64, 1024), stmt.resb.expr.integer_literal);
@@ -576,7 +584,7 @@ test "data declarations" {
         var res = try parse(testing.allocator, t.input);
         defer res.deinit(testing.allocator);
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
-        try t.check(res.stmts[0]);
+        try t.check(res.stmts[0], res.interner);
     }
 }
 
@@ -627,7 +635,7 @@ test "complex program" {
     try testing.expectEqual(ast.Statement.Section.Type.text, res.stmts[1].section.type);
 
     try testing.expect(res.stmts[2] == .label);
-    try testing.expectEqualStrings("_start", res.stmts[2].label.name);
+    try testing.expectEqualStrings("_start", res.interner.get(res.stmts[2].label.name).?);
 
     try testing.expect(res.stmts[3] == .mov);
     try testing.expect(res.stmts[4] == .add);
@@ -639,9 +647,9 @@ test "complex program" {
     try testing.expectEqual(ast.Statement.Section.Type.data, res.stmts[8].section.type);
 
     try testing.expect(res.stmts[9] == .label);
-    try testing.expectEqualStrings("message", res.stmts[9].label.name);
+    try testing.expectEqualStrings("message", res.interner.get(res.stmts[9].label.name).?);
 
     try testing.expect(res.stmts[10] == .asciz);
     try testing.expect(res.stmts[10].asciz.expr.* == .string_literal);
-    try testing.expectEqualStrings("Hello, world!\n", res.stmts[10].asciz.expr.string_literal);
+    try testing.expectEqualStrings("Hello, world!\n", res.interner.get(res.stmts[10].asciz.expr.string_literal).?);
 }

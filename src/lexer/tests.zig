@@ -1,25 +1,30 @@
 const std = @import("std");
 const testing = std.testing;
 const ArrayList = std.array_list.Managed;
+const StringInterner = @import("../StringInterner.zig");
+const StringId = StringInterner.StringId;
 const Token = @import("Token.zig");
 const Lexer = @import("Lexer.zig");
 
 const LexResult = struct {
     tokens: []Token,
     lexer: Lexer,
+    interner: StringInterner,
 
     fn deinit(self: *LexResult, allocator: std.mem.Allocator) void {
         allocator.free(self.tokens);
-        self.lexer.deinit();
+        self.interner.deinit();
     }
 };
 
 fn lex(allocator: std.mem.Allocator, input: []const u8) !LexResult {
+    var interner = StringInterner.init(allocator);
+    errdefer interner.deinit();
+
     var tokens = ArrayList(Token).init(allocator);
     errdefer tokens.deinit();
 
-    var lexer = Lexer.init("test.nyx", input, allocator);
-    errdefer lexer.deinit();
+    var lexer = Lexer.init("test.nyx", input, &interner, allocator);
 
     while (true) {
         const token = lexer.nextToken();
@@ -30,6 +35,7 @@ fn lex(allocator: std.mem.Allocator, input: []const u8) !LexResult {
     return LexResult{
         .tokens = try tokens.toOwnedSlice(),
         .lexer = lexer,
+        .interner = interner,
     };
 }
 
@@ -420,7 +426,7 @@ test "strings" {
 
     try testing.expectEqual(@as(usize, 2), result1.tokens.len);
     try testing.expectEqual(Token.Kind.string, result1.tokens[0].kind);
-    try testing.expectEqualStrings("this is a string!", result1.tokens[0].literal);
+    try testing.expectEqualStrings("this is a string!", result1.interner.get(result1.tokens[0].string_id).?);
 
     const input2 = "\"this is a very very very very very long string!\"";
     var result2 = try lex(testing.allocator, input2);
@@ -435,7 +441,7 @@ test "strings" {
 
     try testing.expectEqual(@as(usize, 2), result3.tokens.len);
     try testing.expectEqual(Token.Kind.string, result3.tokens[0].kind);
-    try testing.expectEqualStrings("escaped quote: \"", result3.tokens[0].literal);
+    try testing.expectEqualStrings("escaped quote: \"", result3.interner.get(result3.tokens[0].string_id).?);
 
     const input4 = "\"newline:\\n tab:\\t backslash:\\\\ quote:\\\"\"";
     var result4 = try lex(testing.allocator, input4);
@@ -443,5 +449,5 @@ test "strings" {
 
     try testing.expectEqual(@as(usize, 2), result4.tokens.len);
     try testing.expectEqual(Token.Kind.string, result4.tokens[0].kind);
-    try testing.expectEqualStrings("newline:\n tab:\t backslash:\\ quote:\"", result4.tokens[0].literal);
+    try testing.expectEqualStrings("newline:\n tab:\t backslash:\\ quote:\"", result4.interner.get(result4.tokens[0].string_id).?);
 }
