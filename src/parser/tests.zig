@@ -10,13 +10,15 @@ const fehler = @import("fehler");
 
 const ParseResult = struct {
     reporter: fehler.ErrorReporter,
-    lexer: Lexer,
+    lexer: *Lexer,
     parser: *Parser,
     stmts: []ast.Statement,
 
-    fn deinit(self: *ParseResult) void {
+    fn deinit(self: *ParseResult, allocator: std.mem.Allocator) void {
         self.parser.deinit();
+        allocator.destroy(self.parser);
         self.lexer.deinit();
+        allocator.destroy(self.lexer);
         self.reporter.deinit();
     }
 };
@@ -25,12 +27,16 @@ fn parse(allocator: std.mem.Allocator, input: []const u8) !ParseResult {
     var reporter = fehler.ErrorReporter.init(allocator);
     try reporter.addSource("test.nyx", input);
 
-    var lexer = Lexer.init("test.nyx", input, allocator);
-    var parser = Parser.init(&lexer, &reporter, allocator);
+    const lexer: *Lexer = try allocator.create(Lexer);
+    lexer.* = .init("test.nyx", input, allocator);
+
+    var parser: *Parser = try allocator.create(Parser);
+    parser.* = .init(lexer, &reporter, allocator);
+
     return ParseResult{
         .reporter = reporter,
         .lexer = lexer,
-        .parser = &parser,
+        .parser = parser,
         .stmts = try parser.parse(),
     };
 }
@@ -51,7 +57,7 @@ test "label" {
 
     for (tests) |t| {
         var res = try parse(testing.allocator, t.input);
-        defer res.deinit();
+        defer res.deinit(testing.allocator);
 
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
         try testing.expect(res.stmts[0] == .label);
@@ -197,7 +203,7 @@ test "instructions" {
 
     for (tests) |t| {
         var res = try parse(testing.allocator, t.input);
-        defer res.deinit();
+        defer res.deinit(testing.allocator);
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
         try t.check(res.stmts[0]);
     }
@@ -258,7 +264,7 @@ test "arithmetic operations" {
 
     for (tests) |t| {
         var res = try parse(testing.allocator, t.input);
-        defer res.deinit();
+        defer res.deinit(testing.allocator);
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
         try t.check(res.stmts[0]);
     }
@@ -307,7 +313,7 @@ test "bitwise operations" {
 
     for (tests) |t| {
         var res = try parse(testing.allocator, t.input);
-        defer res.deinit();
+        defer res.deinit(testing.allocator);
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
         try t.check(res.stmts[0]);
     }
@@ -345,7 +351,7 @@ test "shift operations" {
 
     for (tests) |t| {
         var res = try parse(testing.allocator, t.input);
-        defer res.deinit();
+        defer res.deinit(testing.allocator);
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
         try t.check(res.stmts[0]);
     }
@@ -389,7 +395,7 @@ test "jump operations" {
 
     for (tests) |t| {
         var res = try parse(testing.allocator, t.input);
-        defer res.deinit();
+        defer res.deinit(testing.allocator);
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
         try t.check(res.stmts[0]);
     }
@@ -444,7 +450,7 @@ test "expressions" {
 
     for (tests) |t| {
         var res = try parse(testing.allocator, t.input);
-        defer res.deinit();
+        defer res.deinit(testing.allocator);
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
         try t.check(res.stmts[0]);
     }
@@ -496,7 +502,7 @@ test "addressing modes" {
 
     for (tests) |t| {
         var res = try parse(testing.allocator, t.input);
-        defer res.deinit();
+        defer res.deinit(testing.allocator);
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
         try t.check(res.stmts[0]);
     }
@@ -568,7 +574,7 @@ test "data declarations" {
 
     for (tests) |t| {
         var res = try parse(testing.allocator, t.input);
-        defer res.deinit();
+        defer res.deinit(testing.allocator);
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
         try t.check(res.stmts[0]);
     }
@@ -585,9 +591,57 @@ test "sections" {
 
     for (tests) |t| {
         var res = try parse(testing.allocator, t.input);
-        defer res.deinit();
+        defer res.deinit(testing.allocator);
         try testing.expectEqual(@as(usize, 1), res.stmts.len);
         try testing.expect(res.stmts[0] == .section);
         try testing.expectEqual(t.expected_type, res.stmts[0].section.type);
     }
+}
+
+test "complex program" {
+    const input =
+        \\
+        \\.entry _start
+        \\.section text
+        \\_start:
+        \\    mov q0, 42
+        \\    add q1, q0, 100
+        \\    push qword q1
+        \\    syscall
+        \\    hlt
+        \\
+        \\.section data
+        \\message:
+        \\    .asciz "Hello, world!\n"
+    ;
+
+    var res = try parse(testing.allocator, input);
+    defer res.deinit(testing.allocator);
+
+    try testing.expectEqual(@as(usize, 11), res.stmts.len);
+
+    try testing.expect(res.stmts[0] == .entry);
+    try testing.expect(res.stmts[0].entry.expr.* == .identifier);
+
+    try testing.expect(res.stmts[1] == .section);
+    try testing.expectEqual(ast.Statement.Section.Type.text, res.stmts[1].section.type);
+
+    try testing.expect(res.stmts[2] == .label);
+    try testing.expectEqualStrings("_start", res.stmts[2].label.name);
+
+    try testing.expect(res.stmts[3] == .mov);
+    try testing.expect(res.stmts[4] == .add);
+    try testing.expect(res.stmts[5] == .push);
+    try testing.expect(res.stmts[6] == .syscall);
+    try testing.expect(res.stmts[7] == .hlt);
+
+    try testing.expect(res.stmts[8] == .section);
+    try testing.expectEqual(ast.Statement.Section.Type.data, res.stmts[8].section.type);
+
+    try testing.expect(res.stmts[9] == .label);
+    try testing.expectEqualStrings("message", res.stmts[9].label.name);
+
+    try testing.expect(res.stmts[10] == .asciz);
+    try testing.expect(res.stmts[10].asciz.expr.* == .string_literal);
+    try testing.expectEqualStrings("Hello, world!\n", res.stmts[10].asciz.expr.string_literal);
 }
