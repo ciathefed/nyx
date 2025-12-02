@@ -14,14 +14,14 @@ pos: usize = 0,
 read_pos: usize = 0,
 ch: u8 = 0,
 interner: *StringInterner,
-allocator: Allocator,
+gpa: Allocator,
 
-pub fn init(filename: []const u8, input: []const u8, interner: *StringInterner, allocator: Allocator) Lexer {
+pub fn init(filename: []const u8, input: []const u8, interner: *StringInterner, gpa: Allocator) Lexer {
     var lexer = Lexer{
         .filename = filename,
         .input = input,
         .interner = interner,
-        .allocator = allocator,
+        .gpa = gpa,
     };
     lexer.readChar();
     return lexer;
@@ -160,7 +160,7 @@ fn readString(self: *Lexer) Token {
     const start = self.pos;
     self.readChar();
 
-    var result = ArrayList(u8).init(self.allocator);
+    var result = ArrayList(u8).init(self.gpa);
     defer result.deinit();
     var escaped = false;
 

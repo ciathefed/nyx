@@ -9,8 +9,8 @@ const Memory = @This();
 
 storage: ArrayList(u8),
 
-pub fn init(size: usize, allocator: Allocator) !Memory {
-    var storage = try ArrayList(u8).initCapacity(allocator, size);
+pub fn init(size: usize, gpa: Allocator) !Memory {
+    var storage = try ArrayList(u8).initCapacity(gpa, size);
     try storage.appendNTimes(0x00, size);
     return Memory{ .storage = storage };
 }

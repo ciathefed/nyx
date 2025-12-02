@@ -9,20 +9,20 @@ const Block = @This();
 
 block_name: []const u8,
 storage: []u8,
-allocator: Allocator,
+gpa: Allocator,
 
-pub fn init(block_name: []const u8, len: usize, allocator: Allocator) !Block {
-    var storage = try allocator.alloc(u8, len);
+pub fn init(block_name: []const u8, len: usize, gpa: Allocator) !Block {
+    var storage = try gpa.alloc(u8, len);
     @memset(storage[0..], 0x00);
     return Block{
         .block_name = block_name,
         .storage = storage,
-        .allocator = allocator,
+        .gpa = gpa,
     };
 }
 
 pub fn deinit(self: *Block) void {
-    self.allocator.free(self.storage);
+    self.gpa.free(self.storage);
 }
 
 fn name(ptr: *anyopaque) []const u8 {

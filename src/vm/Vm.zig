@@ -27,7 +27,7 @@ pub fn init(
     program: []const u8,
     mem_size: usize,
     external_libraries: [][]const u8,
-    allocator: Allocator,
+    gpa: Allocator,
 ) !Vm {
     if (program.len < 8) return error.ProgramTooSmall;
     if (program.len >= mem_size) return error.ProgramTooLarge;
@@ -42,21 +42,21 @@ pub fn init(
     regs.setBp(0);
     regs.setIp(entry_point);
 
-    var mmu = Mmu.init(allocator);
+    var mmu = Mmu.init(gpa);
     errdefer mmu.deinit();
 
     _ = try mmu.addBlock("Program", program_data.len);
     _ = try mmu.addBlock("Memory", mem_size - program_data.len);
     try mmu.writeSlice(0x00, program_data);
 
-    var external_loader = ExternalLoader.init(allocator);
+    var external_loader = ExternalLoader.init(gpa);
     for (external_libraries) |lib| try external_loader.load(lib);
 
     return Vm{
         .regs = regs,
         .mmu = mmu,
         .flags = .init(),
-        .syscalls = try syscall.collectSyscalls(allocator),
+        .syscalls = try syscall.collectSyscalls(gpa),
         .external_loader = external_loader,
         .halted = false,
     };

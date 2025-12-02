@@ -8,8 +8,8 @@ const Vm = @import("Vm.zig");
 pub const SyscallFn = *const fn (self: *Vm) anyerror!void;
 pub const Syscalls = std.AutoHashMap(usize, SyscallFn);
 
-pub fn collectSyscalls(allocator: Allocator) !Syscalls {
-    var syscalls = Syscalls.init(allocator);
+pub fn collectSyscalls(gpa: Allocator) !Syscalls {
+    var syscalls = Syscalls.init(gpa);
 
     try syscalls.put(0x00, sysOpen);
     try syscalls.put(0x01, sysClose);
@@ -52,8 +52,8 @@ fn sysRead(self: *Vm) anyerror!void {
 
     if (addr + count >= self.mmu.size()) return error.AddressOutOfBounds;
 
-    var buf = try self.mmu.allocator.alloc(u8, count);
-    defer self.mmu.allocator.free(buf);
+    var buf = try self.mmu.gpa.alloc(u8, count);
+    defer self.mmu.gpa.free(buf);
 
     const n = try posix.read(fd, buf);
 
@@ -104,7 +104,7 @@ pub fn sysFree(self: *Vm) !void {
             _ = self.mmu.buses.orderedRemove(i);
             _ = self.mmu.blocks.orderedRemove(i);
             block.deinit();
-            self.mmu.allocator.destroy(block);
+            self.mmu.gpa.destroy(block);
             return;
         }
 

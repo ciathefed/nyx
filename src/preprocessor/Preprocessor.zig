@@ -42,15 +42,15 @@ pub fn init(
     interner: *StringInterner,
     reporter: *fehler.ErrorReporter,
     include_paths: ?[][]const u8,
-    allocator: Allocator,
+    gpa: Allocator,
 ) !Preprocessor {
-    var default_definitions = try defaults.getDefaultDefinitons(allocator, interner);
+    var default_definitions = try defaults.getDefaultDefinitons(gpa, interner);
     defer default_definitions.deinit();
 
-    var definitions = std.AutoHashMap(StringId, ?*ast.Expression).init(allocator);
+    var definitions = std.AutoHashMap(StringId, ?*ast.Expression).init(gpa);
     errdefer definitions.deinit();
 
-    var arena = std.heap.ArenaAllocator.init(allocator);
+    var arena = std.heap.ArenaAllocator.init(gpa);
 
     var iter = default_definitions.iterator();
     while (iter.next()) |def| {
@@ -61,7 +61,7 @@ pub fn init(
 
     var cleanup_iter = default_definitions.iterator();
     while (cleanup_iter.next()) |def| {
-        allocator.destroy(def.value_ptr.*);
+        gpa.destroy(def.value_ptr.*);
     }
 
     return Preprocessor{
@@ -71,9 +71,9 @@ pub fn init(
         .interner = interner,
         .definitions = definitions,
         .include_paths = if (include_paths) |paths|
-            ArrayList([]const u8).fromOwnedSlice(allocator, paths)
+            ArrayList([]const u8).fromOwnedSlice(gpa, paths)
         else
-            ArrayList([]const u8).init(allocator),
+            ArrayList([]const u8).init(gpa),
         .reporter = reporter,
         .arena = arena,
     };

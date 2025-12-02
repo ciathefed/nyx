@@ -51,7 +51,7 @@ entry: ?Entry,
 filename: []const u8,
 input: []const u8,
 reporter: *fehler.ErrorReporter,
-allocator: Allocator,
+gpa: Allocator,
 
 pub fn init(
     program: []ast.Statement,
@@ -59,20 +59,20 @@ pub fn init(
     filename: []const u8,
     input: []const u8,
     reporter: *fehler.ErrorReporter,
-    allocator: Allocator,
+    gpa: Allocator,
 ) !Compiler {
     return Compiler{
         .program = program,
-        .bytecode = try .init(4 * program.len, allocator),
+        .bytecode = try .init(4 * program.len, gpa),
         .interner = interner,
-        .labels = .init(allocator),
-        .fixups = .init(allocator),
-        .externs = .init(allocator),
+        .labels = .init(gpa),
+        .fixups = .init(gpa),
+        .externs = .init(gpa),
         .entry = null,
         .filename = filename,
         .input = input,
         .reporter = reporter,
-        .allocator = allocator,
+        .gpa = gpa,
     };
 }
 
@@ -296,10 +296,10 @@ pub fn compile(self: *Compiler) ![]u8 {
         },
     } else 0x00;
 
-    var bytecode = ArrayList(u8).init(self.allocator);
+    var bytecode = ArrayList(u8).init(self.gpa);
     try bytecode.appendSlice(&mem.toBytes(entry));
-    const final = try self.bytecode.finalize(self.allocator);
-    defer self.allocator.free(final);
+    const final = try self.bytecode.finalize(self.gpa);
+    defer self.gpa.free(final);
     try bytecode.appendSlice(final);
 
     return bytecode.toOwnedSlice();

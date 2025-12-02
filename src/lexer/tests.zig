@@ -11,20 +11,20 @@ const LexResult = struct {
     lexer: Lexer,
     interner: StringInterner,
 
-    fn deinit(self: *LexResult, allocator: std.mem.Allocator) void {
-        allocator.free(self.tokens);
+    fn deinit(self: *LexResult, gpa: std.mem.Allocator) void {
+        gpa.free(self.tokens);
         self.interner.deinit();
     }
 };
 
-fn lex(allocator: std.mem.Allocator, input: []const u8) !LexResult {
-    var interner = StringInterner.init(allocator);
+fn lex(gpa: std.mem.Allocator, input: []const u8) !LexResult {
+    var interner = StringInterner.init(gpa);
     errdefer interner.deinit();
 
-    var tokens = ArrayList(Token).init(allocator);
+    var tokens = ArrayList(Token).init(gpa);
     errdefer tokens.deinit();
 
-    var lexer = Lexer.init("test.nyx", input, &interner, allocator);
+    var lexer = Lexer.init("test.nyx", input, &interner, gpa);
 
     while (true) {
         const token = lexer.nextToken();

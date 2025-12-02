@@ -11,26 +11,26 @@ const Mmu = @This();
 buses: ArrayList(Bus),
 blocks: ArrayList(*Block),
 allocated_slices: ArrayList([]u8),
-allocator: Allocator,
+gpa: Allocator,
 
-pub fn init(allocator: Allocator) Mmu {
+pub fn init(gpa: Allocator) Mmu {
     return Mmu{
-        .buses = .init(allocator),
-        .blocks = .init(allocator),
-        .allocated_slices = ArrayList([]u8).init(allocator),
-        .allocator = allocator,
+        .buses = .init(gpa),
+        .blocks = .init(gpa),
+        .allocated_slices = ArrayList([]u8).init(gpa),
+        .gpa = gpa,
     };
 }
 
 pub fn deinit(self: *Mmu) void {
     for (self.blocks.items) |block| {
         block.deinit();
-        self.allocator.destroy(block);
+        self.gpa.destroy(block);
     }
     self.blocks.deinit();
 
     for (self.allocated_slices.items) |slice| {
-        self.allocator.free(slice);
+        self.gpa.free(slice);
     }
     self.allocated_slices.deinit();
     self.buses.deinit();
@@ -39,10 +39,10 @@ pub fn deinit(self: *Mmu) void {
 pub fn addBlock(self: *Mmu, block_name: []const u8, len: usize) !usize {
     const start = self.size();
 
-    const block = try self.allocator.create(Block);
-    errdefer self.allocator.destroy(block);
+    const block = try self.gpa.create(Block);
+    errdefer self.gpa.destroy(block);
 
-    block.* = try Block.init(block_name, len, self.allocator);
+    block.* = try Block.init(block_name, len, self.gpa);
     errdefer block.deinit();
 
     try self.blocks.append(block);
@@ -69,8 +69,8 @@ pub fn read(self: *Mmu, addr: usize, sz: DataSize) anyerror!Immediate {
 }
 
 pub fn readSlice(self: *Mmu, addr: usize, len: usize) anyerror![]const u8 {
-    var result = try self.allocator.alloc(u8, len);
-    errdefer self.allocator.free(result);
+    var result = try self.gpa.alloc(u8, len);
+    errdefer self.gpa.free(result);
 
     var bytes_read: usize = 0;
     var current_addr = addr;
@@ -94,7 +94,7 @@ pub fn readSlice(self: *Mmu, addr: usize, len: usize) anyerror![]const u8 {
             }
             start = end;
         } else {
-            self.allocator.free(result);
+            self.gpa.free(result);
             return error.AddressOutOfBounds;
         }
     }

@@ -26,7 +26,7 @@ arena: heap.ArenaAllocator,
 pub fn init(
     lexer: *Lexer,
     reporter: *fehler.ErrorReporter,
-    allocator: Allocator,
+    gpa: Allocator,
 ) Parser {
     var cur_token = lexer.nextToken();
     var peek_token = lexer.nextToken();
@@ -36,7 +36,7 @@ pub fn init(
         peek_token = lexer.nextToken();
     }
 
-    const arena = heap.ArenaAllocator.init(allocator);
+    const arena = heap.ArenaAllocator.init(gpa);
 
     return Parser{
         .lexer = lexer,

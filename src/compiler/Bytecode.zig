@@ -11,11 +11,11 @@ text: ArrayList(u8),
 data: ArrayList(u8),
 current_section: Section,
 
-pub fn init(capacity: ?usize, allocator: Allocator) !Bytecode {
+pub fn init(capacity: ?usize, gpa: Allocator) !Bytecode {
     const cap = capacity orelse 1024;
     return Bytecode{
-        .text = try .initCapacity(allocator, @divTrunc(cap, 2)),
-        .data = try .initCapacity(allocator, @divTrunc(cap, 2)),
+        .text = try .initCapacity(gpa, @divTrunc(cap, 2)),
+        .data = try .initCapacity(gpa, @divTrunc(cap, 2)),
         .current_section = .text,
     };
 }
@@ -102,8 +102,8 @@ pub inline fn writeU64At(self: *Bytecode, section: Section, offset: usize, value
     }
 }
 
-pub fn finalize(self: *Bytecode, allocator: Allocator) ![]u8 {
-    var bytes = ArrayList(u8).init(allocator);
+pub fn finalize(self: *Bytecode, gpa: Allocator) ![]u8 {
+    var bytes = ArrayList(u8).init(gpa);
     try bytes.appendSlice(self.text.items);
     try bytes.appendSlice(self.data.items);
     return bytes.toOwnedSlice();

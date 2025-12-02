@@ -17,28 +17,28 @@ const ParseResult = struct {
     interner: *StringInterner,
     stmts: []ast.Statement,
 
-    fn deinit(self: *ParseResult, allocator: std.mem.Allocator) void {
-        defer allocator.destroy(self.parser);
-        defer allocator.destroy(self.lexer);
-        defer allocator.destroy(self.interner);
+    fn deinit(self: *ParseResult, gpa: std.mem.Allocator) void {
+        defer gpa.destroy(self.parser);
+        defer gpa.destroy(self.lexer);
+        defer gpa.destroy(self.interner);
         self.parser.deinit();
         self.reporter.deinit();
         self.interner.deinit();
     }
 };
 
-fn parse(allocator: std.mem.Allocator, input: []const u8) !ParseResult {
-    var reporter = fehler.ErrorReporter.init(allocator);
+fn parse(gpa: std.mem.Allocator, input: []const u8) !ParseResult {
+    var reporter = fehler.ErrorReporter.init(gpa);
     try reporter.addSource("test.nyx", input);
 
-    const interner: *StringInterner = try allocator.create(StringInterner);
-    interner.* = .init(allocator);
+    const interner: *StringInterner = try gpa.create(StringInterner);
+    interner.* = .init(gpa);
 
-    const lexer: *Lexer = try allocator.create(Lexer);
-    lexer.* = .init("test.nyx", input, interner, allocator);
+    const lexer: *Lexer = try gpa.create(Lexer);
+    lexer.* = .init("test.nyx", input, interner, gpa);
 
-    var parser: *Parser = try allocator.create(Parser);
-    parser.* = .init(lexer, &reporter, allocator);
+    var parser: *Parser = try gpa.create(Parser);
+    parser.* = .init(lexer, &reporter, gpa);
 
     return ParseResult{
         .reporter = reporter,

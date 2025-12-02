@@ -95,38 +95,38 @@ fn compileSourceFile(
     include_paths: []const []const u8,
     run_preprocessor: bool,
     reporter: *fehler.ErrorReporter,
-    allocator: Allocator,
+    gpa: Allocator,
 ) ![]const u8 {
     if (!utils.fileExists(input_file_path)) {
         logError(reporter, "{s}: cannot find file", .{input_file_path});
         process.exit(1);
     }
 
-    const input = try utils.readFromFile(input_file_path, allocator);
-    defer allocator.free(input);
+    const input = try utils.readFromFile(input_file_path, gpa);
+    defer gpa.free(input);
 
     try reporter.addSource(input_file_path, input);
 
-    var interner = StringInterner.init(allocator);
+    var interner = StringInterner.init(gpa);
     defer interner.deinit();
 
-    var lexer = Lexer.init(input_file_path, input, &interner, allocator);
+    var lexer = Lexer.init(input_file_path, input, &interner, gpa);
 
-    var parser = Parser.init(&lexer, reporter, allocator);
+    var parser = Parser.init(&lexer, reporter, gpa);
     defer parser.deinit();
 
     const stmts = try parser.parse();
 
-    var all_include_paths = ArrayList([]const u8).init(allocator);
+    var all_include_paths = ArrayList([]const u8).init(gpa);
     try all_include_paths.append("");
     try all_include_paths.append(fs.path.basename(input_file_path));
     try all_include_paths.appendSlice(include_paths);
-    const stdlib_path = std.process.getEnvVarOwned(allocator, "NYX_STDLIB_PATH") catch |err| switch (err) {
+    const stdlib_path = std.process.getEnvVarOwned(gpa, "NYX_STDLIB_PATH") catch |err| switch (err) {
         error.EnvironmentVariableNotFound => null,
         else => return err,
     };
     if (stdlib_path) |path| try all_include_paths.append(path);
-    defer if (stdlib_path) |path| allocator.free(path);
+    defer if (stdlib_path) |path| gpa.free(path);
 
     var preprocessor: ?Preprocessor = if (run_preprocessor)
         try Preprocessor.init(
@@ -136,7 +136,7 @@ fn compileSourceFile(
             &interner,
             reporter,
             try all_include_paths.toOwnedSlice(),
-            allocator,
+            gpa,
         )
     else
         null;
@@ -153,7 +153,7 @@ fn compileSourceFile(
         input_file_path,
         input,
         reporter,
-        allocator,
+        gpa,
     );
     defer compiler.deinit();
 
@@ -164,9 +164,9 @@ fn runBytecode(
     bytecode: []const u8,
     external_libraires: [][]const u8,
     memory_size: usize,
-    allocator: Allocator,
+    gpa: Allocator,
 ) !void {
-    var vm = try Vm.init(bytecode, memory_size, external_libraires, allocator);
+    var vm = try Vm.init(bytecode, memory_size, external_libraires, gpa);
     defer vm.deinit();
     try vm.run();
 }
@@ -174,7 +174,7 @@ fn runBytecode(
 fn executeBuildCommand(
     matches: yazap.ArgMatches,
     reporter: *fehler.ErrorReporter,
-    allocator: Allocator,
+    gpa: Allocator,
 ) !void {
     const input_file_path = matches.getSingleValue("FILE").?;
     const output_file_path = if (matches.getSingleValue("output")) |output| output else "out.nyb";
@@ -186,9 +186,9 @@ fn executeBuildCommand(
         include_paths,
         run_preprocessor,
         reporter,
-        allocator,
+        gpa,
     );
-    defer allocator.free(bytecode);
+    defer gpa.free(bytecode);
 
     try utils.writeToFile(output_file_path, bytecode);
 }
@@ -196,7 +196,7 @@ fn executeBuildCommand(
 fn executeExecCommand(
     matches: yazap.ArgMatches,
     reporter: *fehler.ErrorReporter,
-    allocator: Allocator,
+    gpa: Allocator,
 ) !void {
     const input_file_path = matches.getSingleValue("FILE").?;
     const external_libraires: [][]const u8 = matches.getMultiValues("library") orelse &.{};
@@ -208,16 +208,16 @@ fn executeExecCommand(
     else
         65536;
 
-    const bytecode = try utils.readFromFile(input_file_path, allocator);
-    defer allocator.free(bytecode);
+    const bytecode = try utils.readFromFile(input_file_path, gpa);
+    defer gpa.free(bytecode);
 
-    try runBytecode(bytecode, external_libraires, memory_size, allocator);
+    try runBytecode(bytecode, external_libraires, memory_size, gpa);
 }
 
 fn executeRunCommand(
     matches: yazap.ArgMatches,
     reporter: *fehler.ErrorReporter,
-    allocator: Allocator,
+    gpa: Allocator,
 ) !void {
     const input_file_path = matches.getSingleValue("FILE").?;
     const output_file_path = if (matches.getSingleValue("output")) |output| output else null;
@@ -237,15 +237,15 @@ fn executeRunCommand(
         include_paths,
         run_preprocessor,
         reporter,
-        allocator,
+        gpa,
     );
-    defer allocator.free(bytecode);
+    defer gpa.free(bytecode);
 
     if (output_file_path) |path| {
         try utils.writeToFile(path, bytecode);
     }
 
-    try runBytecode(bytecode, external_libraires, memory_size, allocator);
+    try runBytecode(bytecode, external_libraires, memory_size, gpa);
 }
 
 fn logError(reporter: *fehler.ErrorReporter, comptime format: []const u8, args: anytype) void {
