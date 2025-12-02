@@ -539,10 +539,88 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
+        .kw_dw => {
+            self.nextToken();
+            var exprs = ArrayList(*ast.Expression).init(self.arena.allocator());
+
+            while (true) {
+                try exprs.append(try self.parseExpression());
+                if (self.curTokenIs(.comma)) {
+                    self.nextToken();
+                    continue;
+                }
+                break;
+            }
+
+            return .{ .dw = .{
+                .exprs = try exprs.toOwnedSlice(),
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+            } };
+        },
+        .kw_dd => {
+            self.nextToken();
+            var exprs = ArrayList(*ast.Expression).init(self.arena.allocator());
+
+            while (true) {
+                try exprs.append(try self.parseExpression());
+                if (self.curTokenIs(.comma)) {
+                    self.nextToken();
+                    continue;
+                }
+                break;
+            }
+
+            return .{ .dd = .{
+                .exprs = try exprs.toOwnedSlice(),
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+            } };
+        },
+        .kw_dq => {
+            self.nextToken();
+            var exprs = ArrayList(*ast.Expression).init(self.arena.allocator());
+
+            while (true) {
+                try exprs.append(try self.parseExpression());
+                if (self.curTokenIs(.comma)) {
+                    self.nextToken();
+                    continue;
+                }
+                break;
+            }
+
+            return .{ .dq = .{
+                .exprs = try exprs.toOwnedSlice(),
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+            } };
+        },
         .kw_resb => {
             self.nextToken();
             const expr = try self.parseExpression();
             return .{ .resb = .{
+                .expr = expr,
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+            } };
+        },
+        .kw_resw => {
+            self.nextToken();
+            const expr = try self.parseExpression();
+            return .{ .resw = .{
+                .expr = expr,
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+            } };
+        },
+        .kw_resd => {
+            self.nextToken();
+            const expr = try self.parseExpression();
+            return .{ .resd = .{
+                .expr = expr,
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+            } };
+        },
+        .kw_resq => {
+            self.nextToken();
+            const expr = try self.parseExpression();
+            return .{ .resq = .{
                 .expr = expr,
                 .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };

@@ -166,7 +166,6 @@ fn processStatement(self: *Preprocessor, stmt: ast.Statement) !?ast.Statement {
         .inc => |v| .{ .inc = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
         .dec => |v| .{ .dec = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
         .neg => |v| .{ .neg = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
-        .resb => |v| .{ .resb = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
         .mov => |v| .{ .mov = .{ .expr1 = try self.substituteExpr(v.expr1), .expr2 = try self.substituteExpr(v.expr2), .span = v.span } },
         .ldr => |v| .{ .ldr = .{ .expr1 = try self.substituteExpr(v.expr1), .expr2 = try self.substituteExpr(v.expr2), .span = v.span } },
         .str => |v| .{ .str = .{ .expr1 = try self.substituteExpr(v.expr1), .expr2 = try self.substituteExpr(v.expr2), .span = v.span } },
@@ -206,6 +205,40 @@ fn processStatement(self: *Preprocessor, stmt: ast.Statement) !?ast.Statement {
             },
             .span = v.span,
         } },
+        .dw => |v| .{ .dw = .{
+            .exprs = blk: {
+                var new_exprs = try ArrayList(*ast.Expression).initCapacity(arena_alloc, v.exprs.len);
+                for (v.exprs) |expr| {
+                    new_exprs.appendAssumeCapacity(try self.substituteExpr(expr));
+                }
+                break :blk try new_exprs.toOwnedSlice();
+            },
+            .span = v.span,
+        } },
+        .dd => |v| .{ .dd = .{
+            .exprs = blk: {
+                var new_exprs = try ArrayList(*ast.Expression).initCapacity(arena_alloc, v.exprs.len);
+                for (v.exprs) |expr| {
+                    new_exprs.appendAssumeCapacity(try self.substituteExpr(expr));
+                }
+                break :blk try new_exprs.toOwnedSlice();
+            },
+            .span = v.span,
+        } },
+        .dq => |v| .{ .dq = .{
+            .exprs = blk: {
+                var new_exprs = try ArrayList(*ast.Expression).initCapacity(arena_alloc, v.exprs.len);
+                for (v.exprs) |expr| {
+                    new_exprs.appendAssumeCapacity(try self.substituteExpr(expr));
+                }
+                break :blk try new_exprs.toOwnedSlice();
+            },
+            .span = v.span,
+        } },
+        .resb => |v| .{ .resb = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
+        .resw => |v| .{ .resw = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
+        .resd => |v| .{ .resd = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
+        .resq => |v| .{ .resq = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
     };
 }
 

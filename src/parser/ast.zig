@@ -53,7 +53,13 @@ pub const Statement = union(enum) {
     syscall: Span,
     hlt: Span,
     db: Db,
+    dw: Db,
+    dd: Db,
+    dq: Db,
     resb: Expr1,
+    resw: Expr1,
+    resd: Expr1,
+    resq: Expr1,
 
     pub const Expr1 = struct {
         expr: *Expression,
@@ -149,7 +155,13 @@ pub const Statement = union(enum) {
             .syscall => |v| v,
             .hlt => |v| v,
             .db => |v| v.span,
+            .dw => |v| v.span,
+            .dd => |v| v.span,
+            .dq => |v| v.span,
             .resb => |v| v.span,
+            .resw => |v| v.span,
+            .resd => |v| v.span,
+            .resq => |v| v.span,
         };
     }
 };

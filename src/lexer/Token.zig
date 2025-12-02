@@ -81,7 +81,13 @@ pub const Kind = enum {
     kw_hlt,
 
     kw_db,
+    kw_dw,
+    kw_dd,
+    kw_dq,
     kw_resb,
+    kw_resw,
+    kw_resd,
+    kw_resq,
 };
 
 kind: Kind,
@@ -172,7 +178,13 @@ const keywords = std.StaticStringMap(Kind).initComptime(.{
     .{ "hlt", Kind.kw_hlt },
     // Data Declaration Directives
     .{ "db", Kind.kw_db },
+    .{ "dw", Kind.kw_dw },
+    .{ "dd", Kind.kw_dd },
+    .{ "dq", Kind.kw_dq },
     .{ "resb", Kind.kw_resb },
+    .{ "resw", Kind.kw_resw },
+    .{ "resd", Kind.kw_resd },
+    .{ "resq", Kind.kw_resq },
     // Registers b0..b15
     .{ "b0", Kind.register },
     .{ "b1", Kind.register },

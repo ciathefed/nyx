@@ -189,9 +189,62 @@ pub fn compile(self: *Compiler) ![]u8 {
                     }
                 }
             },
-            .resb => |v| {
+            .dw => |v| {
+                for (v.exprs) |expr| {
+                    switch (expr.*) {
+                        .integer_literal => |int| {
+                            const val = @as(u16, @intCast(int));
+                            const bytes = std.mem.toBytes(std.mem.nativeToLittle(u16, val));
+                            try self.bytecode.extend(&bytes);
+                        },
+                        else => {
+                            self.report(.err, "unsupported operand", v.span, 1);
+                            return error.CompilerError;
+                        },
+                    }
+                }
+            },
+            .dd => |v| {
+                for (v.exprs) |expr| {
+                    switch (expr.*) {
+                        .integer_literal => |int| {
+                            const val = @as(u32, @intCast(int));
+                            const bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, val));
+                            try self.bytecode.extend(&bytes);
+                        },
+                        else => {
+                            self.report(.err, "unsupported operand", v.span, 1);
+                            return error.CompilerError;
+                        },
+                    }
+                }
+            },
+            .dq => |v| {
+                for (v.exprs) |expr| {
+                    switch (expr.*) {
+                        .integer_literal => |int| {
+                            const val = @as(u64, @intCast(int));
+                            const bytes = std.mem.toBytes(std.mem.nativeToLittle(u64, val));
+                            try self.bytecode.extend(&bytes);
+                        },
+                        else => {
+                            self.report(.err, "unsupported operand", v.span, 1);
+                            return error.CompilerError;
+                        },
+                    }
+                }
+            },
+            .resb, .resw, .resd, .resq => |v| {
+                const multiplier: usize = switch (stmt) {
+                    .resb => 1,
+                    .resw => 2,
+                    .resd => 4,
+                    .resq => 8,
+                    else => unreachable,
+                };
+
                 switch (v.expr.*) {
-                    .integer_literal => |int| try self.bytecode.grow(@intCast(int)),
+                    .integer_literal => |int| try self.bytecode.grow(@as(usize, @intCast(int)) * multiplier),
                     else => {
                         self.report(.err, "unsupported operand", v.span, 1);
                         return error.CompilerError;
