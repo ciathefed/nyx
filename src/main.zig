@@ -63,7 +63,7 @@ fn createExecCommand(app: *yazap.App) !yazap.Command {
     var exec_cmd = app.createCommand("exec", "Execute existing bytecode in the virtual machine");
     try exec_cmd.addArgs(&.{
         yazap.Arg.positional("FILE", "Path to the precompiled bytecode file to execute", null),
-        yazap.Arg.multiValuesOption("library", 'l', "Link a dynamic librarie", 65536),
+        yazap.Arg.multiValuesOption("library", 'l', "Link a dynamic libraries", 65536),
         yazap.Arg.singleValueOption("memory-size", 'm', "Size of virtual machine memory in bytes"),
     });
     exec_cmd.setProperty(.positional_arg_required);
@@ -76,7 +76,7 @@ fn createRunCommand(app: *yazap.App) !yazap.Command {
     try run_cmd.addArgs(&.{
         yazap.Arg.positional("FILE", "Path to the source file to compile and execute", null),
         yazap.Arg.singleValueOption("output", 'o', "Optional path to write the compiled bytecode output"),
-        yazap.Arg.multiValuesOption("library", 'l', "Link a dynamic librarie", 65536),
+        yazap.Arg.multiValuesOption("library", 'l', "Link a dynamic libraries", 65536),
         yazap.Arg.multiValuesOption("include", 'i', "Adds an include directory to the search path", 65536),
         yazap.Arg.singleValueOption("memory-size", 'm', "Size of virtual machine memory in bytes"),
         yazap.Arg.booleanOption("disable-preprocessor", null, "Stop the preprocessor from running"),
@@ -161,11 +161,11 @@ fn compileSourceFile(
 
 fn runBytecode(
     bytecode: []const u8,
-    external_libraires: [][]const u8,
+    external_libraries: [][]const u8,
     memory_size: usize,
     gpa: Allocator,
 ) !void {
-    var vm = try Vm.init(bytecode, memory_size, external_libraires, gpa);
+    var vm = try Vm.init(bytecode, memory_size, external_libraries, gpa);
     defer vm.deinit();
     try vm.run();
 }
@@ -203,7 +203,7 @@ fn executeExecCommand(
     reporter: *fehler.ErrorReporter,
 ) !void {
     const input_file_path = matches.getSingleValue("FILE").?;
-    const external_libraires: [][]const u8 = matches.getMultiValues("library") orelse &.{};
+    const external_libraries: [][]const u8 = matches.getMultiValues("library") orelse &.{};
     const memory_size = if (matches.getSingleValue("memory-size")) |size|
         fmt.parseInt(usize, size, 10) catch {
             logError(reporter, "{s}: not a valid number", .{size});
@@ -215,7 +215,7 @@ fn executeExecCommand(
     const bytecode = try utils.readFromFile(io, gpa, input_file_path);
     defer gpa.free(bytecode);
 
-    try runBytecode(bytecode, external_libraires, memory_size, gpa);
+    try runBytecode(bytecode, external_libraries, memory_size, gpa);
 }
 
 fn executeRunCommand(
@@ -227,7 +227,7 @@ fn executeRunCommand(
 ) !void {
     const input_file_path = matches.getSingleValue("FILE").?;
     const output_file_path = if (matches.getSingleValue("output")) |output| output else null;
-    const external_libraires: [][]const u8 = matches.getMultiValues("library") orelse &.{};
+    const external_libraries: [][]const u8 = matches.getMultiValues("library") orelse &.{};
     const include_paths = matches.getMultiValues("include") orelse &.{};
     const memory_size = if (matches.getSingleValue("memory-size")) |size|
         fmt.parseInt(usize, size, 10) catch {
@@ -253,7 +253,7 @@ fn executeRunCommand(
         try utils.writeToFile(io, path, bytecode);
     }
 
-    try runBytecode(bytecode, external_libraires, memory_size, gpa);
+    try runBytecode(bytecode, external_libraries, memory_size, gpa);
 }
 
 fn logError(reporter: *fehler.ErrorReporter, comptime format: []const u8, args: anytype) void {

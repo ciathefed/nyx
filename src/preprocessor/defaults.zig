@@ -5,7 +5,7 @@ const StringInterner = @import("../StringInterner.zig");
 const StringId = StringInterner.StringId;
 const ast = @import("../parser/ast.zig");
 
-pub fn getDefaultDefinitons(gpa: Allocator, interner: *StringInterner) !std.AutoHashMap(StringId, *ast.Expression) {
+pub fn getDefaultDefinitions(gpa: Allocator, interner: *StringInterner) !std.AutoHashMap(StringId, *ast.Expression) {
     const arch = switch (builtin.cpu.arch) {
         .aarch64 => "__AARCH64__",
         .aarch64_be => "__AARCH64_BE__",
@@ -112,7 +112,7 @@ pub fn getDefaultDefinitons(gpa: Allocator, interner: *StringInterner) !std.Auto
         .vulkan => "__VULKAN__",
     };
 
-    var definitons = std.AutoHashMap(StringId, *ast.Expression).init(gpa);
+    var definitions = std.AutoHashMap(StringId, *ast.Expression).init(gpa);
 
     const arch_id = try interner.intern(arch);
     const arch_expr = try gpa.create(ast.Expression);
@@ -123,8 +123,8 @@ pub fn getDefaultDefinitons(gpa: Allocator, interner: *StringInterner) !std.Auto
     const os_expr = try gpa.create(ast.Expression);
     os_expr.* = .{ .string_literal = empty_string_id };
 
-    try definitons.put(arch_id, arch_expr);
-    try definitons.put(os_id, os_expr);
+    try definitions.put(arch_id, arch_expr);
+    try definitions.put(os_id, os_expr);
 
-    return definitons;
+    return definitions;
 }

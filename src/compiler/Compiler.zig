@@ -1,5 +1,5 @@
 // TODO: a lot of these "else => {}" statements default to a very general error,
-//       they could be specific erros instead
+//       they could be specific errors instead
 
 const std = @import("std");
 const process = std.process;
@@ -149,10 +149,10 @@ pub fn compile(self: *Compiler) ![]u8 {
             .sti => |v| try self.compileSti(v.expr1, v.expr2, v.expr3, v.span),
             .push => |v| try self.compilePush(v.data_size, v.expr, v.span),
             .pop => |v| try self.compilePop(v.data_size, v.expr, v.span),
-            .add => |v| try self.compileAritmetic(v.expr1, v.expr2, v.expr3, .add, v.span),
-            .sub => |v| try self.compileAritmetic(v.expr1, v.expr2, v.expr3, .sub, v.span),
-            .mul => |v| try self.compileAritmetic(v.expr1, v.expr2, v.expr3, .mul, v.span),
-            .div => |v| try self.compileAritmetic(v.expr1, v.expr2, v.expr3, .div, v.span),
+            .add => |v| try self.compileArithmetic(v.expr1, v.expr2, v.expr3, .add, v.span),
+            .sub => |v| try self.compileArithmetic(v.expr1, v.expr2, v.expr3, .sub, v.span),
+            .mul => |v| try self.compileArithmetic(v.expr1, v.expr2, v.expr3, .mul, v.span),
+            .div => |v| try self.compileArithmetic(v.expr1, v.expr2, v.expr3, .div, v.span),
             .@"and" => |v| try self.compileBitwise(v.expr1, v.expr2, v.expr3, .@"and", v.span),
             .@"or" => |v| try self.compileBitwise(v.expr1, v.expr2, v.expr3, .@"or", v.span),
             .xor => |v| try self.compileBitwise(v.expr1, v.expr2, v.expr3, .xor, v.span),
@@ -682,7 +682,7 @@ fn compilePop(self: *Compiler, data_size: ?*ast.Expression, expr: *ast.Expressio
     return self.reportError("unsupported operands", span);
 }
 
-fn compileAritmetic(
+fn compileArithmetic(
     self: *Compiler,
     dest: *ast.Expression,
     lhs: *ast.Expression,
