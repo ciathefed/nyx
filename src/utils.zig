@@ -1,18 +1,21 @@
 const std = @import("std");
-const fs = std.fs;
+const Io = std.Io;
 const Allocator = std.mem.Allocator;
 
-pub fn readFromFile(file_path: []const u8, gpa: Allocator) ![]u8 {
-    const stat = try fs.cwd().statFile(file_path);
+pub fn readFromFile(io: std.Io, gpa: Allocator, file_path: []const u8) ![]u8 {
+    var cwd = Io.Dir.cwd();
+    const stat = try cwd.statFile(io, file_path, .{});
     const buffer = try gpa.alloc(u8, @intCast(stat.size));
-    return fs.cwd().readFile(file_path, buffer);
+    return try cwd.readFile(io, file_path, buffer);
 }
 
-pub fn writeToFile(file_path: []const u8, data: []const u8) !void {
-    return fs.cwd().writeFile(.{ .sub_path = file_path, .data = data });
+pub fn writeToFile(io: std.Io, file_path: []const u8, data: []const u8) !void {
+    var cwd = Io.Dir.cwd();
+    try cwd.writeFile(io, .{ .sub_path = file_path, .data = data });
 }
 
-pub fn fileExists(file_path: []const u8) bool {
-    fs.cwd().access(file_path, .{}) catch return false;
+pub fn fileExists(io: std.Io, file_path: []const u8) bool {
+    var cwd = Io.Dir.cwd();
+    cwd.access(io, file_path, .{}) catch return false;
     return true;
 }

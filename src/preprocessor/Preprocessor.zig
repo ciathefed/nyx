@@ -26,6 +26,7 @@ const ConditionalInfo = struct {
     span: Span,
 };
 
+io: std.Io,
 filename: []const u8,
 input: []const u8,
 program: []ast.Statement,
@@ -36,13 +37,14 @@ reporter: *fehler.ErrorReporter,
 arena: std.heap.ArenaAllocator,
 
 pub fn init(
+    io: std.Io,
+    gpa: Allocator,
     filename: []const u8,
     input: []const u8,
     program: []ast.Statement,
     interner: *StringInterner,
     reporter: *fehler.ErrorReporter,
     include_paths: ?[][]const u8,
-    gpa: Allocator,
 ) !Preprocessor {
     var default_definitions = try defaults.getDefaultDefinitons(gpa, interner);
     defer default_definitions.deinit();
@@ -65,6 +67,7 @@ pub fn init(
     }
 
     return Preprocessor{
+        .io = io,
         .filename = filename,
         .input = input,
         .program = program,
@@ -248,19 +251,20 @@ fn processInclude(self: *Preprocessor, file_path: []const u8, span: Span) anyerr
     var found_path: ?[]const u8 = null;
     for (self.include_paths.items) |include_dir| {
         const candidate = try fs.path.join(arena_alloc, &.{ include_dir, file_path });
-        if (!utils.fileExists(candidate)) continue;
+        if (!utils.fileExists(self.io, candidate)) continue;
         found_path = candidate;
         break;
     }
 
     const path = found_path orelse return self.reportError("include file not found", span);
 
-    const content = try utils.readFromFile(path, arena_alloc);
+    const content = try utils.readFromFile(self.io, arena_alloc, path);
     try self.reporter.addSource(path, content);
 
     const included_statements = try self.parseFileContent(content, path);
 
     var sub_preprocessor = Preprocessor{
+        .io = self.io,
         .filename = path,
         .input = content,
         .program = included_statements,

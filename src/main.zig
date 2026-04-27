@@ -16,12 +16,8 @@ const Vm = @import("vm/Vm.zig");
 const Preprocessor = @import("preprocessor/Preprocessor.zig");
 const utils = @import("utils.zig");
 
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}).init;
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var app = yazap.App.init(allocator, "nyx", "A compiler and virtual machine for the Nyx assembly language");
+pub fn main(init: std.process.Init) !void {
+    var app = yazap.App.init(init.gpa, "nyx", "A compiler and virtual machine for the Nyx assembly language");
     defer app.deinit();
 
     var nyx = app.rootCommand();
@@ -32,21 +28,21 @@ pub fn main() !void {
     try nyx.addSubcommand(try createExecCommand(&app));
     try nyx.addSubcommand(try createRunCommand(&app));
 
-    const matches = try app.parseProcess();
+    const matches = try app.parseProcess(init.io, init.minimal.args);
 
-    var reporter = fehler.ErrorReporter.init(allocator);
+    var reporter = fehler.ErrorReporter.init(init.gpa);
     defer reporter.deinit();
 
     if (matches.subcommandMatches("build")) |build_cmd_matches| {
-        try executeBuildCommand(build_cmd_matches, &reporter, allocator);
+        try executeBuildCommand(init.io, init.minimal.environ, init.gpa, build_cmd_matches, &reporter);
     }
 
     if (matches.subcommandMatches("exec")) |exec_cmd_matches| {
-        try executeExecCommand(exec_cmd_matches, &reporter, allocator);
+        try executeExecCommand(init.io, init.gpa, exec_cmd_matches, &reporter);
     }
 
     if (matches.subcommandMatches("run")) |run_cmd_matches| {
-        try executeRunCommand(run_cmd_matches, &reporter, allocator);
+        try executeRunCommand(init.io, init.minimal.environ, init.gpa, run_cmd_matches, &reporter);
     }
 }
 
@@ -91,18 +87,20 @@ fn createRunCommand(app: *yazap.App) !yazap.Command {
 }
 
 fn compileSourceFile(
+    io: std.Io,
+    env: std.process.Environ,
+    gpa: Allocator,
     input_file_path: []const u8,
     include_paths: []const []const u8,
     run_preprocessor: bool,
     reporter: *fehler.ErrorReporter,
-    gpa: Allocator,
 ) ![]const u8 {
-    if (!utils.fileExists(input_file_path)) {
+    if (!utils.fileExists(io, input_file_path)) {
         logError(reporter, "{s}: cannot find file", .{input_file_path});
         process.exit(1);
     }
 
-    const input = try utils.readFromFile(input_file_path, gpa);
+    const input = try utils.readFromFile(io, gpa, input_file_path);
     defer gpa.free(input);
 
     try reporter.addSource(input_file_path, input);
@@ -121,8 +119,8 @@ fn compileSourceFile(
     try all_include_paths.append("");
     try all_include_paths.append(fs.path.basename(input_file_path));
     try all_include_paths.appendSlice(include_paths);
-    const stdlib_path = std.process.getEnvVarOwned(gpa, "NYX_STDLIB_PATH") catch |err| switch (err) {
-        error.EnvironmentVariableNotFound => null,
+    const stdlib_path = env.getAlloc(gpa, "NYX_STDLIB_PATH") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => null,
         else => return err,
     };
     if (stdlib_path) |path| try all_include_paths.append(path);
@@ -130,13 +128,14 @@ fn compileSourceFile(
 
     var preprocessor: ?Preprocessor = if (run_preprocessor)
         try Preprocessor.init(
+            io,
+            gpa,
             input_file_path,
             input,
             stmts,
             &interner,
             reporter,
             try all_include_paths.toOwnedSlice(),
-            gpa,
         )
     else
         null;
@@ -172,9 +171,11 @@ fn runBytecode(
 }
 
 fn executeBuildCommand(
+    io: std.Io,
+    env: std.process.Environ,
+    gpa: Allocator,
     matches: yazap.ArgMatches,
     reporter: *fehler.ErrorReporter,
-    gpa: Allocator,
 ) !void {
     const input_file_path = matches.getSingleValue("FILE").?;
     const output_file_path = if (matches.getSingleValue("output")) |output| output else "out.nyb";
@@ -182,21 +183,24 @@ fn executeBuildCommand(
     const run_preprocessor = !matches.containsArg("disable-preprocessor");
 
     const bytecode = try compileSourceFile(
+        io,
+        env,
+        gpa,
         input_file_path,
         include_paths,
         run_preprocessor,
         reporter,
-        gpa,
     );
     defer gpa.free(bytecode);
 
-    try utils.writeToFile(output_file_path, bytecode);
+    try utils.writeToFile(io, output_file_path, bytecode);
 }
 
 fn executeExecCommand(
+    io: std.Io,
+    gpa: Allocator,
     matches: yazap.ArgMatches,
     reporter: *fehler.ErrorReporter,
-    gpa: Allocator,
 ) !void {
     const input_file_path = matches.getSingleValue("FILE").?;
     const external_libraires: [][]const u8 = matches.getMultiValues("library") orelse &.{};
@@ -208,16 +212,18 @@ fn executeExecCommand(
     else
         65536;
 
-    const bytecode = try utils.readFromFile(input_file_path, gpa);
+    const bytecode = try utils.readFromFile(io, gpa, input_file_path);
     defer gpa.free(bytecode);
 
     try runBytecode(bytecode, external_libraires, memory_size, gpa);
 }
 
 fn executeRunCommand(
+    io: std.Io,
+    env: std.process.Environ,
+    gpa: Allocator,
     matches: yazap.ArgMatches,
     reporter: *fehler.ErrorReporter,
-    gpa: Allocator,
 ) !void {
     const input_file_path = matches.getSingleValue("FILE").?;
     const output_file_path = if (matches.getSingleValue("output")) |output| output else null;
@@ -233,16 +239,18 @@ fn executeRunCommand(
     const run_preprocessor = !matches.containsArg("disable-preprocessor");
 
     const bytecode = try compileSourceFile(
+        io,
+        env,
+        gpa,
         input_file_path,
         include_paths,
         run_preprocessor,
         reporter,
-        gpa,
     );
     defer gpa.free(bytecode);
 
     if (output_file_path) |path| {
-        try utils.writeToFile(path, bytecode);
+        try utils.writeToFile(io, path, bytecode);
     }
 
     try runBytecode(bytecode, external_libraires, memory_size, gpa);

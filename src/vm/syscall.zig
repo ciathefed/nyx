@@ -1,7 +1,7 @@
 // TODO: move away from posix syscalls and use zig stdlib
 // TODO: err register so program doesnt crash on a zig error
 const std = @import("std");
-const posix = std.posix;
+const posix = std.posix.system;
 const Allocator = std.mem.Allocator;
 const Vm = @import("Vm.zig");
 
@@ -35,14 +35,14 @@ fn sysOpen(self: *Vm) anyerror!void {
         break :blk try self.mmu.readSlice(path_addr, i - path_addr);
     };
 
-    const fd = try posix.open(path, @bitCast(flags), mode);
+    const fd = posix.open(@ptrCast(path), @bitCast(flags), mode);
 
     self.regs.set(.q0, .{ .qword = @intCast(fd) });
 }
 
 fn sysClose(self: *Vm) anyerror!void {
     const fd: i32 = @intCast(self.regs.get(.d0).asU32());
-    posix.close(fd);
+    _ = posix.close(fd);
 }
 
 fn sysRead(self: *Vm) anyerror!void {
@@ -55,7 +55,7 @@ fn sysRead(self: *Vm) anyerror!void {
     var buf = try self.mmu.gpa.alloc(u8, count);
     defer self.mmu.gpa.free(buf);
 
-    const n = try posix.read(fd, buf);
+    const n = posix.read(fd, @ptrCast(buf), buf.len);
 
     try self.mmu.writeSlice(addr, buf[0..n]);
 
@@ -70,7 +70,7 @@ fn sysWrite(self: *Vm) anyerror!void {
     if (addr + count >= self.mmu.size()) return error.AddressOutOfBounds;
 
     const buf = try self.mmu.readSlice(addr, count);
-    const n = try posix.write(fd, buf);
+    const n = posix.write(fd, @ptrCast(buf), buf.len);
 
     self.regs.set(.q0, .{ .qword = @intCast(n) });
 }
