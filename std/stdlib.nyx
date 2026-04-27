@@ -16,6 +16,21 @@
 #define TRUE 1
 #define FALSE 0
 
+#ifdef __LINUX__
+    #ifdef __X86_64__
+        #define O_RDONLY 0
+        #define O_WRONLY 1
+        #define O_RDWR   2
+        #define O_CREAT  64
+        #define O_EXCL   128
+        #define O_TRUNC  512
+        #define O_APPEND 1024
+        #define O_NONBLOCK 2048
+    #else
+        #error "unsupported linux architecture"
+    #endif
+#endif
+
 #ifdef __MACOS__
     #ifdef __AARCH64__
         #define O_ACCMODE 0x3
@@ -35,10 +50,8 @@
         #define O_FSYNC O_SYNC
         #define O_NDELAY O_NONBLOCK
     #else
-        #error "unsupported architecture"
+        #error "unsupported macos architecture"
     #endif
-#else
-    #error "unsupported operating system"
 #endif
 
 #endif ; NYX_STDLIB
