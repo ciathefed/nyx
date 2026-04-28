@@ -46,7 +46,7 @@ pub fn init(
     reporter: *fehler.ErrorReporter,
     include_paths: ?[][]const u8,
 ) !Preprocessor {
-    var default_definitions = try defaults.getDefaultDefinitons(gpa, interner);
+    var default_definitions = try defaults.getDefaultDefinitions(gpa, interner);
     defer default_definitions.deinit();
 
     var definitions = std.AutoHashMap(StringId, ?*ast.Expression).init(gpa);
