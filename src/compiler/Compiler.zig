@@ -100,7 +100,7 @@ pub fn compile(self: *Compiler) ![]u8 {
             },
             .entry => |v| {
                 switch (v.expr.*) {
-                    .integer_literal => |int| self.entry = .{ .address = @intCast(int) },
+                    .integer_literal => |int| self.entry = .{ .address = @bitCast(int) },
                     .identifier => |ident_id| self.entry = .{ .fixup = .{ .label = ident_id, .span = v.span } },
                     else => {
                         self.report(.err, "unsupported operand", v.span, 1);
@@ -176,7 +176,7 @@ pub fn compile(self: *Compiler) ![]u8 {
                 for (v.exprs) |expr| {
                     switch (expr.*) {
                         .integer_literal => |int| try self.bytecode.push(
-                            @as(u8, @intCast(int)),
+                            @as(u8, @bitCast(@as(i8, @intCast(int)))),
                         ),
                         .string_literal => |str_id| {
                             const str = self.interner.get(str_id).?;
@@ -193,7 +193,7 @@ pub fn compile(self: *Compiler) ![]u8 {
                 for (v.exprs) |expr| {
                     switch (expr.*) {
                         .integer_literal => |int| {
-                            const val = @as(u16, @intCast(int));
+                            const val: u16 = @bitCast(@as(i16, @intCast(int)));
                             const bytes = std.mem.toBytes(std.mem.nativeToLittle(u16, val));
                             try self.bytecode.extend(&bytes);
                         },
@@ -208,7 +208,7 @@ pub fn compile(self: *Compiler) ![]u8 {
                 for (v.exprs) |expr| {
                     switch (expr.*) {
                         .integer_literal => |int| {
-                            const val = @as(u32, @intCast(int));
+                            const val: u32 = @bitCast(@as(i32, @intCast(int)));
                             const bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, val));
                             try self.bytecode.extend(&bytes);
                         },
@@ -223,7 +223,7 @@ pub fn compile(self: *Compiler) ![]u8 {
                 for (v.exprs) |expr| {
                     switch (expr.*) {
                         .integer_literal => |int| {
-                            const val = @as(u64, @intCast(int));
+                            const val: u64 = @bitCast(int);
                             const bytes = std.mem.toBytes(std.mem.nativeToLittle(u64, val));
                             try self.bytecode.extend(&bytes);
                         },
@@ -319,10 +319,10 @@ fn compileMov(self: *Compiler, lhs: *ast.Expression, rhs: *ast.Expression, span:
                     try self.bytecode.push(Opcode.mov_reg_imm);
                     try self.bytecode.push(dest);
                     switch (DataSize.fromRegister(dest)) {
-                        .byte => try self.bytecode.push(@as(u8, @intCast(int))),
-                        .word => try self.bytecode.extend(&mem.toBytes(@as(u16, @intCast(int)))),
-                        .dword => try self.bytecode.extend(&mem.toBytes(@as(u32, @intCast(int)))),
-                        .qword => try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(int)))),
+                        .byte => try self.bytecode.push(@as(u8, @bitCast(@as(i8, @intCast(int))))),
+                        .word => try self.bytecode.extend(&mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(int)))))),
+                        .dword => try self.bytecode.extend(&mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(int)))))),
+                        .qword => try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(int)))),
                         .float => try self.bytecode.extend(&mem.toBytes(@as(f32, @floatFromInt(int)))),
                         .double => try self.bytecode.extend(&mem.toBytes(@as(f64, @floatFromInt(int)))),
                     }
@@ -438,10 +438,10 @@ fn compileSti(
     const value_bytes = switch (lhs.*) {
         .integer_literal => |val| blk: {
             break :blk switch (s) {
-                .byte => &mem.toBytes(@as(u8, @intCast(val))),
-                .word => &mem.toBytes(@as(u16, @intCast(val))),
-                .dword => &mem.toBytes(@as(u32, @intCast(val))),
-                .qword => &mem.toBytes(@as(u64, @intCast(val))),
+                .byte => &mem.toBytes(@as(u8, @bitCast(@as(i8, @intCast(val))))),
+                .word => &mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(val))))),
+                .dword => &mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(val))))),
+                .qword => &mem.toBytes(@as(u64, @bitCast(val))),
                 .float => &mem.toBytes(@as(f32, @floatFromInt(val))),
                 .double => &mem.toBytes(@as(f64, @floatFromInt(val))),
             };
@@ -534,10 +534,10 @@ fn compilePush(self: *Compiler, data_size: ?*ast.Expression, expr: *ast.Expressi
             try self.bytecode.push(Opcode.push_imm);
             try self.bytecode.push(size);
             try self.bytecode.extend(switch (size) {
-                .byte => &mem.toBytes(@as(u8, @intCast(src))),
-                .word => &mem.toBytes(@as(u16, @intCast(src))),
-                .dword => &mem.toBytes(@as(u32, @intCast(src))),
-                .qword => &mem.toBytes(@as(u64, @intCast(src))),
+                .byte => &mem.toBytes(@as(u8, @bitCast(@as(i8, @intCast(src))))),
+                .word => &mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(src))))),
+                .dword => &mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(src))))),
+                .qword => &mem.toBytes(@as(u64, @bitCast(src))),
                 .float => &mem.toBytes(@as(f32, @floatFromInt(src))),
                 .double => &mem.toBytes(@as(f64, @floatFromInt(src))),
             });
@@ -728,10 +728,10 @@ fn compileArithmetic(
             try self.bytecode.push(dest_reg);
             try self.bytecode.push(lhs_reg);
             try self.bytecode.extend(switch (DataSize.fromRegister(dest_reg)) {
-                .byte => &mem.toBytes(@as(u8, @intCast(rhs_int))),
-                .word => &mem.toBytes(@as(u16, @intCast(rhs_int))),
-                .dword => &mem.toBytes(@as(u32, @intCast(rhs_int))),
-                .qword => &mem.toBytes(@as(u64, @intCast(rhs_int))),
+                .byte => &mem.toBytes(@as(u8, @bitCast(@as(i8, @intCast(rhs_int))))),
+                .word => &mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(rhs_int))))),
+                .dword => &mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(rhs_int))))),
+                .qword => &mem.toBytes(@as(u64, @bitCast(rhs_int))),
                 .float => &mem.toBytes(@as(f32, @floatFromInt(rhs_int))),
                 .double => &mem.toBytes(@as(f64, @floatFromInt(rhs_int))),
             });
@@ -821,10 +821,10 @@ fn compileBitwise(
             try self.bytecode.push(dest_reg);
             try self.bytecode.push(lhs_reg);
             try self.bytecode.extend(switch (DataSize.fromRegister(dest_reg)) {
-                .byte => &mem.toBytes(@as(u8, @intCast(rhs_int))),
-                .word => &mem.toBytes(@as(u16, @intCast(rhs_int))),
-                .dword => &mem.toBytes(@as(u32, @intCast(rhs_int))),
-                .qword => &mem.toBytes(@as(u64, @intCast(rhs_int))),
+                .byte => &mem.toBytes(@as(u8, @bitCast(@as(i8, @intCast(rhs_int))))),
+                .word => &mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(rhs_int))))),
+                .dword => &mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(rhs_int))))),
+                .qword => &mem.toBytes(@as(u64, @bitCast(rhs_int))),
                 .float => &mem.toBytes(@as(f32, @floatFromInt(rhs_int))),
                 .double => &mem.toBytes(@as(f64, @floatFromInt(rhs_int))),
             });
@@ -856,10 +856,10 @@ fn compileCmp(
                     try self.bytecode.push(Opcode.cmp_reg_imm);
                     try self.bytecode.push(lhs_reg);
                     try self.bytecode.extend(switch (DataSize.fromRegister(lhs_reg)) {
-                        .byte => &mem.toBytes(@as(u8, @intCast(rhs_int))),
-                        .word => &mem.toBytes(@as(u16, @intCast(rhs_int))),
-                        .dword => &mem.toBytes(@as(u32, @intCast(rhs_int))),
-                        .qword => &mem.toBytes(@as(u64, @intCast(rhs_int))),
+                        .byte => &mem.toBytes(@as(u8, @bitCast(@as(i8, @intCast(rhs_int))))),
+                        .word => &mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(rhs_int))))),
+                        .dword => &mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(rhs_int))))),
+                        .qword => &mem.toBytes(@as(u64, @bitCast(rhs_int))),
                         .float => &mem.toBytes(@as(f32, @floatFromInt(rhs_int))),
                         .double => &mem.toBytes(@as(f64, @floatFromInt(rhs_int))),
                     });
@@ -914,7 +914,7 @@ fn compileJump(
                 .jle => Opcode.jle_imm,
                 .jge => Opcode.jge_imm,
             });
-            try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(src))));
+            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(src))));
             return;
         },
         .register => |src| {
@@ -958,7 +958,7 @@ fn compileCall(self: *Compiler, expr: *ast.Expression, span: Span) !void {
     switch (expr.*) {
         .integer_literal => |src| {
             try self.bytecode.push(Opcode.call_imm);
-            try self.bytecode.extend(&mem.toBytes(@as(u64, @intCast(src))));
+            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(src))));
             return;
         },
         .register => |src| {
