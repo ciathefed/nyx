@@ -198,6 +198,8 @@ fn processStatement(self: *Preprocessor, stmt: ast.Statement) !?ast.Statement {
         .xor => |v| .{ .xor = .{ .expr1 = try self.substituteExpr(v.expr1), .expr2 = try self.substituteExpr(v.expr2), .expr3 = try self.substituteExpr(v.expr3), .span = v.span } },
         .shl => |v| .{ .shl = .{ .expr1 = try self.substituteExpr(v.expr1), .expr2 = try self.substituteExpr(v.expr2), .expr3 = try self.substituteExpr(v.expr3), .span = v.span } },
         .shr => |v| .{ .shr = .{ .expr1 = try self.substituteExpr(v.expr1), .expr2 = try self.substituteExpr(v.expr2), .expr3 = try self.substituteExpr(v.expr3), .span = v.span } },
+        .rol => |v| .{ .rol = .{ .expr1 = try self.substituteExpr(v.expr1), .expr2 = try self.substituteExpr(v.expr2), .expr3 = try self.substituteExpr(v.expr3), .span = v.span } },
+        .ror => |v| .{ .ror = .{ .expr1 = try self.substituteExpr(v.expr1), .expr2 = try self.substituteExpr(v.expr2), .expr3 = try self.substituteExpr(v.expr3), .span = v.span } },
         .db => |v| .{ .db = .{
             .exprs = blk: {
                 var new_exprs = try ArrayList(*ast.Expression).initCapacity(arena_alloc, v.exprs.len);

@@ -158,6 +158,8 @@ pub fn compile(self: *Compiler) ![]u8 {
             .xor => |v| try self.compileBitwise(v.expr1, v.expr2, v.expr3, .xor, v.span),
             .shl => |v| try self.compileBitwise(v.expr1, v.expr2, v.expr3, .shl, v.span),
             .shr => |v| try self.compileBitwise(v.expr1, v.expr2, v.expr3, .shr, v.span),
+            .rol => |v| try self.compileBitwise(v.expr1, v.expr2, v.expr3, .rol, v.span),
+            .ror => |v| try self.compileBitwise(v.expr1, v.expr2, v.expr3, .ror, v.span),
             .cmp => |v| try self.compileCmp(v.expr1, v.expr2, v.span),
             .jmp => |v| try self.compileJump(v.expr, .jmp, v.span),
             .jne => |v| try self.compileJump(v.expr, .jne, v.span),
@@ -773,6 +775,8 @@ fn compileBitwise(
         xor,
         shl,
         shr,
+        rol,
+        ror,
     },
     span: Span,
 ) !void {
@@ -804,6 +808,8 @@ fn compileBitwise(
                 .xor => Opcode.xor_reg_reg_reg,
                 .shl => Opcode.shl_reg_reg_reg,
                 .shr => Opcode.shr_reg_reg_reg,
+                .rol => Opcode.rol_reg_reg_reg,
+                .ror => Opcode.ror_reg_reg_reg,
             });
             try self.bytecode.push(dest_reg);
             try self.bytecode.push(lhs_reg);
@@ -817,6 +823,8 @@ fn compileBitwise(
                 .xor => Opcode.xor_reg_reg_imm,
                 .shl => Opcode.shl_reg_reg_imm,
                 .shr => Opcode.shr_reg_reg_imm,
+                .rol => Opcode.rol_reg_reg_imm,
+                .ror => Opcode.ror_reg_reg_imm,
             });
             try self.bytecode.push(dest_reg);
             try self.bytecode.push(lhs_reg);

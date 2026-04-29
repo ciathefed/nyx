@@ -215,6 +215,10 @@ pub fn step(self: *Vm) !void {
         .shl_reg_reg_imm => try self.executeBitwiseOp(shl, false),
         .shr_reg_reg_reg => try self.executeBitwiseOp(shr, true),
         .shr_reg_reg_imm => try self.executeBitwiseOp(shr, false),
+        .rol_reg_reg_reg => try self.executeBitwiseOp(rol, true),
+        .rol_reg_reg_imm => try self.executeBitwiseOp(rol, false),
+        .ror_reg_reg_reg => try self.executeBitwiseOp(ror, true),
+        .ror_reg_reg_imm => try self.executeBitwiseOp(ror, false),
         .cmp_reg_imm => {
             const reg = try self.readRegister();
             const lhs = self.regs.get(reg);
@@ -564,4 +568,12 @@ inline fn shl(a: anytype, b: anytype) @TypeOf(a, b) {
 
 inline fn shr(a: anytype, b: anytype) @TypeOf(a, b) {
     return a >> @intCast(b);
+}
+
+inline fn rol(a: anytype, b: anytype) @TypeOf(a, b) {
+    return std.math.rotl(@TypeOf(a), a, @as(u32, @intCast(b)));
+}
+
+inline fn ror(a: anytype, b: anytype) @TypeOf(a, b) {
+    return std.math.rotr(@TypeOf(a), a, @as(u32, @intCast(b)));
 }

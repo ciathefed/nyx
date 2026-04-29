@@ -355,6 +355,29 @@ test "shift operations" {
                 }
             }.f,
         },
+        .{
+            .input = "rol d0, d1, 3",
+            .check = struct {
+                fn f(stmt: ast.Statement) !void {
+                    try testing.expect(stmt == .rol);
+                    try testing.expect(stmt.rol.expr1.* == .register);
+                    try testing.expect(stmt.rol.expr2.* == .register);
+                    try testing.expect(stmt.rol.expr3.* == .integer_literal);
+                    try testing.expectEqual(@as(i64, 3), stmt.rol.expr3.integer_literal);
+                }
+            }.f,
+        },
+        .{
+            .input = "ror w0, w1, w2",
+            .check = struct {
+                fn f(stmt: ast.Statement) !void {
+                    try testing.expect(stmt == .ror);
+                    try testing.expect(stmt.ror.expr1.* == .register);
+                    try testing.expect(stmt.ror.expr2.* == .register);
+                    try testing.expect(stmt.ror.expr3.* == .register);
+                }
+            }.f,
+        },
     };
 
     for (tests) |t| {

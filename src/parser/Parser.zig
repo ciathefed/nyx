@@ -406,6 +406,34 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
+        .kw_rol => {
+            self.nextToken();
+            const dest = try self.parseExpression();
+            try self.expect_cur(.comma);
+            const lhs = try self.parseExpression();
+            try self.expect_cur(.comma);
+            const rhs = try self.parseExpression();
+            return .{ .rol = .{
+                .expr1 = dest,
+                .expr2 = lhs,
+                .expr3 = rhs,
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+            } };
+        },
+        .kw_ror => {
+            self.nextToken();
+            const dest = try self.parseExpression();
+            try self.expect_cur(.comma);
+            const lhs = try self.parseExpression();
+            try self.expect_cur(.comma);
+            const rhs = try self.parseExpression();
+            return .{ .ror = .{
+                .expr1 = dest,
+                .expr2 = lhs,
+                .expr3 = rhs,
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+            } };
+        },
         .kw_cmp => {
             self.nextToken();
             const lhs = try self.parseExpression();

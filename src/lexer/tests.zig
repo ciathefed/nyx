@@ -219,6 +219,8 @@ test "shift instructions" {
     }{
         .{ .input = "shl", .kind = .kw_shl },
         .{ .input = "shr", .kind = .kw_shr },
+        .{ .input = "rol", .kind = .kw_rol },
+        .{ .input = "ror", .kind = .kw_ror },
     };
 
     for (cases) |case| {
