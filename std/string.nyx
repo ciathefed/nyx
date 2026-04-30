@@ -82,8 +82,7 @@ memcpy:
     cmp q2, 0
     jeq memcpy_end
 
-    mov b3, [q1]
-    mov [q0], b3
+    mov byte [q0], [q1]
     inc q0
     inc q1
     dec q2

@@ -16,8 +16,7 @@ _start:
     cmp d0, -1
     jeq print_socket_error
 
-    mov w0, AF_INET
-    mov [sockaddr_in], w0
+    mov word [sockaddr_in], AF_INET
 
     mov w0, 1337
     call htons

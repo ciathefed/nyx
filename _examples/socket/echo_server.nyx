@@ -16,8 +16,7 @@ _start:
     cmp d0, -1
     jeq print_socket_error
 
-    mov w0, AF_INET
-    mov [sockaddr_in], w0
+    mov word [sockaddr_in], AF_INET
 
     mov w0, 1337
     call htons
@@ -31,7 +30,7 @@ _start:
     mov q1, sockaddr_in
     mov q15, SYS_BIND
     syscall
-    
+
     cmp d0, -1
     jeq print_bind_error
 
@@ -64,7 +63,7 @@ _start:
     mov [connfd], d0
 
     call print_accept_success
-    
+
 .loop:
     mov d0, [connfd]
     mov q1, buffer
