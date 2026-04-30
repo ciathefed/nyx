@@ -94,7 +94,7 @@ pub fn step(self: *Vm) !void {
             };
             self.regs.set(dest, src);
         },
-        .ldr => {
+        .mov_reg_addr => {
             const dest = try self.readRegister();
             const variant = try self.readByte();
             const base: i64 = @bitCast(switch (variant) {
@@ -107,7 +107,7 @@ pub fn step(self: *Vm) !void {
             const imm = try self.mmu.read(addr, DataSize.fromRegister(dest));
             self.regs.set(dest, imm);
         },
-        .str => {
+        .mov_addr_reg => {
             const src = try self.readRegister();
             const value = self.regs.get(src);
             const variant = try self.readByte();
@@ -120,7 +120,7 @@ pub fn step(self: *Vm) !void {
             const addr: usize = @intCast(base + offset);
             try self.mmu.write(addr, value, DataSize.fromRegister(src));
         },
-        .sti => {
+        .mov_addr_imm => {
             const size = try self.readDataSize();
             const value: Immediate = switch (size) {
                 .byte => .{ .byte = try self.readByte() },

@@ -43,7 +43,7 @@ print_integer:
     mov q10, sp
     add q11, sp, 23
 
-    sti byte 0, [q11]
+    mov byte [q11], 0
     sub q11, q11, 1
 
     mov q12, q0
@@ -72,7 +72,7 @@ print_integer_divide:
 
 print_integer_divide_done:
     add q0, q0, 48
-    str b0, [q11]
+    mov [q11], b0
     sub q11, q11, 1
 
     mov q12, q1
@@ -81,7 +81,7 @@ print_integer_divide_done:
 
     cmp q13, 1
     jne print_integer_output
-    sti byte 45, [q11]
+    mov byte [q11], 45
     sub q11, q11, 1
 
 print_integer_output:

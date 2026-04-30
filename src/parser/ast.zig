@@ -22,10 +22,10 @@ pub const Statement = union(enum) {
     asciz: Expr1,
     @"extern": Expr1,
     nop: Span,
-    mov: Expr2,
-    ldr: Expr2,
-    str: Expr2,
-    sti: Expr3,
+    mov: Mov,
+    // ldr: Expr2,
+    // str: Expr2,
+    // sti: Expr3,
     push: PushPop,
     pop: PushPop,
     add: Expr3,
@@ -104,6 +104,13 @@ pub const Statement = union(enum) {
         span: Span,
     };
 
+    pub const Mov = struct {
+        data_size: ?*Expression,
+        expr1: *Expression,
+        expr2: *Expression,
+        span: Span,
+    };
+
     // TODO: each expr should have its own span
     pub const Db = struct {
         exprs: []*Expression,
@@ -127,9 +134,6 @@ pub const Statement = union(enum) {
             .@"extern" => |v| v.span,
             .nop => |v| v,
             .mov => |v| v.span,
-            .ldr => |v| v.span,
-            .str => |v| v.span,
-            .sti => |v| v.span,
             .push => |v| v.span,
             .pop => |v| v.span,
             .add => |v| v.span,

@@ -11,23 +11,23 @@ _start:
     mov q15, SYS_SOCKET
     syscall
 
-    str d0, [sockfd]
+    mov [sockfd], d0
 
     cmp d0, -1
     jeq print_socket_error
 
     mov w0, AF_INET
-    str w0, [sockaddr_in]
+    mov [sockaddr_in], w0
 
     mov w0, 1337
     call htons
-    str w0, [sockaddr_in, 2]
+    mov [sockaddr_in, 2], w0
 
     mov d0, 0x7F000001
     call htonl
-    str d0, [sockaddr_in, 4]
+    mov [sockaddr_in, 4], d0
 
-    ldr q0, [sockfd]
+    mov q0, [sockfd]
     mov q1, sockaddr_in
     mov q15, SYS_BIND
     syscall
@@ -35,7 +35,7 @@ _start:
     cmp d0, -1
     jeq print_bind_error
 
-    ldr d0, [sockfd]
+    mov d0, [sockfd]
     mov d1, 256
     mov q15, SYS_LISTEN
     syscall
@@ -46,14 +46,14 @@ _start:
     jmp .accept
 
 .disconnect:
-    ldr d0, [connfd]
+    mov d0, [connfd]
     mov q15, SYS_CLOSE
     syscall
     mov q0, disconnect_msg
     call print_string
 
 .accept:
-    ldr d0, [sockfd]
+    mov d0, [sockfd]
     mov q1, sockaddr_in
     mov q15, SYS_ACCEPT
     syscall
@@ -61,12 +61,12 @@ _start:
     cmp d0, -1
     jeq print_accept_error
 
-    str d0, [connfd]
+    mov [connfd], d0
 
     call print_accept_success
     
 .loop:
-    ldr d0, [connfd]
+    mov d0, [connfd]
     mov q1, buffer
     mov q2, BUFFER_LEN
     mov q15, SYS_READ
@@ -77,7 +77,7 @@ _start:
 
     push q0
 
-    ldr d0, [connfd]
+    mov d0, [connfd]
     mov q1, buffer
     pop q2
     mov q15, SYS_WRITE
@@ -86,11 +86,11 @@ _start:
     jmp .loop
 
 .end:
-    ldr d0, [connfd]
+    mov d0, [connfd]
     mov q15, SYS_CLOSE
     syscall
 
-    ldr q0, [sockfd]
+    mov q0, [sockfd]
     mov q15, SYS_CLOSE
     syscall
 

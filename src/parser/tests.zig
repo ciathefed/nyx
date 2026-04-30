@@ -104,29 +104,29 @@ test "instructions" {
             }.f,
         },
         .{
-            .input = "ldr q0, [w0, 10]",
+            .input = "mov q0, [w0, 10]",
             .check = struct {
                 fn f(stmt: ast.Statement, _: *const StringInterner) !void {
-                    try testing.expect(stmt == .ldr);
-                    try testing.expect(stmt.ldr.expr1.* == .register);
-                    try testing.expect(stmt.ldr.expr2.* == .address);
-                    try testing.expect(stmt.ldr.expr2.address.base.* == .register);
-                    try testing.expect(stmt.ldr.expr2.address.offset != null);
-                    try testing.expect(stmt.ldr.expr2.address.offset.?.* == .integer_literal);
-                    try testing.expectEqual(@as(i64, 10), stmt.ldr.expr2.address.offset.?.integer_literal);
+                    try testing.expect(stmt == .mov);
+                    try testing.expect(stmt.mov.expr1.* == .register);
+                    try testing.expect(stmt.mov.expr2.* == .address);
+                    try testing.expect(stmt.mov.expr2.address.base.* == .register);
+                    try testing.expect(stmt.mov.expr2.address.offset != null);
+                    try testing.expect(stmt.mov.expr2.address.offset.?.* == .integer_literal);
+                    try testing.expectEqual(@as(i64, 10), stmt.mov.expr2.address.offset.?.integer_literal);
                 }
             }.f,
         },
         .{
-            .input = "str d0, [buffer]",
+            .input = "mov [buffer], d0",
             .check = struct {
                 fn f(stmt: ast.Statement, interner: *const StringInterner) !void {
-                    try testing.expect(stmt == .str);
-                    try testing.expect(stmt.str.expr1.* == .register);
-                    try testing.expect(stmt.str.expr2.* == .address);
-                    try testing.expect(stmt.str.expr2.address.base.* == .identifier);
-                    try testing.expectEqualStrings("buffer", interner.get(stmt.str.expr2.address.base.identifier).?);
-                    try testing.expect(stmt.str.expr2.address.offset == null);
+                    try testing.expect(stmt == .mov);
+                    try testing.expect(stmt.mov.expr1.* == .address);
+                    try testing.expect(stmt.mov.expr1.address.base.* == .identifier);
+                    try testing.expectEqualStrings("buffer", interner.get(stmt.mov.expr1.address.base.identifier).?);
+                    try testing.expect(stmt.mov.expr1.address.offset == null);
+                    try testing.expect(stmt.mov.expr2.* == .register);
                 }
             }.f,
         },
@@ -493,39 +493,40 @@ test "addressing modes" {
         check: *const fn (ast.Statement, *const StringInterner) anyerror!void,
     }{
         .{
-            .input = "ldr q0, [q1]",
+            .input = "mov q0, [q1]",
             .check = struct {
                 fn f(stmt: ast.Statement, _: *const StringInterner) !void {
-                    try testing.expect(stmt == .ldr);
-                    try testing.expect(stmt.ldr.expr2.* == .address);
-                    try testing.expect(stmt.ldr.expr2.address.base.* == .register);
-                    try testing.expect(stmt.ldr.expr2.address.offset == null);
+                    try testing.expect(stmt == .mov);
+                    try testing.expect(stmt.mov.expr2.* == .address);
+                    try testing.expect(stmt.mov.expr2.address.base.* == .register);
+                    try testing.expect(stmt.mov.expr2.address.offset == null);
                 }
             }.f,
         },
         .{
-            .input = "str b0, [1000]",
+            .input = "mov [1000], b0",
             .check = struct {
                 fn f(stmt: ast.Statement, _: *const StringInterner) !void {
-                    try testing.expect(stmt == .str);
-                    try testing.expect(stmt.str.expr2.* == .address);
-                    try testing.expect(stmt.str.expr2.address.base.* == .integer_literal);
-                    try testing.expectEqual(@as(i64, 1000), stmt.str.expr2.address.base.integer_literal);
-                    try testing.expect(stmt.str.expr2.address.offset == null);
+                    try testing.expect(stmt == .mov);
+                    try testing.expect(stmt.mov.expr1.* == .address);
+                    try testing.expect(stmt.mov.expr1.address.base.* == .integer_literal);
+                    try testing.expectEqual(@as(i64, 1000), stmt.mov.expr1.address.base.integer_literal);
+                    try testing.expect(stmt.mov.expr1.address.offset == null);
+                    try testing.expect(stmt.mov.expr2.* == .register);
                 }
             }.f,
         },
         .{
-            .input = "ldr w0, [buffer, 16]",
+            .input = "mov w0, [buffer, 16]",
             .check = struct {
                 fn f(stmt: ast.Statement, interner: *const StringInterner) !void {
-                    try testing.expect(stmt == .ldr);
-                    try testing.expect(stmt.ldr.expr2.* == .address);
-                    try testing.expect(stmt.ldr.expr2.address.base.* == .identifier);
-                    try testing.expectEqualStrings("buffer", interner.get(stmt.ldr.expr2.address.base.identifier).?);
-                    try testing.expect(stmt.ldr.expr2.address.offset != null);
-                    try testing.expect(stmt.ldr.expr2.address.offset.?.* == .integer_literal);
-                    try testing.expectEqual(@as(i64, 16), stmt.ldr.expr2.address.offset.?.integer_literal);
+                    try testing.expect(stmt == .mov);
+                    try testing.expect(stmt.mov.expr2.* == .address);
+                    try testing.expect(stmt.mov.expr2.address.base.* == .identifier);
+                    try testing.expectEqualStrings("buffer", interner.get(stmt.mov.expr2.address.base.identifier).?);
+                    try testing.expect(stmt.mov.expr2.address.offset != null);
+                    try testing.expect(stmt.mov.expr2.address.offset.?.* == .integer_literal);
+                    try testing.expectEqual(@as(i64, 16), stmt.mov.expr2.address.offset.?.integer_literal);
                 }
             }.f,
         },

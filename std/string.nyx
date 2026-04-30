@@ -6,8 +6,8 @@
 ; strcpy(q0: *mut u8, q1: *const u8) -> void
 ; Copies null-terminated string from q1 to q0
 strcpy:
-    ldr b3, [q1]
-    str b3, [q0]
+    mov [q1], b3
+    mov [q0], b3
     inc q0
     inc q1
     cmp b3, 0
@@ -18,15 +18,15 @@ strcpy:
 ; strcat(q0: *mut u8, q1: *const u8) -> void
 ; Appends null-terminated string q1 to the end of q0
 strcat:
-    ldr b3, [q0]
+    mov b3, [q0]
     cmp b3, 0
     jeq strcat_copy
     inc q0
     jmp strcat
 
 strcat_copy:
-    ldr b3, [q1]
-    str b3, [q0]
+    mov b3, [q1]
+    mov [q0], b3
     inc q0
     inc q1
     cmp b3, 0
@@ -40,7 +40,7 @@ strlen:
     mov q1, 0
 
 strlen_loop:
-    ldr b3, [q0]
+    mov b3, [q0]
     cmp b3, 0
     jeq strlen_end
 
@@ -57,8 +57,8 @@ strlen_end:
 ; Compares two null-terminated strings
 ; Returns 0 if equal, non-zero otherwise
 strcmp:
-    ldr b3, [q0]
-    ldr b4, [q1]
+    mov b3, [q0]
+    mov b4, [q1]
     cmp b3, b4
     jne strcmp_diff
     cmp b3, 0
@@ -82,8 +82,8 @@ memcpy:
     cmp q2, 0
     jeq memcpy_end
 
-    ldr b3, [q1]
-    str b3, [q0]
+    mov b3, [q1]
+    mov [q0], b3
     inc q0
     inc q1
     dec q2
@@ -99,7 +99,7 @@ memcpy_end:
 memset:
     cmp q2, 0
     jeq memset_end
-    str b1, [q0]
+    mov [q0], b1
     inc q0
     dec q2
     jmp memset
@@ -114,8 +114,8 @@ memcmp:
     cmp q2, 0
     jeq memcmp_equal
 
-    ldr b3, [q0]
-    ldr b4, [q1]
+    mov b3, [q0]
+    mov b4, [q1]
     cmp b3, b4
     jne memcmp_diff
 

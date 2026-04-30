@@ -210,50 +210,55 @@ fn parseStatement(self: *Parser) !ast.Statement {
         },
         .kw_mov => {
             self.nextToken();
+            const size = if (self.curTokenIs(.data_size))
+                try self.parseExpression()
+            else
+                null;
             const dest = try self.parseExpression();
             self.nextToken();
             const src = try self.parseExpression();
             return .{ .mov = .{
+                .data_size = size,
                 .expr1 = dest,
                 .expr2 = src,
                 .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
-        .kw_ldr => {
-            self.nextToken();
-            const dest = try self.parseExpression();
-            self.nextToken();
-            const src = try self.parseExpression();
-            return .{ .ldr = .{
-                .expr1 = dest,
-                .expr2 = src,
-                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
-            } };
-        },
-        .kw_str => {
-            self.nextToken();
-            const src = try self.parseExpression();
-            self.nextToken();
-            const dest = try self.parseExpression();
-            return .{ .str = .{
-                .expr1 = src,
-                .expr2 = dest,
-                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
-            } };
-        },
-        .kw_sti => {
-            self.nextToken();
-            const size = try self.parseExpression();
-            const src = try self.parseExpression();
-            self.nextToken();
-            const dest = try self.parseExpression();
-            return .{ .sti = .{
-                .expr1 = size,
-                .expr2 = src,
-                .expr3 = dest,
-                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
-            } };
-        },
+        // .kw_ldr => {
+        //     self.nextToken();
+        //     const dest = try self.parseExpression();
+        //     self.nextToken();
+        //     const src = try self.parseExpression();
+        //     return .{ .ldr = .{
+        //         .expr1 = dest,
+        //         .expr2 = src,
+        //         .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+        //     } };
+        // },
+        // .kw_str => {
+        //     self.nextToken();
+        //     const src = try self.parseExpression();
+        //     self.nextToken();
+        //     const dest = try self.parseExpression();
+        //     return .{ .str = .{
+        //         .expr1 = src,
+        //         .expr2 = dest,
+        //         .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+        //     } };
+        // },
+        // .kw_sti => {
+        //     self.nextToken();
+        //     const size = try self.parseExpression();
+        //     const src = try self.parseExpression();
+        //     self.nextToken();
+        //     const dest = try self.parseExpression();
+        //     return .{ .sti = .{
+        //         .expr1 = size,
+        //         .expr2 = src,
+        //         .expr3 = dest,
+        //         .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+        //     } };
+        // },
         .kw_push => {
             self.nextToken();
             const size = if (self.curTokenIs(.data_size))

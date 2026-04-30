@@ -143,10 +143,10 @@ pub fn compile(self: *Compiler) ![]u8 {
                 }
             },
             .nop => try self.bytecode.push(Opcode.nop),
-            .mov => |v| try self.compileMov(v.expr1, v.expr2, v.span),
-            .ldr => |v| try self.compileLdrOrStr(v.expr1, v.expr2, Opcode.ldr, v.span),
-            .str => |v| try self.compileLdrOrStr(v.expr1, v.expr2, Opcode.str, v.span),
-            .sti => |v| try self.compileSti(v.expr1, v.expr2, v.expr3, v.span),
+            .mov => |v| try self.compileMov(v.data_size, v.expr1, v.expr2, v.span),
+            // .ldr => |v| try self.compileLdrOrStr(v.expr1, v.expr2, Opcode.ldr, v.span),
+            // .str => |v| try self.compileLdrOrStr(v.expr1, v.expr2, Opcode.str, v.span),
+            // .sti => |v| try self.compileSti(v.expr1, v.expr2, v.expr3, v.span),
             .push => |v| try self.compilePush(v.data_size, v.expr, v.span),
             .pop => |v| try self.compilePop(v.data_size, v.expr, v.span),
             .add => |v| try self.compileArithmetic(v.expr1, v.expr2, v.expr3, .add, v.span),
@@ -307,7 +307,7 @@ pub fn compile(self: *Compiler) ![]u8 {
     return bytecode.toOwnedSlice();
 }
 
-fn compileMov(self: *Compiler, lhs: *ast.Expression, rhs: *ast.Expression, span: Span) !void {
+fn compileMov(self: *Compiler, data_size: ?*ast.Expression, lhs: *ast.Expression, rhs: *ast.Expression, span: Span) !void {
     switch (lhs.*) {
         .register => |dest| {
             switch (rhs.*) {
@@ -317,40 +317,40 @@ fn compileMov(self: *Compiler, lhs: *ast.Expression, rhs: *ast.Expression, span:
                     try self.bytecode.push(src);
                     return;
                 },
-                .integer_literal => |int| {
+                .integer_literal => |src| {
                     try self.bytecode.push(Opcode.mov_reg_imm);
                     try self.bytecode.push(dest);
                     switch (DataSize.fromRegister(dest)) {
-                        .byte => try self.bytecode.push(@as(u8, @bitCast(@as(i8, @intCast(int))))),
-                        .word => try self.bytecode.extend(&mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(int)))))),
-                        .dword => try self.bytecode.extend(&mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(int)))))),
-                        .qword => try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(int)))),
-                        .float => try self.bytecode.extend(&mem.toBytes(@as(f32, @floatFromInt(int)))),
-                        .double => try self.bytecode.extend(&mem.toBytes(@as(f64, @floatFromInt(int)))),
+                        .byte => try self.bytecode.push(@as(u8, @bitCast(@as(i8, @intCast(src))))),
+                        .word => try self.bytecode.extend(&mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(src)))))),
+                        .dword => try self.bytecode.extend(&mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(src)))))),
+                        .qword => try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(src)))),
+                        .float => try self.bytecode.extend(&mem.toBytes(@as(f32, @floatFromInt(src)))),
+                        .double => try self.bytecode.extend(&mem.toBytes(@as(f64, @floatFromInt(src)))),
                     }
                     return;
                 },
-                .float_literal => |float| {
+                .float_literal => |src| {
                     try self.bytecode.push(Opcode.mov_reg_imm);
                     try self.bytecode.push(dest);
                     switch (DataSize.fromRegister(dest)) {
-                        .byte => try self.bytecode.push(@as(u8, @intFromFloat(float))),
-                        .word => try self.bytecode.extend(&mem.toBytes(@as(u16, @intFromFloat(float)))),
-                        .dword => try self.bytecode.extend(&mem.toBytes(@as(u32, @intFromFloat(float)))),
-                        .qword => try self.bytecode.extend(&mem.toBytes(@as(u64, @intFromFloat(float)))),
-                        .float => try self.bytecode.extend(&mem.toBytes(@as(f32, @floatCast(float)))),
-                        .double => try self.bytecode.extend(&mem.toBytes(@as(f64, @floatCast(float)))),
+                        .byte => try self.bytecode.push(@as(u8, @intFromFloat(src))),
+                        .word => try self.bytecode.extend(&mem.toBytes(@as(u16, @intFromFloat(src)))),
+                        .dword => try self.bytecode.extend(&mem.toBytes(@as(u32, @intFromFloat(src)))),
+                        .qword => try self.bytecode.extend(&mem.toBytes(@as(u64, @intFromFloat(src)))),
+                        .float => try self.bytecode.extend(&mem.toBytes(@as(f32, @floatCast(src)))),
+                        .double => try self.bytecode.extend(&mem.toBytes(@as(f64, @floatCast(src)))),
                     }
                     return;
                 },
-                .identifier => |ident_id| {
+                .identifier => |src| {
                     try self.bytecode.push(Opcode.mov_reg_imm);
                     try self.bytecode.push(dest);
                     const size = DataSize.fromRegister(dest);
                     const offset = self.bytecode.len(self.bytecode.current_section);
                     try self.fixups.put(
                         .{ .section = self.bytecode.current_section, .addr = offset },
-                        .{ .size = size, .label = ident_id, .span = span },
+                        .{ .size = size, .label = src, .span = span },
                     );
                     switch (size) {
                         .byte => try self.bytecode.push(@as(u8, 0x00)),
@@ -359,6 +359,190 @@ fn compileMov(self: *Compiler, lhs: *ast.Expression, rhs: *ast.Expression, span:
                         .qword => try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00))),
                         .float => unreachable,
                         .double => unreachable,
+                    }
+                    return;
+                },
+                .address => |src| {
+                    const offset = if (src.offset) |o| blk: {
+                        switch (o.*) {
+                            .integer_literal => |offset| break :blk offset,
+                            else => return self.reportError("offset must be an integer literal", span),
+                        }
+                    } else 0;
+
+                    switch (src.base.*) {
+                        .register => |base| {
+                            try self.bytecode.push(Opcode.mov_reg_addr);
+                            try self.bytecode.push(dest);
+                            try self.bytecode.push(addressing_variant_1);
+                            try self.bytecode.push(base);
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
+                        },
+                        .integer_literal => |base| {
+                            try self.bytecode.push(Opcode.mov_reg_addr);
+                            try self.bytecode.push(dest);
+                            try self.bytecode.push(addressing_variant_2);
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(base))));
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
+                        },
+                        .identifier => |base_id| {
+                            try self.bytecode.push(Opcode.mov_reg_addr);
+                            try self.bytecode.push(dest);
+                            try self.bytecode.push(addressing_variant_2);
+                            try self.fixups.put(
+                                .{ .section = self.bytecode.current_section, .addr = self.bytecode.len(self.bytecode.current_section) },
+                                .{ .size = .qword, .label = base_id, .span = span },
+                            );
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00)));
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
+                        },
+                        else => return self.reportError("unsupported address base type", span),
+                    }
+                    return;
+                },
+                else => {},
+            }
+        },
+        .address => |dest| {
+            const dest_offset = if (dest.offset) |o| blk: {
+                switch (o.*) {
+                    .integer_literal => |offset| break :blk offset,
+                    else => return self.reportError("offset must be an integer literal", span),
+                }
+            } else 0;
+
+            switch (rhs.*) {
+                .register => |src| {
+                    // mov [addr], reg -> mov_addr_reg
+                    switch (dest.base.*) {
+                        .register => |base| {
+                            try self.bytecode.push(Opcode.mov_addr_reg);
+                            try self.bytecode.push(src);
+                            try self.bytecode.push(addressing_variant_1);
+                            try self.bytecode.push(base);
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(dest_offset))));
+                        },
+                        .integer_literal => |base| {
+                            try self.bytecode.push(Opcode.mov_addr_reg);
+                            try self.bytecode.push(src);
+                            try self.bytecode.push(addressing_variant_2);
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(base))));
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(dest_offset))));
+                        },
+                        .identifier => |base_id| {
+                            try self.bytecode.push(Opcode.mov_addr_reg);
+                            try self.bytecode.push(src);
+                            try self.bytecode.push(addressing_variant_2);
+                            try self.fixups.put(
+                                .{ .section = self.bytecode.current_section, .addr = self.bytecode.len(self.bytecode.current_section) },
+                                .{ .size = .qword, .label = base_id, .span = span },
+                            );
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00)));
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(dest_offset))));
+                        },
+                        else => return self.reportError("unsupported address base type", span),
+                    }
+                    return;
+                },
+                .integer_literal => |val| {
+                    // mov [addr], imm -> mov_addr_imm (replaces sti)
+                    const s = if (data_size) |ds| blk: {
+                        break :blk switch (ds.*) {
+                            .data_size => |size| size,
+                            else => return self.reportError("expected data size specifier", span),
+                        };
+                    } else return self.reportError("data size required for mov [addr], imm (e.g. mov dword [addr], 42)", span);
+
+                    const value_bytes = switch (s) {
+                        .byte => &mem.toBytes(@as(u8, @bitCast(@as(i8, @intCast(val))))),
+                        .word => &mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(val))))),
+                        .dword => &mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(val))))),
+                        .qword => &mem.toBytes(@as(u64, @bitCast(val))),
+                        .float => &mem.toBytes(@as(f32, @floatFromInt(val))),
+                        .double => &mem.toBytes(@as(f64, @floatFromInt(val))),
+                    };
+
+                    switch (dest.base.*) {
+                        .register => |base| {
+                            try self.bytecode.push(Opcode.mov_addr_imm);
+                            try self.bytecode.push(s);
+                            try self.bytecode.extend(value_bytes);
+                            try self.bytecode.push(addressing_variant_1);
+                            try self.bytecode.push(base);
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(dest_offset))));
+                        },
+                        .integer_literal => |base| {
+                            try self.bytecode.push(Opcode.mov_addr_imm);
+                            try self.bytecode.push(s);
+                            try self.bytecode.extend(value_bytes);
+                            try self.bytecode.push(addressing_variant_2);
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(base))));
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(dest_offset))));
+                        },
+                        .identifier => |base_id| {
+                            try self.bytecode.push(Opcode.mov_addr_imm);
+                            try self.bytecode.push(s);
+                            try self.bytecode.extend(value_bytes);
+                            try self.bytecode.push(addressing_variant_2);
+                            try self.fixups.put(
+                                .{ .section = self.bytecode.current_section, .addr = self.bytecode.len(self.bytecode.current_section) },
+                                .{ .size = .qword, .label = base_id, .span = span },
+                            );
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00)));
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(dest_offset))));
+                        },
+                        else => return self.reportError("unsupported address base type", span),
+                    }
+                    return;
+                },
+                .float_literal => |val| {
+                    // mov [addr], float_imm -> mov_addr_imm
+                    const s = if (data_size) |ds| blk: {
+                        break :blk switch (ds.*) {
+                            .data_size => |size| size,
+                            else => return self.reportError("expected data size specifier", span),
+                        };
+                    } else return self.reportError("data size required for mov [addr], imm (e.g. mov float [addr], 3.14)", span);
+
+                    const value_bytes = switch (s) {
+                        .byte => &mem.toBytes(@as(u8, @intFromFloat(val))),
+                        .word => &mem.toBytes(@as(u16, @intFromFloat(val))),
+                        .dword => &mem.toBytes(@as(u32, @intFromFloat(val))),
+                        .qword => &mem.toBytes(@as(u64, @intFromFloat(val))),
+                        .float => &mem.toBytes(@as(f32, @floatCast(val))),
+                        .double => &mem.toBytes(val),
+                    };
+
+                    switch (dest.base.*) {
+                        .register => |base| {
+                            try self.bytecode.push(Opcode.mov_addr_imm);
+                            try self.bytecode.push(s);
+                            try self.bytecode.extend(value_bytes);
+                            try self.bytecode.push(addressing_variant_1);
+                            try self.bytecode.push(base);
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(dest_offset))));
+                        },
+                        .integer_literal => |base| {
+                            try self.bytecode.push(Opcode.mov_addr_imm);
+                            try self.bytecode.push(s);
+                            try self.bytecode.extend(value_bytes);
+                            try self.bytecode.push(addressing_variant_2);
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(base))));
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(dest_offset))));
+                        },
+                        .identifier => |base_id| {
+                            try self.bytecode.push(Opcode.mov_addr_imm);
+                            try self.bytecode.push(s);
+                            try self.bytecode.extend(value_bytes);
+                            try self.bytecode.push(addressing_variant_2);
+                            try self.fixups.put(
+                                .{ .section = self.bytecode.current_section, .addr = self.bytecode.len(self.bytecode.current_section) },
+                                .{ .size = .qword, .label = base_id, .span = span },
+                            );
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00)));
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(dest_offset))));
+                        },
+                        else => return self.reportError("unsupported address base type", span),
                     }
                     return;
                 },
