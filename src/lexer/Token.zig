@@ -50,9 +50,6 @@ pub const Kind = enum {
 
     kw_nop,
     kw_mov,
-    // kw_ldr,
-    // kw_str,
-    // kw_sti,
     kw_push,
     kw_pop,
     kw_add,
@@ -149,9 +146,6 @@ const keywords = std.StaticStringMap(Kind).initComptime(.{
     // Instructions
     .{ "nop", Kind.kw_nop },
     .{ "mov", Kind.kw_mov },
-    // .{ "ldr", Kind.kw_ldr },
-    // .{ "str", Kind.kw_str },
-    // .{ "sti", Kind.kw_sti },
     .{ "push", Kind.kw_push },
     .{ "pop", Kind.kw_pop },
     .{ "add", Kind.kw_add },

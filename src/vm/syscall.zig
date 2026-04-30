@@ -1,4 +1,3 @@
-// TODO: move away from posix syscalls and use zig stdlib
 // TODO: err register so program doesn't crash on a zig error
 const std = @import("std");
 const posix = std.posix.system;

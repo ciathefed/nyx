@@ -151,8 +151,6 @@ test "basic instructions" {
     }{
         .{ .input = "nop", .kind = .kw_nop },
         .{ .input = "mov", .kind = .kw_mov },
-        // .{ .input = "ldr", .kind = .kw_ldr },
-        // .{ .input = "str", .kind = .kw_str },
         .{ .input = "push", .kind = .kw_push },
         .{ .input = "pop", .kind = .kw_pop },
         .{ .input = "cmp", .kind = .kw_cmp },

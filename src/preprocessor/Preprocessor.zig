@@ -169,15 +169,12 @@ fn processStatement(self: *Preprocessor, stmt: ast.Statement) !?ast.Statement {
         .inc => |v| .{ .inc = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
         .dec => |v| .{ .dec = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
         .neg => |v| .{ .neg = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
-        .mov => |v| .{ .mov = .{ .data_size = if (v.data_size) |size| try self.substituteExpr(size) else null, .expr1 = try self.substituteExpr(v.expr1), .expr2 = try self.substituteExpr(v.expr2), .span = v.span } },
-        // .ldr => |v| .{ .ldr = .{ .expr1 = try self.substituteExpr(v.expr1), .expr2 = try self.substituteExpr(v.expr2), .span = v.span } },
-        // .str => |v| .{ .str = .{ .expr1 = try self.substituteExpr(v.expr1), .expr2 = try self.substituteExpr(v.expr2), .span = v.span } },
-        // .sti => |v| .{ .sti = .{
-        //     .expr1 = try self.substituteExpr(v.expr1),
-        //     .expr2 = try self.substituteExpr(v.expr2),
-        //     .expr3 = try self.substituteExpr(v.expr3),
-        //     .span = v.span,
-        // } },
+        .mov => |v| .{ .mov = .{
+            .data_size = if (v.data_size) |size| try self.substituteExpr(size) else null,
+            .expr1 = try self.substituteExpr(v.expr1),
+            .expr2 = try self.substituteExpr(v.expr2),
+            .span = v.span,
+        } },
         .cmp => |v| .{ .cmp = .{ .expr1 = try self.substituteExpr(v.expr1), .expr2 = try self.substituteExpr(v.expr2), .span = v.span } },
         .push => |v| .{ .push = .{
             .data_size = if (v.data_size) |size| try self.substituteExpr(size) else null,

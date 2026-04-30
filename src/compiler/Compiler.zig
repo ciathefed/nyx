@@ -144,9 +144,6 @@ pub fn compile(self: *Compiler) ![]u8 {
             },
             .nop => try self.bytecode.push(Opcode.nop),
             .mov => |v| try self.compileMov(v.data_size, v.expr1, v.expr2, v.span),
-            // .ldr => |v| try self.compileLdrOrStr(v.expr1, v.expr2, Opcode.ldr, v.span),
-            // .str => |v| try self.compileLdrOrStr(v.expr1, v.expr2, Opcode.str, v.span),
-            // .sti => |v| try self.compileSti(v.expr1, v.expr2, v.expr3, v.span),
             .push => |v| try self.compilePush(v.data_size, v.expr, v.span),
             .pop => |v| try self.compilePop(v.data_size, v.expr, v.span),
             .add => |v| try self.compileArithmetic(v.expr1, v.expr2, v.expr3, .add, v.span),
@@ -413,7 +410,6 @@ fn compileMov(self: *Compiler, data_size: ?*ast.Expression, lhs: *ast.Expression
 
             switch (rhs.*) {
                 .register => |src| {
-                    // mov [addr], reg -> mov_addr_reg
                     switch (dest.base.*) {
                         .register => |base| {
                             try self.bytecode.push(Opcode.mov_addr_reg);
@@ -445,7 +441,6 @@ fn compileMov(self: *Compiler, data_size: ?*ast.Expression, lhs: *ast.Expression
                     return;
                 },
                 .integer_literal => |val| {
-                    // mov [addr], imm -> mov_addr_imm (replaces sti)
                     const s = if (data_size) |ds| blk: {
                         break :blk switch (ds.*) {
                             .data_size => |size| size,
@@ -496,7 +491,6 @@ fn compileMov(self: *Compiler, data_size: ?*ast.Expression, lhs: *ast.Expression
                     return;
                 },
                 .float_literal => |val| {
-                    // mov [addr], float_imm -> mov_addr_imm
                     const s = if (data_size) |ds| blk: {
                         break :blk switch (ds.*) {
                             .data_size => |size| size,
@@ -547,7 +541,6 @@ fn compileMov(self: *Compiler, data_size: ?*ast.Expression, lhs: *ast.Expression
                     return;
                 },
                 .address => |src| {
-                    // mov [addr], [addr] -> mov_addr_addr
                     const s = if (data_size) |ds| blk: {
                         break :blk switch (ds.*) {
                             .data_size => |size| size,
@@ -565,7 +558,6 @@ fn compileMov(self: *Compiler, data_size: ?*ast.Expression, lhs: *ast.Expression
                     try self.bytecode.push(Opcode.mov_addr_addr);
                     try self.bytecode.push(s);
 
-                    // Encode source address
                     switch (src.base.*) {
                         .register => |base| {
                             try self.bytecode.push(addressing_variant_1);
@@ -589,7 +581,6 @@ fn compileMov(self: *Compiler, data_size: ?*ast.Expression, lhs: *ast.Expression
                         else => return self.reportError("unsupported address base type", span),
                     }
 
-                    // Encode destination address
                     switch (dest.base.*) {
                         .register => |base| {
                             try self.bytecode.push(addressing_variant_1);
