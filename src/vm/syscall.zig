@@ -17,6 +17,10 @@ pub fn collectSyscalls(gpa: Allocator) !Syscalls {
     try syscalls.put(0x03, sysWrite);
     try syscalls.put(0x04, sysMalloc);
     try syscalls.put(0x05, sysFree);
+    try syscalls.put(0x06, sysSocket);
+    try syscalls.put(0x07, sysBind);
+    try syscalls.put(0x08, sysListen);
+    try syscalls.put(0x09, sysAccept);
     try syscalls.put(0xFF, sysExit);
 
     return syscalls;
@@ -81,7 +85,7 @@ fn sysMalloc(self: *Vm) anyerror!void {
     self.regs.set(.q0, .{ .qword = @intCast(addr) });
 }
 
-pub fn sysFree(self: *Vm) !void {
+fn sysFree(self: *Vm) !void {
     const addr: usize = self.regs.get(.q0).asUsize();
 
     if (self.mmu.blocks.items.len <= 2) return error.NoDynamicBlocks;
@@ -112,6 +116,61 @@ pub fn sysFree(self: *Vm) !void {
     }
 
     return error.InvalidFreeAddress;
+}
+
+fn sysSocket(self: *Vm) anyerror!void {
+    const domain = self.regs.get(.d0).asU32();
+    const socket_type = self.regs.get(.d1).asU32();
+    const protocol = self.regs.get(.d2).asU32();
+
+    const sockfd = posix.socket(domain, socket_type, protocol);
+
+    self.regs.set(.d0, .{ .dword = @bitCast(@as(i32, @intCast(sockfd))) });
+}
+
+fn sysBind(self: *Vm) anyerror!void {
+    const sockfd: i32 = @intCast(self.regs.get(.d0).asU32());
+    const sockaddr_ptr = self.regs.get(.q1).asUsize();
+    const sockaddr_family = (try self.mmu.read(sockaddr_ptr, .word)).asU16();
+    const sockaddr_port = (try self.mmu.read(sockaddr_ptr + 2, .word)).asU16();
+    const sockaddr_addr = (try self.mmu.read(sockaddr_ptr + 4, .dword)).asU32();
+    const sockaddr_zero = (try self.mmu.readSlice(sockaddr_ptr + 8, 8))[0..8];
+
+    const sockaddr_in = posix.sockaddr.in{
+        .family = sockaddr_family,
+        .port = sockaddr_port,
+        .addr = sockaddr_addr,
+        .zero = (@constCast(sockaddr_zero)).*,
+    };
+
+    const res = posix.bind(sockfd, @ptrCast(&sockaddr_in), @sizeOf(@TypeOf(sockaddr_in)));
+
+    self.regs.set(.q0, .{ .qword = @intCast(res) });
+}
+
+fn sysListen(self: *Vm) anyerror!void {
+    const sockfd: i32 = @intCast(self.regs.get(.d0).asU32());
+    const backlog: c_uint = @intCast(self.regs.get(.d1).asU32());
+
+    const res = posix.listen(sockfd, backlog);
+
+    self.regs.set(.d0, .{ .dword = @bitCast(@as(i32, @intCast(res))) });
+}
+
+fn sysAccept(self: *Vm) anyerror!void {
+    const sockfd: i32 = @intCast(self.regs.get(.d0).asU32());
+    const sockaddr_ptr = self.regs.get(.q1).asUsize();
+
+    var sockaddr_in: posix.sockaddr.in = undefined;
+    var sockaddr_in_len: u32 = @sizeOf(posix.sockaddr.in);
+    const res = posix.accept(sockfd, @ptrCast(&sockaddr_in), &sockaddr_in_len);
+
+    try self.mmu.write(sockaddr_ptr, .{ .word = sockaddr_in.family }, .word);
+    try self.mmu.write(sockaddr_ptr + 2, .{ .word = sockaddr_in.port }, .word);
+    try self.mmu.write(sockaddr_ptr + 4, .{ .dword = sockaddr_in.addr }, .dword);
+    try self.mmu.writeSlice(sockaddr_ptr + 8, &sockaddr_in.zero);
+
+    self.regs.set(.q0, .{ .qword = @intCast(res) });
 }
 
 fn sysExit(self: *Vm) anyerror!void {

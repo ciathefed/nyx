@@ -7,6 +7,10 @@
 #define SYS_WRITE  0x03
 #define SYS_MALLOC 0x04
 #define SYS_FREE   0x05
+#define SYS_SOCKET 0x06
+#define SYS_BIND   0x07
+#define SYS_LISTEN 0x08
+#define SYS_ACCEPT 0x09
 #define SYS_EXIT   0xFF
 
 #define STDIN  0x00

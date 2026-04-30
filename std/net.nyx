@@ -1,0 +1,59 @@
+#ifndef NYX_NET
+#define NYX_NET
+
+#ifdef __LINUX__
+    #ifdef __X86_64__
+        #define SOCK_STREAM 1
+
+        #define AF_INET 2
+    #else
+        #error "unsupported linux architecture"
+    #endif
+#endif
+
+.section text
+
+; htons(w0: u16) -> w0: u16
+; Converts a 16-bit value from host byte order (little-endian) to network byte order (big-endian).
+htons:
+    push w1
+    push w2
+
+    shr w1, w0, 8
+    shl w2, w0, 8
+    or w0, w1, w2
+
+    pop w2
+    pop w1
+    ret
+
+
+; htonl(d0: u32) -> d0: u32
+; Converts a 32-bit value from host byte order (little-endian) to network byte order (big-endian).
+htonl:
+    push d1
+    push d2
+    push d3
+    push d4
+
+    shr d1, d0, 24
+
+    shr d2, d0, 8
+    and d2, d2, 0xFF00
+
+    shl d3, d0, 8
+    and d3, d3, 0xFF0000
+
+    shl d4, d0, 24
+
+    or d0, d1, d2
+    or d0, d0, d3
+    or d0, d0, d4
+
+    pop d4
+    pop d3
+    pop d2
+    pop d1
+    ret
+
+#endif ; NYX_NET

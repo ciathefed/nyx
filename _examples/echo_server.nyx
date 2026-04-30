@@ -1,0 +1,135 @@
+#include "stdlib.nyx"
+#include "print.nyx"
+#include "net.nyx"
+
+#define BUFFER_LEN 256
+
+_start:
+    mov d0, AF_INET
+    mov d1, SOCK_STREAM
+    mov d2, 0
+    mov q15, SYS_SOCKET
+    syscall
+
+    str d0, [sockfd]
+
+    cmp d0, -1
+    jeq print_socket_error
+
+    mov w0, AF_INET
+    str w0, [sockaddr_in]
+
+    mov w0, 1337
+    call htons
+    str w0, [sockaddr_in, 2]
+
+    mov d0, 0x7F000001
+    call htonl
+    str d0, [sockaddr_in, 4]
+
+    ldr q0, [sockfd]
+    mov q1, sockaddr_in
+    mov q15, SYS_BIND
+    syscall
+    
+    cmp d0, -1
+    jeq print_bind_error
+
+    ldr d0, [sockfd]
+    mov d1, 256
+    mov q15, SYS_LISTEN
+    syscall
+
+    cmp d0, -1
+    jeq print_listen_error
+    call print_listen_success
+
+
+.accept:
+    ldr d0, [sockfd]
+    mov q1, sockaddr_in
+    mov q15, SYS_ACCEPT
+    syscall
+
+    cmp d0, -1
+    jeq print_accept_error
+
+    str d0, [connfd]
+    
+.loop:
+    ldr d0, [connfd]
+    mov q1, buffer
+    mov q2, BUFFER_LEN
+    mov q15, SYS_READ
+    syscall
+
+    cmp q0, 0
+    jeq .accept
+
+    push q0
+
+    ldr d0, [connfd]
+    mov q1, buffer
+    pop q2
+    mov q15, SYS_WRITE
+    syscall
+
+    jmp .loop
+
+.end:
+    ldr d0, [connfd]
+    mov q15, SYS_CLOSE
+    syscall
+
+    ldr q0, [sockfd]
+    mov q15, SYS_CLOSE
+    syscall
+
+    hlt
+
+print_socket_error:
+    mov q0, socket_error_msg
+    call print_string
+    jmp exit
+
+print_bind_error:
+    mov q0, bind_error_msg
+    call print_string
+    jmp exit
+
+print_listen_error:
+    mov q0, listen_error_msg
+    call print_string
+    jmp exit
+
+print_listen_success:
+    mov q0, listen_success_msg
+    call print_string
+    ret
+
+print_accept_error:
+    mov q0, accept_error_msg
+    call print_string
+    jmp exit
+
+exit:
+    mov q0, 1
+    mov q15, SYS_EXIT
+    syscall
+
+.section data
+sockfd:                 resd 1
+connfd:                 resd 1
+sockaddr_in:
+    resw 1
+    resw 1
+    resd 1
+    resb 8
+
+socket_error_msg:        .asciz "failed to call socket\n"
+bind_error_msg:          .asciz "failed to call bind\n"
+listen_error_msg:        .asciz "failed to call listen\n"
+listen_success_msg:      .asciz "successfully started listening\n"
+accept_error_msg:        .asciz "failed to call accept\n"
+connection_msg:          .asciz "hello from nyx tcp server!\n";
+buffer:                  resb BUFFER_LEN
