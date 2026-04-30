@@ -1,6 +1,6 @@
 #include "stdlib.nyx"
 #include "print.nyx"
-#include "net.nyx"
+#include "socket.nyx"
 
 #define BUFFER_LEN 256
 
