@@ -546,6 +546,74 @@ fn compileMov(self: *Compiler, data_size: ?*ast.Expression, lhs: *ast.Expression
                     }
                     return;
                 },
+                .address => |src| {
+                    // mov [addr], [addr] -> mov_addr_addr
+                    const s = if (data_size) |ds| blk: {
+                        break :blk switch (ds.*) {
+                            .data_size => |size| size,
+                            else => return self.reportError("expected data size specifier", span),
+                        };
+                    } else return self.reportError("data size required for mov [addr], [addr] (e.g. mov dword [dest], [src])", span);
+
+                    const src_offset = if (src.offset) |o| blk: {
+                        switch (o.*) {
+                            .integer_literal => |offset| break :blk offset,
+                            else => return self.reportError("offset must be an integer literal", span),
+                        }
+                    } else 0;
+
+                    try self.bytecode.push(Opcode.mov_addr_addr);
+                    try self.bytecode.push(s);
+
+                    // Encode source address
+                    switch (src.base.*) {
+                        .register => |base| {
+                            try self.bytecode.push(addressing_variant_1);
+                            try self.bytecode.push(base);
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(src_offset))));
+                        },
+                        .integer_literal => |base| {
+                            try self.bytecode.push(addressing_variant_2);
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(base))));
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(src_offset))));
+                        },
+                        .identifier => |base_id| {
+                            try self.bytecode.push(addressing_variant_2);
+                            try self.fixups.put(
+                                .{ .section = self.bytecode.current_section, .addr = self.bytecode.len(self.bytecode.current_section) },
+                                .{ .size = .qword, .label = base_id, .span = span },
+                            );
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00)));
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(src_offset))));
+                        },
+                        else => return self.reportError("unsupported address base type", span),
+                    }
+
+                    // Encode destination address
+                    switch (dest.base.*) {
+                        .register => |base| {
+                            try self.bytecode.push(addressing_variant_1);
+                            try self.bytecode.push(base);
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(dest_offset))));
+                        },
+                        .integer_literal => |base| {
+                            try self.bytecode.push(addressing_variant_2);
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(base))));
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(dest_offset))));
+                        },
+                        .identifier => |base_id| {
+                            try self.bytecode.push(addressing_variant_2);
+                            try self.fixups.put(
+                                .{ .section = self.bytecode.current_section, .addr = self.bytecode.len(self.bytecode.current_section) },
+                                .{ .size = .qword, .label = base_id, .span = span },
+                            );
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00)));
+                            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(dest_offset))));
+                        },
+                        else => return self.reportError("unsupported address base type", span),
+                    }
+                    return;
+                },
                 else => {},
             }
         },

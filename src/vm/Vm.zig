@@ -140,6 +140,27 @@ pub fn step(self: *Vm) !void {
             const addr: usize = @intCast(base + offset);
             try self.mmu.write(addr, value, size);
         },
+        .mov_addr_addr => {
+            const size = try self.readDataSize();
+            const src_variant = try self.readByte();
+            const src_base: i64 = @bitCast(switch (src_variant) {
+                addressing_variant_1 => self.regs.get(try self.readRegister()).asU64(),
+                addressing_variant_2 => try self.readQword(),
+                else => return error.UnknownAddressingVariant,
+            });
+            const src_offset: i64 = @bitCast(try self.readQword());
+            const src_addr: usize = @intCast(src_base + src_offset);
+            const value = try self.mmu.read(src_addr, size);
+            const dest_variant = try self.readByte();
+            const dest_base: i64 = @bitCast(switch (dest_variant) {
+                addressing_variant_1 => self.regs.get(try self.readRegister()).asU64(),
+                addressing_variant_2 => try self.readQword(),
+                else => return error.UnknownAddressingVariant,
+            });
+            const dest_offset: i64 = @bitCast(try self.readQword());
+            const dest_addr: usize = @intCast(dest_base + dest_offset);
+            try self.mmu.write(dest_addr, value, size);
+        },
         .push_imm => {
             const size = try self.readDataSize();
             const imm: Immediate = switch (size) {

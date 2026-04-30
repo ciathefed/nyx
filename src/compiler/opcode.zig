@@ -7,6 +7,7 @@ pub const Opcode = enum(u8) {
     mov_reg_addr,
     mov_addr_reg,
     mov_addr_imm,
+    mov_addr_addr,
     // ldr,
     // str,
     // sti,
@@ -77,6 +78,7 @@ pub const Opcode = enum(u8) {
             @intFromEnum(Opcode.mov_reg_addr) => .mov_reg_addr,
             @intFromEnum(Opcode.mov_addr_reg) => .mov_addr_reg,
             @intFromEnum(Opcode.mov_addr_imm) => .mov_addr_imm,
+            @intFromEnum(Opcode.mov_addr_addr) => .mov_addr_addr,
             @intFromEnum(Opcode.push_imm) => .push_imm,
             @intFromEnum(Opcode.push_reg) => .push_reg,
             @intFromEnum(Opcode.push_addr) => .push_addr,
@@ -139,7 +141,7 @@ pub const Opcode = enum(u8) {
     ) std.Io.Writer.Error!void {
         try writer.print("{s}", switch (self) {
             .nop => "nop",
-            .mov_reg_reg, .mov_reg_imm, .mov_reg_addr, .mov_addr_reg, .mov_addr_imm => "mov",
+            .mov_reg_reg, .mov_reg_imm, .mov_reg_addr, .mov_addr_reg, .mov_addr_imm, .mov_addr_addr => "mov",
             .push_imm, .push_reg, .push_addr => "push",
             .pop_reg, .pop_addr => "pop",
             .add_reg_reg_reg, .add_reg_reg_imm => "add",
