@@ -1,0 +1,90 @@
+#include "stdlib.nyx"
+#include "print.nyx"
+#include "net.nyx"
+
+#define BUFFER_LEN 256
+
+_start:
+    mov d0, AF_INET
+    mov d1, SOCK_STREAM
+    mov d2, 0
+    mov q15, SYS_SOCKET
+    syscall
+
+    str d0, [sockfd]
+
+    cmp d0, -1
+    jeq print_socket_error
+
+    mov w0, AF_INET
+    str w0, [sockaddr_in]
+
+    mov w0, 1337
+    call htons
+    str w0, [sockaddr_in, 2]
+
+    mov d0, 0x7F000001
+    call htonl
+    str d0, [sockaddr_in, 4]
+
+    ldr d0, [sockfd]
+    mov q1, sockaddr_in
+    mov q15, SYS_CONNECT
+    syscall
+
+    cmp d0, -1
+    jeq print_connect_error
+
+    ldr d0, [sockfd]
+    mov q1, msg
+    mov q2, 38
+    mov q15, SYS_WRITE
+    syscall
+
+    ldr d0, [sockfd]
+    mov q1, buffer
+    mov q2, BUFFER_LEN
+    mov q15, SYS_READ
+    syscall
+
+    push q0
+
+    mov q0, STDOUT
+    mov q1, buffer
+    pop q2
+    mov q15, SYS_WRITE
+    syscall
+
+    ldr q0, [sockfd]
+    mov q15, SYS_CLOSE
+    syscall
+
+    hlt
+
+print_socket_error:
+    mov q0, socket_error_msg
+    call print_string
+    jmp exit
+
+print_connect_error:
+    mov q0, connect_error_msg
+    call print_string
+    jmp exit
+
+exit:
+    mov q0, 1
+    mov q15, SYS_EXIT
+    syscall
+
+.section data
+sockfd:                 resd 1
+sockaddr_in:
+    resw 1
+    resw 1
+    resd 1
+    resb 8
+
+socket_error_msg:        .asciz "failed to call socket\n"
+connect_error_msg:       .asciz "failed to call connect\n"
+msg:                     .asciz "hello from tcp connection inside nyx!\n"
+buffer:                  resb BUFFER_LEN

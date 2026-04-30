@@ -18,9 +18,10 @@ pub fn collectSyscalls(gpa: Allocator) !Syscalls {
     try syscalls.put(0x04, sysMalloc);
     try syscalls.put(0x05, sysFree);
     try syscalls.put(0x06, sysSocket);
-    try syscalls.put(0x07, sysBind);
-    try syscalls.put(0x08, sysListen);
-    try syscalls.put(0x09, sysAccept);
+    try syscalls.put(0x07, sysConnect);
+    try syscalls.put(0x08, sysBind);
+    try syscalls.put(0x09, sysListen);
+    try syscalls.put(0x0A, sysAccept);
     try syscalls.put(0xFF, sysExit);
 
     return syscalls;
@@ -126,6 +127,26 @@ fn sysSocket(self: *Vm) anyerror!void {
     const sockfd = posix.socket(domain, socket_type, protocol);
 
     self.regs.set(.d0, .{ .dword = @bitCast(@as(i32, @intCast(sockfd))) });
+}
+
+fn sysConnect(self: *Vm) anyerror!void {
+    const sockfd: i32 = @intCast(self.regs.get(.d0).asU32());
+    const sockaddr_ptr = self.regs.get(.q1).asUsize();
+    const sockaddr_family = (try self.mmu.read(sockaddr_ptr, .word)).asU16();
+    const sockaddr_port = (try self.mmu.read(sockaddr_ptr + 2, .word)).asU16();
+    const sockaddr_addr = (try self.mmu.read(sockaddr_ptr + 4, .dword)).asU32();
+    const sockaddr_zero = (try self.mmu.readSlice(sockaddr_ptr + 8, 8))[0..8];
+
+    const sockaddr_in = posix.sockaddr.in{
+        .family = sockaddr_family,
+        .port = sockaddr_port,
+        .addr = sockaddr_addr,
+        .zero = (@constCast(sockaddr_zero)).*,
+    };
+
+    const res = posix.connect(sockfd, @ptrCast(&sockaddr_in), @sizeOf(@TypeOf(sockaddr_in)));
+
+    self.regs.set(.q0, .{ .qword = @intCast(res) });
 }
 
 fn sysBind(self: *Vm) anyerror!void {

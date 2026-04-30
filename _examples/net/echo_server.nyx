@@ -43,7 +43,14 @@ _start:
     cmp d0, -1
     jeq print_listen_error
     call print_listen_success
+    jmp .accept
 
+.disconnect:
+    ldr d0, [connfd]
+    mov q15, SYS_CLOSE
+    syscall
+    mov q0, disconnect_msg
+    call print_string
 
 .accept:
     ldr d0, [sockfd]
@@ -55,6 +62,8 @@ _start:
     jeq print_accept_error
 
     str d0, [connfd]
+
+    call print_accept_success
     
 .loop:
     ldr d0, [connfd]
@@ -64,7 +73,7 @@ _start:
     syscall
 
     cmp q0, 0
-    jeq .accept
+    jeq .disconnect
 
     push q0
 
@@ -112,6 +121,11 @@ print_accept_error:
     call print_string
     jmp exit
 
+print_accept_success:
+    mov q0, accept_success_msg
+    call print_string
+    ret
+
 exit:
     mov q0, 1
     mov q15, SYS_EXIT
@@ -131,5 +145,6 @@ bind_error_msg:          .asciz "failed to call bind\n"
 listen_error_msg:        .asciz "failed to call listen\n"
 listen_success_msg:      .asciz "successfully started listening\n"
 accept_error_msg:        .asciz "failed to call accept\n"
-connection_msg:          .asciz "hello from nyx tcp server!\n";
+accept_success_msg:      .asciz "successfully accepted connection\n"
+disconnect_msg:          .asciz "successfully disconnected connection\n"
 buffer:                  resb BUFFER_LEN
