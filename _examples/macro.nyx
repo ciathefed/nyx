@@ -1,0 +1,18 @@
+#include "stdlib.nyx"
+
+#macro write ($fd, $addr, $len)
+    mov q0, $fd
+    mov q1, $addr
+    mov q2, $len
+    mov q15, SYS_WRITE
+    syscall
+#endm
+
+.section text
+_start:
+    write STDOUT, message, 14
+    hlt
+
+.section data
+message:
+    db "Hello, world!\n", 0x00

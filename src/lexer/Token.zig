@@ -41,6 +41,8 @@ pub const Kind = enum {
     kw_ifndef,
     kw_else,
     kw_endif,
+    kw_macro,
+    kw_endm,
 
     kw_section,
     kw_entry,
@@ -137,6 +139,8 @@ const keywords = std.StaticStringMap(Kind).initComptime(.{
     .{ "#ifndef", Kind.kw_ifndef },
     .{ "#else", Kind.kw_else },
     .{ "#endif", Kind.kw_endif },
+    .{ "#macro", Kind.kw_macro },
+    .{ "#endm", Kind.kw_endm },
     // Assembler Directives
     .{ ".section", Kind.kw_section },
     .{ ".entry", Kind.kw_entry },

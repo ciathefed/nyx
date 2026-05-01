@@ -58,7 +58,7 @@ pub fn nextToken(self: *Lexer) Token {
         ';' => return self.skipComment(),
         else => {
             if (ascii.isDigit(self.ch)) return self.readNumber();
-            if (ascii.isAlphabetic(self.ch) or self.ch == '_') return self.readIdentifier();
+            if (ascii.isAlphabetic(self.ch) or self.ch == '_' or self.ch == '$') return self.readIdentifier();
             return Token.init(.illegal, "", .init(start, start, self.filename));
         },
     };
@@ -123,7 +123,7 @@ fn readNumber(self: *Lexer) Token {
 
 fn readIdentifier(self: *Lexer) Token {
     const start = self.pos;
-    while (ascii.isAlphanumeric(self.ch) or self.ch == '_') {
+    while (ascii.isAlphanumeric(self.ch) or self.ch == '_' or self.ch == '$') {
         self.readChar();
     }
 

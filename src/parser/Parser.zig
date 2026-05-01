@@ -13,6 +13,8 @@ const Token = @import("../lexer/Token.zig");
 const Register = @import("../vm/register.zig").Register;
 const DataSize = @import("immediate.zig").DataSize;
 const ast = @import("ast.zig");
+const StringInterner = @import("../StringInterner.zig");
+const StringId = StringInterner.StringId;
 
 const Parser = @This();
 
@@ -73,8 +75,25 @@ fn parseStatement(self: *Parser) !ast.Statement {
                     .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
                 } };
             } else {
-                self.report(.err, "unexpected token", self.cur_token.span, 1);
-                return error.ParserError;
+                const name_id = self.cur_token.string_id;
+                self.nextToken();
+
+                var args = ArrayList(*ast.Expression).init(self.arena.allocator());
+
+                while (!self.curTokenIs(.newline) and !self.curTokenIs(.eof)) {
+                    try args.append(try self.parseExpression());
+                    if (self.curTokenIs(.comma)) {
+                        self.nextToken();
+                        continue;
+                    }
+                    break;
+                }
+
+                return .{ .macro_call = .{
+                    .name = name_id,
+                    .args = try args.toOwnedSlice(),
+                    .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+                } };
             }
         },
         .kw_error => {
@@ -622,6 +641,68 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .expr = expr,
                 .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
+        },
+        .kw_macro => {
+            self.nextToken();
+
+            if (!self.curTokenIs(.identifier)) {
+                self.report(.err, "expected macro name after #macro", self.cur_token.span, 1);
+                return error.ParserError;
+            }
+            const name_id = self.cur_token.string_id;
+            self.nextToken();
+
+            if (!self.curTokenIs(.lparen)) {
+                self.report(.err, "expected '(' after macro name", self.cur_token.span, 1);
+                return error.ParserError;
+            }
+            self.nextToken();
+
+            var params = ArrayList(StringId).init(self.arena.allocator());
+
+            if (!self.curTokenIs(.rparen)) {
+                while (true) {
+                    if (!self.curTokenIs(.identifier)) {
+                        self.report(.err, "expected parameter name", self.cur_token.span, 1);
+                        return error.ParserError;
+                    }
+                    try params.append(self.cur_token.string_id);
+                    self.nextToken();
+                    if (self.curTokenIs(.comma)) {
+                        self.nextToken();
+                        continue;
+                    }
+                    break;
+                }
+            }
+
+            if (!self.curTokenIs(.rparen)) {
+                self.report(.err, "expected ')' after macro parameters", self.cur_token.span, 1);
+                return error.ParserError;
+            }
+            self.nextToken();
+
+            var body = ArrayList(ast.Statement).init(self.arena.allocator());
+            while (!self.curTokenIs(.kw_endm) and !self.curTokenIs(.eof)) {
+                try body.append(try self.parseStatement());
+            }
+
+            if (!self.curTokenIs(.kw_endm)) {
+                self.report(.err, "expected #endm to close macro definition", self.cur_token.span, 1);
+                return error.ParserError;
+            }
+            self.nextToken();
+
+            return .{ .macro_def = .{
+                .name = name_id,
+                .params = try params.toOwnedSlice(),
+                .body = try body.toOwnedSlice(),
+                .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+            } };
+        },
+        .kw_endm => {
+            self.report(.err, "unexpected #endm without matching #macro", self.cur_token.span, 1);
+            return error.ParserError;
         },
         else => {
             self.report(.err, "unexpected token", self.cur_token.span, 1);

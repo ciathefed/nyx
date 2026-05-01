@@ -59,6 +59,8 @@ pub const Statement = union(enum) {
     resw: Expr1,
     resd: Expr1,
     resq: Expr1,
+    macro_def: MacroDef,
+    macro_call: MacroCall,
 
     pub const Expr1 = struct {
         expr: *Expression,
@@ -111,6 +113,19 @@ pub const Statement = union(enum) {
     // TODO: each expr should have its own span
     pub const Db = struct {
         exprs: []*Expression,
+        span: Span,
+    };
+
+    pub const MacroDef = struct {
+        name: StringId,
+        params: []StringId,
+        body: []Statement,
+        span: Span,
+    };
+
+    pub const MacroCall = struct {
+        name: StringId,
+        args: []*Expression,
         span: Span,
     };
 
@@ -167,6 +182,8 @@ pub const Statement = union(enum) {
             .resw => |v| v.span,
             .resd => |v| v.span,
             .resq => |v| v.span,
+            .macro_def => |v| v.span,
+            .macro_call => |v| v.span,
         };
     }
 };

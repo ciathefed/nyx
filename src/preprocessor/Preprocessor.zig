@@ -26,12 +26,19 @@ const ConditionalInfo = struct {
     span: Span,
 };
 
+const MacroInfo = struct {
+    params: []StringId,
+    body: []ast.Statement,
+    span: Span,
+};
+
 io: std.Io,
 filename: []const u8,
 input: []const u8,
 program: []ast.Statement,
 interner: *StringInterner,
 definitions: std.AutoHashMap(StringId, ?*ast.Expression),
+macros: std.AutoHashMap(StringId, MacroInfo),
 include_paths: ArrayList([]const u8),
 reporter: *fehler.ErrorReporter,
 arena: std.heap.ArenaAllocator,
@@ -73,6 +80,7 @@ pub fn init(
         .program = program,
         .interner = interner,
         .definitions = definitions,
+        .macros = std.AutoHashMap(StringId, MacroInfo).init(gpa),
         .include_paths = if (include_paths) |paths|
             ArrayList([]const u8).fromOwnedSlice(gpa, paths)
         else
@@ -84,6 +92,7 @@ pub fn init(
 
 pub fn deinit(self: *Preprocessor) void {
     self.definitions.deinit();
+    self.macros.deinit();
     self.include_paths.deinit();
     self.arena.deinit();
 }
@@ -123,6 +132,17 @@ pub fn process(self: *Preprocessor) ![]ast.Statement {
                 };
                 try self.definitions.put(name_id, v.expr);
             },
+            .macro_def => |v| {
+                try self.macros.put(v.name, .{
+                    .params = v.params,
+                    .body = v.body,
+                    .span = v.span,
+                });
+            },
+            .macro_call => |v| {
+                const expanded = try self.expandMacro(v);
+                try final_statements.appendSlice(expanded);
+            },
             else => {
                 const new_stmt = try self.processStatement(stmt);
                 if (new_stmt) |s| {
@@ -133,6 +153,186 @@ pub fn process(self: *Preprocessor) ![]ast.Statement {
     }
 
     return final_statements.toOwnedSlice();
+}
+
+fn expandMacro(self: *Preprocessor, call: ast.Statement.MacroCall) ![]ast.Statement {
+    const arena_alloc = self.arena.allocator();
+
+    const macro_info = self.macros.get(call.name) orelse {
+        const name_str = self.interner.get(call.name) orelse "<unknown>";
+        const msg = try std.fmt.allocPrint(arena_alloc, "undefined macro: {s}", .{name_str});
+        return self.reportError(msg, call.span);
+    };
+
+    if (call.args.len != macro_info.params.len) {
+        const name_str = self.interner.get(call.name) orelse "<unknown>";
+        const msg = try std.fmt.allocPrint(
+            arena_alloc,
+            "macro '{s}' expects {d} arguments, got {d}",
+            .{ name_str, macro_info.params.len, call.args.len },
+        );
+        return self.reportError(msg, call.span);
+    }
+
+    var param_map = std.AutoHashMap(StringId, *ast.Expression).init(arena_alloc);
+    defer param_map.deinit();
+
+    for (macro_info.params, 0..) |param_id, i| {
+        const substituted_arg = try self.substituteExpr(call.args[i]);
+        try param_map.put(param_id, substituted_arg);
+    }
+
+    var expanded = try ArrayList(ast.Statement).initCapacity(arena_alloc, macro_info.body.len);
+
+    for (macro_info.body) |body_stmt| {
+        const substituted_stmt = try self.substituteStatement(body_stmt, &param_map);
+        if (substituted_stmt) |s| {
+            const processed = try self.processStatement(s);
+            if (processed) |p| {
+                try expanded.append(p);
+            }
+        }
+    }
+
+    return expanded.toOwnedSlice();
+}
+
+fn substituteStatement(self: *Preprocessor, stmt: ast.Statement, param_map: *std.AutoHashMap(StringId, *ast.Expression)) !?ast.Statement {
+    const arena_alloc = self.arena.allocator();
+
+    return switch (stmt) {
+        .label, .section, .nop, .ret, .syscall, .hlt, .@"else", .endif => stmt,
+        .@"error" => |v| .{ .@"error" = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .define => |v| .{ .define = .{
+            .name = try self.substituteExprWithParams(v.name, param_map),
+            .expr = if (v.expr) |expr| try self.substituteExprWithParams(expr, param_map) else null,
+            .span = v.span,
+        } },
+        .include, .ifdef, .ifndef => null,
+        .entry => |v| .{ .entry = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .ascii => |v| .{ .ascii = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .asciz => |v| .{ .asciz = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .@"extern" => |v| .{ .@"extern" = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .jmp => |v| .{ .jmp = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .jeq => |v| .{ .jeq = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .jne => |v| .{ .jne = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .jlt => |v| .{ .jlt = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .jgt => |v| .{ .jgt = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .jle => |v| .{ .jle = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .jge => |v| .{ .jge = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .call => |v| .{ .call = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .inc => |v| .{ .inc = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .dec => |v| .{ .dec = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .neg => |v| .{ .neg = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .mov => |v| .{ .mov = .{
+            .data_size = if (v.data_size) |size| try self.substituteExprWithParams(size, param_map) else null,
+            .expr1 = try self.substituteExprWithParams(v.expr1, param_map),
+            .expr2 = try self.substituteExprWithParams(v.expr2, param_map),
+            .span = v.span,
+        } },
+        .cmp => |v| .{ .cmp = .{ .expr1 = try self.substituteExprWithParams(v.expr1, param_map), .expr2 = try self.substituteExprWithParams(v.expr2, param_map), .span = v.span } },
+        .push => |v| .{ .push = .{
+            .data_size = if (v.data_size) |size| try self.substituteExprWithParams(size, param_map) else null,
+            .expr = try self.substituteExprWithParams(v.expr, param_map),
+            .span = v.span,
+        } },
+        .pop => |v| .{ .pop = .{
+            .data_size = if (v.data_size) |size| try self.substituteExprWithParams(size, param_map) else null,
+            .expr = try self.substituteExprWithParams(v.expr, param_map),
+            .span = v.span,
+        } },
+        .add => |v| .{ .add = .{ .expr1 = try self.substituteExprWithParams(v.expr1, param_map), .expr2 = try self.substituteExprWithParams(v.expr2, param_map), .expr3 = try self.substituteExprWithParams(v.expr3, param_map), .span = v.span } },
+        .sub => |v| .{ .sub = .{ .expr1 = try self.substituteExprWithParams(v.expr1, param_map), .expr2 = try self.substituteExprWithParams(v.expr2, param_map), .expr3 = try self.substituteExprWithParams(v.expr3, param_map), .span = v.span } },
+        .mul => |v| .{ .mul = .{ .expr1 = try self.substituteExprWithParams(v.expr1, param_map), .expr2 = try self.substituteExprWithParams(v.expr2, param_map), .expr3 = try self.substituteExprWithParams(v.expr3, param_map), .span = v.span } },
+        .div => |v| .{ .div = .{ .expr1 = try self.substituteExprWithParams(v.expr1, param_map), .expr2 = try self.substituteExprWithParams(v.expr2, param_map), .expr3 = try self.substituteExprWithParams(v.expr3, param_map), .span = v.span } },
+        .@"and" => |v| .{ .@"and" = .{ .expr1 = try self.substituteExprWithParams(v.expr1, param_map), .expr2 = try self.substituteExprWithParams(v.expr2, param_map), .expr3 = try self.substituteExprWithParams(v.expr3, param_map), .span = v.span } },
+        .@"or" => |v| .{ .@"or" = .{ .expr1 = try self.substituteExprWithParams(v.expr1, param_map), .expr2 = try self.substituteExprWithParams(v.expr2, param_map), .expr3 = try self.substituteExprWithParams(v.expr3, param_map), .span = v.span } },
+        .xor => |v| .{ .xor = .{ .expr1 = try self.substituteExprWithParams(v.expr1, param_map), .expr2 = try self.substituteExprWithParams(v.expr2, param_map), .expr3 = try self.substituteExprWithParams(v.expr3, param_map), .span = v.span } },
+        .shl => |v| .{ .shl = .{ .expr1 = try self.substituteExprWithParams(v.expr1, param_map), .expr2 = try self.substituteExprWithParams(v.expr2, param_map), .expr3 = try self.substituteExprWithParams(v.expr3, param_map), .span = v.span } },
+        .shr => |v| .{ .shr = .{ .expr1 = try self.substituteExprWithParams(v.expr1, param_map), .expr2 = try self.substituteExprWithParams(v.expr2, param_map), .expr3 = try self.substituteExprWithParams(v.expr3, param_map), .span = v.span } },
+        .rol => |v| .{ .rol = .{ .expr1 = try self.substituteExprWithParams(v.expr1, param_map), .expr2 = try self.substituteExprWithParams(v.expr2, param_map), .expr3 = try self.substituteExprWithParams(v.expr3, param_map), .span = v.span } },
+        .ror => |v| .{ .ror = .{ .expr1 = try self.substituteExprWithParams(v.expr1, param_map), .expr2 = try self.substituteExprWithParams(v.expr2, param_map), .expr3 = try self.substituteExprWithParams(v.expr3, param_map), .span = v.span } },
+        .db => |v| .{ .db = .{
+            .exprs = blk: {
+                var new_exprs = try ArrayList(*ast.Expression).initCapacity(arena_alloc, v.exprs.len);
+                for (v.exprs) |expr| {
+                    new_exprs.appendAssumeCapacity(try self.substituteExprWithParams(expr, param_map));
+                }
+                break :blk try new_exprs.toOwnedSlice();
+            },
+            .span = v.span,
+        } },
+        .dw => |v| .{ .dw = .{
+            .exprs = blk: {
+                var new_exprs = try ArrayList(*ast.Expression).initCapacity(arena_alloc, v.exprs.len);
+                for (v.exprs) |expr| {
+                    new_exprs.appendAssumeCapacity(try self.substituteExprWithParams(expr, param_map));
+                }
+                break :blk try new_exprs.toOwnedSlice();
+            },
+            .span = v.span,
+        } },
+        .dd => |v| .{ .dd = .{
+            .exprs = blk: {
+                var new_exprs = try ArrayList(*ast.Expression).initCapacity(arena_alloc, v.exprs.len);
+                for (v.exprs) |expr| {
+                    new_exprs.appendAssumeCapacity(try self.substituteExprWithParams(expr, param_map));
+                }
+                break :blk try new_exprs.toOwnedSlice();
+            },
+            .span = v.span,
+        } },
+        .dq => |v| .{ .dq = .{
+            .exprs = blk: {
+                var new_exprs = try ArrayList(*ast.Expression).initCapacity(arena_alloc, v.exprs.len);
+                for (v.exprs) |expr| {
+                    new_exprs.appendAssumeCapacity(try self.substituteExprWithParams(expr, param_map));
+                }
+                break :blk try new_exprs.toOwnedSlice();
+            },
+            .span = v.span,
+        } },
+        .resb => |v| .{ .resb = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .resw => |v| .{ .resw = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .resd => |v| .{ .resd = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .resq => |v| .{ .resq = .{ .expr = try self.substituteExprWithParams(v.expr, param_map), .span = v.span } },
+        .macro_def => null, // macro definitions inside macro bodies are ignored
+        .macro_call => null, // nested macro calls inside expansion not supported
+    };
+}
+
+fn substituteExprWithParams(self: *Preprocessor, expr: *ast.Expression, param_map: *std.AutoHashMap(StringId, *ast.Expression)) anyerror!*ast.Expression {
+    return switch (expr.*) {
+        .identifier => |name_id| blk: {
+            if (param_map.get(name_id)) |replacement| {
+                break :blk replacement;
+            }
+            if (self.definitions.get(name_id)) |replacement| {
+                if (replacement) |r| {
+                    break :blk self.substituteExprWithParams(r, param_map);
+                }
+            }
+            break :blk expr;
+        },
+        .address => |v| blk: {
+            const new_base = try self.substituteExprWithParams(v.base, param_map);
+            const new_offset = if (v.offset) |offset|
+                try self.substituteExprWithParams(offset, param_map)
+            else
+                null;
+            break :blk try self.createExpr(.{ .address = .{ .base = new_base, .offset = new_offset } });
+        },
+        .register, .integer_literal, .float_literal, .string_literal, .data_size => expr,
+        .unary_op => |v| blk: {
+            const inner = try self.substituteExprWithParams(v.expr, param_map);
+            break :blk try self.createExpr(.{ .unary_op = .{ .op = v.op, .expr = inner, .span = v.span } });
+        },
+        .binary_op => |v| blk: {
+            const lhs = try self.substituteExprWithParams(v.lhs, param_map);
+            const rhs = try self.substituteExprWithParams(v.rhs, param_map);
+            break :blk try self.createExpr(.{ .binary_op = .{ .lhs = lhs, .op = v.op, .rhs = rhs, .span = v.span } });
+        },
+    };
 }
 
 fn processStatement(self: *Preprocessor, stmt: ast.Statement) !?ast.Statement {
@@ -241,6 +441,8 @@ fn processStatement(self: *Preprocessor, stmt: ast.Statement) !?ast.Statement {
         .resw => |v| .{ .resw = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
         .resd => |v| .{ .resd = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
         .resq => |v| .{ .resq = .{ .expr = try self.substituteExpr(v.expr), .span = v.span } },
+        .macro_def => null, // already handled in process()
+        .macro_call => null, // already handled in process()
     };
 }
 
@@ -269,12 +471,14 @@ fn processInclude(self: *Preprocessor, file_path: []const u8, span: Span) anyerr
         .program = included_statements,
         .interner = self.interner,
         .definitions = try self.definitions.clone(),
+        .macros = try self.macros.clone(),
         .include_paths = try self.include_paths.clone(),
         .reporter = self.reporter,
         .arena = std.heap.ArenaAllocator.init(arena_alloc),
     };
     defer {
         sub_preprocessor.definitions.deinit();
+        sub_preprocessor.macros.deinit();
         sub_preprocessor.include_paths.deinit();
     }
 
@@ -283,6 +487,11 @@ fn processInclude(self: *Preprocessor, file_path: []const u8, span: Span) anyerr
     var definitions_iter = sub_preprocessor.definitions.iterator();
     while (definitions_iter.next()) |entry| {
         try self.definitions.put(entry.key_ptr.*, entry.value_ptr.*);
+    }
+
+    var macros_iter = sub_preprocessor.macros.iterator();
+    while (macros_iter.next()) |entry| {
+        try self.macros.put(entry.key_ptr.*, entry.value_ptr.*);
     }
 
     return processed;

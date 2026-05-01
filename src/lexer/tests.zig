@@ -110,7 +110,7 @@ test "octal numbers" {
 }
 
 test "identifiers" {
-    const cases = [_][]const u8{ "variable_name", "_long_long_long_12345_name" };
+    const cases = [_][]const u8{ "variable_name", "_long_long_long_12345_name", "$fd", "$addr", "$len" };
 
     for (cases) |case| {
         var result = try lex(testing.allocator, case);
@@ -133,6 +133,8 @@ test "preprocessor directives" {
         .{ .input = "#else", .kind = .kw_else },
         .{ .input = "#endif", .kind = .kw_endif },
         .{ .input = "#error", .kind = .kw_error },
+        .{ .input = "#macro", .kind = .kw_macro },
+        .{ .input = "#endm", .kind = .kw_endm },
     };
 
     for (cases) |case| {
