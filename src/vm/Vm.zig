@@ -220,26 +220,70 @@ pub fn step(self: *Vm) !void {
         },
         .add_reg_reg_reg => try self.executeBinaryOp(add, true),
         .add_reg_reg_imm => try self.executeBinaryOp(add, false),
+        .add_reg_reg_addr => try self.executeBinaryOpRegRegAddr(add),
+        .add_reg_addr_reg => try self.executeBinaryOpRegAddrReg(add),
+        .add_reg_addr_imm => try self.executeBinaryOpRegAddrImm(add),
+        .add_reg_addr_addr => try self.executeBinaryOpRegAddrAddr(add),
         .sub_reg_reg_reg => try self.executeBinaryOp(sub, true),
         .sub_reg_reg_imm => try self.executeBinaryOp(sub, false),
+        .sub_reg_reg_addr => try self.executeBinaryOpRegRegAddr(sub),
+        .sub_reg_addr_reg => try self.executeBinaryOpRegAddrReg(sub),
+        .sub_reg_addr_imm => try self.executeBinaryOpRegAddrImm(sub),
+        .sub_reg_addr_addr => try self.executeBinaryOpRegAddrAddr(sub),
         .mul_reg_reg_reg => try self.executeBinaryOp(mul, true),
         .mul_reg_reg_imm => try self.executeBinaryOp(mul, false),
+        .mul_reg_reg_addr => try self.executeBinaryOpRegRegAddr(mul),
+        .mul_reg_addr_reg => try self.executeBinaryOpRegAddrReg(mul),
+        .mul_reg_addr_imm => try self.executeBinaryOpRegAddrImm(mul),
+        .mul_reg_addr_addr => try self.executeBinaryOpRegAddrAddr(mul),
         .div_reg_reg_reg => try self.executeBinaryOp(div, true),
         .div_reg_reg_imm => try self.executeBinaryOp(div, false),
+        .div_reg_reg_addr => try self.executeBinaryOpRegRegAddr(div),
+        .div_reg_addr_reg => try self.executeBinaryOpRegAddrReg(div),
+        .div_reg_addr_imm => try self.executeBinaryOpRegAddrImm(div),
+        .div_reg_addr_addr => try self.executeBinaryOpRegAddrAddr(div),
         .and_reg_reg_reg => try self.executeBitwiseOp(bitAnd, true),
         .and_reg_reg_imm => try self.executeBitwiseOp(bitAnd, false),
+        .and_reg_reg_addr => try self.executeBitwiseOpRegRegAddr(bitAnd),
+        .and_reg_addr_reg => try self.executeBitwiseOpRegAddrReg(bitAnd),
+        .and_reg_addr_imm => try self.executeBitwiseOpRegAddrImm(bitAnd),
+        .and_reg_addr_addr => try self.executeBitwiseOpRegAddrAddr(bitAnd),
         .or_reg_reg_reg => try self.executeBitwiseOp(bitOr, true),
         .or_reg_reg_imm => try self.executeBitwiseOp(bitOr, false),
+        .or_reg_reg_addr => try self.executeBitwiseOpRegRegAddr(bitOr),
+        .or_reg_addr_reg => try self.executeBitwiseOpRegAddrReg(bitOr),
+        .or_reg_addr_imm => try self.executeBitwiseOpRegAddrImm(bitOr),
+        .or_reg_addr_addr => try self.executeBitwiseOpRegAddrAddr(bitOr),
         .xor_reg_reg_reg => try self.executeBitwiseOp(bitXor, true),
         .xor_reg_reg_imm => try self.executeBitwiseOp(bitXor, false),
+        .xor_reg_reg_addr => try self.executeBitwiseOpRegRegAddr(bitXor),
+        .xor_reg_addr_reg => try self.executeBitwiseOpRegAddrReg(bitXor),
+        .xor_reg_addr_imm => try self.executeBitwiseOpRegAddrImm(bitXor),
+        .xor_reg_addr_addr => try self.executeBitwiseOpRegAddrAddr(bitXor),
         .shl_reg_reg_reg => try self.executeBitwiseOp(shl, true),
         .shl_reg_reg_imm => try self.executeBitwiseOp(shl, false),
+        .shl_reg_reg_addr => try self.executeBitwiseOpRegRegAddr(shl),
+        .shl_reg_addr_reg => try self.executeBitwiseOpRegAddrReg(shl),
+        .shl_reg_addr_imm => try self.executeBitwiseOpRegAddrImm(shl),
+        .shl_reg_addr_addr => try self.executeBitwiseOpRegAddrAddr(shl),
         .shr_reg_reg_reg => try self.executeBitwiseOp(shr, true),
         .shr_reg_reg_imm => try self.executeBitwiseOp(shr, false),
+        .shr_reg_reg_addr => try self.executeBitwiseOpRegRegAddr(shr),
+        .shr_reg_addr_reg => try self.executeBitwiseOpRegAddrReg(shr),
+        .shr_reg_addr_imm => try self.executeBitwiseOpRegAddrImm(shr),
+        .shr_reg_addr_addr => try self.executeBitwiseOpRegAddrAddr(shr),
         .rol_reg_reg_reg => try self.executeBitwiseOp(rol, true),
         .rol_reg_reg_imm => try self.executeBitwiseOp(rol, false),
+        .rol_reg_reg_addr => try self.executeBitwiseOpRegRegAddr(rol),
+        .rol_reg_addr_reg => try self.executeBitwiseOpRegAddrReg(rol),
+        .rol_reg_addr_imm => try self.executeBitwiseOpRegAddrImm(rol),
+        .rol_reg_addr_addr => try self.executeBitwiseOpRegAddrAddr(rol),
         .ror_reg_reg_reg => try self.executeBitwiseOp(ror, true),
         .ror_reg_reg_imm => try self.executeBitwiseOp(ror, false),
+        .ror_reg_reg_addr => try self.executeBitwiseOpRegRegAddr(ror),
+        .ror_reg_addr_reg => try self.executeBitwiseOpRegAddrReg(ror),
+        .ror_reg_addr_imm => try self.executeBitwiseOpRegAddrImm(ror),
+        .ror_reg_addr_addr => try self.executeBitwiseOpRegAddrAddr(ror),
         .cmp_reg_imm => {
             const reg = try self.readRegister();
             const lhs = self.regs.get(reg);
@@ -597,4 +641,157 @@ inline fn rol(a: anytype, b: anytype) @TypeOf(a, b) {
 
 inline fn ror(a: anytype, b: anytype) @TypeOf(a, b) {
     return std.math.rotr(@TypeOf(a), a, @as(u32, @intCast(b)));
+}
+
+fn readAddress(self: *Vm, data_size: DataSize) !Immediate {
+    const variant = try self.readByte();
+    const base: i64 = @bitCast(switch (variant) {
+        addressing_variant_1 => self.regs.get(try self.readRegister()).asU64(),
+        addressing_variant_2 => try self.readQword(),
+        else => return error.UnknownAddressingVariant,
+    });
+    const offset: i64 = @bitCast(try self.readQword());
+    const addr: usize = @intCast(base + offset);
+    return try self.mmu.read(addr, data_size);
+}
+
+fn executeBinaryOpRegRegAddr(self: *Vm, comptime op: anytype) !void {
+    const dest = try self.readRegister();
+    const lhs = try self.readRegister();
+    const lhs_val = self.regs.get(lhs);
+    const data_size = DataSize.fromRegister(dest);
+    const rhs_val = try self.readAddress(data_size);
+    const result: Immediate = switch (data_size) {
+        .byte => .{ .byte = op(lhs_val.asU8(), rhs_val.asU8()) },
+        .word => .{ .word = op(lhs_val.asU16(), rhs_val.asU16()) },
+        .dword => .{ .dword = op(lhs_val.asU32(), rhs_val.asU32()) },
+        .qword => .{ .qword = op(lhs_val.asU64(), rhs_val.asU64()) },
+        .float => .{ .float = op(lhs_val.asF32(), rhs_val.asF32()) },
+        .double => .{ .double = op(lhs_val.asF64(), rhs_val.asF64()) },
+    };
+    self.regs.set(dest, result);
+}
+
+fn executeBinaryOpRegAddrReg(self: *Vm, comptime op: anytype) !void {
+    const dest = try self.readRegister();
+    const data_size = DataSize.fromRegister(dest);
+    const lhs_val = try self.readAddress(data_size);
+    const rhs = try self.readRegister();
+    const rhs_val = self.regs.get(rhs);
+    const result: Immediate = switch (data_size) {
+        .byte => .{ .byte = op(lhs_val.asU8(), rhs_val.asU8()) },
+        .word => .{ .word = op(lhs_val.asU16(), rhs_val.asU16()) },
+        .dword => .{ .dword = op(lhs_val.asU32(), rhs_val.asU32()) },
+        .qword => .{ .qword = op(lhs_val.asU64(), rhs_val.asU64()) },
+        .float => .{ .float = op(lhs_val.asF32(), rhs_val.asF32()) },
+        .double => .{ .double = op(lhs_val.asF64(), rhs_val.asF64()) },
+    };
+    self.regs.set(dest, result);
+}
+
+fn executeBinaryOpRegAddrImm(self: *Vm, comptime op: anytype) !void {
+    const dest = try self.readRegister();
+    const data_size = DataSize.fromRegister(dest);
+    const lhs_val = try self.readAddress(data_size);
+    const rhs_val: Immediate = switch (data_size) {
+        .byte => .{ .byte = try self.readByte() },
+        .word => .{ .word = try self.readWord() },
+        .dword => .{ .dword = try self.readDword() },
+        .qword => .{ .qword = try self.readQword() },
+        .float => .{ .float = try self.readFloat() },
+        .double => .{ .double = try self.readDouble() },
+    };
+    const result: Immediate = switch (data_size) {
+        .byte => .{ .byte = op(lhs_val.asU8(), rhs_val.asU8()) },
+        .word => .{ .word = op(lhs_val.asU16(), rhs_val.asU16()) },
+        .dword => .{ .dword = op(lhs_val.asU32(), rhs_val.asU32()) },
+        .qword => .{ .qword = op(lhs_val.asU64(), rhs_val.asU64()) },
+        .float => .{ .float = op(lhs_val.asF32(), rhs_val.asF32()) },
+        .double => .{ .double = op(lhs_val.asF64(), rhs_val.asF64()) },
+    };
+    self.regs.set(dest, result);
+}
+
+fn executeBinaryOpRegAddrAddr(self: *Vm, comptime op: anytype) !void {
+    const dest = try self.readRegister();
+    const data_size = DataSize.fromRegister(dest);
+    const lhs_val = try self.readAddress(data_size);
+    const rhs_val = try self.readAddress(data_size);
+    const result: Immediate = switch (data_size) {
+        .byte => .{ .byte = op(lhs_val.asU8(), rhs_val.asU8()) },
+        .word => .{ .word = op(lhs_val.asU16(), rhs_val.asU16()) },
+        .dword => .{ .dword = op(lhs_val.asU32(), rhs_val.asU32()) },
+        .qword => .{ .qword = op(lhs_val.asU64(), rhs_val.asU64()) },
+        .float => .{ .float = op(lhs_val.asF32(), rhs_val.asF32()) },
+        .double => .{ .double = op(lhs_val.asF64(), rhs_val.asF64()) },
+    };
+    self.regs.set(dest, result);
+}
+
+fn executeBitwiseOpRegRegAddr(self: *Vm, comptime op: anytype) !void {
+    const dest = try self.readRegister();
+    const lhs = try self.readRegister();
+    const lhs_val = self.regs.get(lhs);
+    const data_size = DataSize.fromRegister(dest);
+    const rhs_val = try self.readAddress(data_size);
+    const result: Immediate = switch (data_size) {
+        .byte => .{ .byte = op(lhs_val.asU8(), rhs_val.asU8()) },
+        .word => .{ .word = op(lhs_val.asU16(), rhs_val.asU16()) },
+        .dword => .{ .dword = op(lhs_val.asU32(), rhs_val.asU32()) },
+        .qword => .{ .qword = op(lhs_val.asU64(), rhs_val.asU64()) },
+        else => return error.InvalidDataSize,
+    };
+    self.regs.set(dest, result);
+}
+
+fn executeBitwiseOpRegAddrReg(self: *Vm, comptime op: anytype) !void {
+    const dest = try self.readRegister();
+    const data_size = DataSize.fromRegister(dest);
+    const lhs_val = try self.readAddress(data_size);
+    const rhs = try self.readRegister();
+    const rhs_val = self.regs.get(rhs);
+    const result: Immediate = switch (data_size) {
+        .byte => .{ .byte = op(lhs_val.asU8(), rhs_val.asU8()) },
+        .word => .{ .word = op(lhs_val.asU16(), rhs_val.asU16()) },
+        .dword => .{ .dword = op(lhs_val.asU32(), rhs_val.asU32()) },
+        .qword => .{ .qword = op(lhs_val.asU64(), rhs_val.asU64()) },
+        else => return error.InvalidDataSize,
+    };
+    self.regs.set(dest, result);
+}
+
+fn executeBitwiseOpRegAddrImm(self: *Vm, comptime op: anytype) !void {
+    const dest = try self.readRegister();
+    const data_size = DataSize.fromRegister(dest);
+    const lhs_val = try self.readAddress(data_size);
+    const rhs_val: Immediate = switch (data_size) {
+        .byte => .{ .byte = try self.readByte() },
+        .word => .{ .word = try self.readWord() },
+        .dword => .{ .dword = try self.readDword() },
+        .qword => .{ .qword = try self.readQword() },
+        else => return error.InvalidDataSize,
+    };
+    const result: Immediate = switch (data_size) {
+        .byte => .{ .byte = op(lhs_val.asU8(), rhs_val.asU8()) },
+        .word => .{ .word = op(lhs_val.asU16(), rhs_val.asU16()) },
+        .dword => .{ .dword = op(lhs_val.asU32(), rhs_val.asU32()) },
+        .qword => .{ .qword = op(lhs_val.asU64(), rhs_val.asU64()) },
+        else => return error.InvalidDataSize,
+    };
+    self.regs.set(dest, result);
+}
+
+fn executeBitwiseOpRegAddrAddr(self: *Vm, comptime op: anytype) !void {
+    const dest = try self.readRegister();
+    const data_size = DataSize.fromRegister(dest);
+    const lhs_val = try self.readAddress(data_size);
+    const rhs_val = try self.readAddress(data_size);
+    const result: Immediate = switch (data_size) {
+        .byte => .{ .byte = op(lhs_val.asU8(), rhs_val.asU8()) },
+        .word => .{ .word = op(lhs_val.asU16(), rhs_val.asU16()) },
+        .dword => .{ .dword = op(lhs_val.asU32(), rhs_val.asU32()) },
+        .qword => .{ .qword = op(lhs_val.asU64(), rhs_val.asU64()) },
+        else => return error.InvalidDataSize,
+    };
+    self.regs.set(dest, result);
 }

@@ -927,6 +927,38 @@ fn compilePop(self: *Compiler, data_size: ?*ast.Expression, expr: *ast.Expressio
     return self.reportError("unsupported operands", span);
 }
 
+fn emitAddress(self: *Compiler, addr: ast.Expression.Address, span: Span) !void {
+    const offset = if (addr.offset) |o| blk: {
+        switch (o.*) {
+            .integer_literal => |off| break :blk off,
+            else => return self.reportError("offset must be an integer literal", span),
+        }
+    } else 0;
+
+    switch (addr.base.*) {
+        .register => |base| {
+            try self.bytecode.push(addressing_variant_1);
+            try self.bytecode.push(base);
+            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
+        },
+        .integer_literal => |base| {
+            try self.bytecode.push(addressing_variant_2);
+            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(base))));
+            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
+        },
+        .identifier => |base_id| {
+            try self.bytecode.push(addressing_variant_2);
+            try self.fixups.put(
+                .{ .section = self.bytecode.current_section, .addr = self.bytecode.len(self.bytecode.current_section) },
+                .{ .size = .qword, .label = base_id, .span = span },
+            );
+            try self.bytecode.extend(&mem.toBytes(@as(u64, 0x00)));
+            try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
+        },
+        else => return self.reportError("unsupported address base type", span),
+    }
+}
+
 fn compileArithmetic(
     self: *Compiler,
     dest: *ast.Expression,
@@ -945,63 +977,142 @@ fn compileArithmetic(
         else => return self.reportError("first operand must be a register", span),
     };
 
-    const lhs_reg = switch (lhs.*) {
-        .register => |v| v,
-        else => return self.reportError("second operand must be a register", span),
-    };
-
-    switch (rhs.*) {
-        .register => |rhs_reg| {
-            try self.bytecode.push(switch (op) {
-                .add => Opcode.add_reg_reg_reg,
-                .sub => Opcode.sub_reg_reg_reg,
-                .mul => Opcode.mul_reg_reg_reg,
-                .div => Opcode.div_reg_reg_reg,
-            });
-            try self.bytecode.push(dest_reg);
-            try self.bytecode.push(lhs_reg);
-            try self.bytecode.push(rhs_reg);
-            return;
+    switch (lhs.*) {
+        .register => |lhs_reg| {
+            switch (rhs.*) {
+                .register => |rhs_reg| {
+                    try self.bytecode.push(switch (op) {
+                        .add => Opcode.add_reg_reg_reg,
+                        .sub => Opcode.sub_reg_reg_reg,
+                        .mul => Opcode.mul_reg_reg_reg,
+                        .div => Opcode.div_reg_reg_reg,
+                    });
+                    try self.bytecode.push(dest_reg);
+                    try self.bytecode.push(lhs_reg);
+                    try self.bytecode.push(rhs_reg);
+                    return;
+                },
+                .integer_literal => |rhs_int| {
+                    try self.bytecode.push(switch (op) {
+                        .add => Opcode.add_reg_reg_imm,
+                        .sub => Opcode.sub_reg_reg_imm,
+                        .mul => Opcode.mul_reg_reg_imm,
+                        .div => Opcode.div_reg_reg_imm,
+                    });
+                    try self.bytecode.push(dest_reg);
+                    try self.bytecode.push(lhs_reg);
+                    try self.bytecode.extend(switch (DataSize.fromRegister(dest_reg)) {
+                        .byte => &mem.toBytes(@as(u8, @bitCast(@as(i8, @intCast(rhs_int))))),
+                        .word => &mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(rhs_int))))),
+                        .dword => &mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(rhs_int))))),
+                        .qword => &mem.toBytes(@as(u64, @bitCast(rhs_int))),
+                        .float => &mem.toBytes(@as(f32, @floatFromInt(rhs_int))),
+                        .double => &mem.toBytes(@as(f64, @floatFromInt(rhs_int))),
+                    });
+                    return;
+                },
+                .float_literal => |rhs_float| {
+                    try self.bytecode.push(switch (op) {
+                        .add => Opcode.add_reg_reg_imm,
+                        .sub => Opcode.sub_reg_reg_imm,
+                        .mul => Opcode.mul_reg_reg_imm,
+                        .div => Opcode.div_reg_reg_imm,
+                    });
+                    try self.bytecode.push(dest_reg);
+                    try self.bytecode.push(lhs_reg);
+                    try self.bytecode.extend(switch (DataSize.fromRegister(dest_reg)) {
+                        .byte => &mem.toBytes(@as(u8, @intFromFloat(rhs_float))),
+                        .word => &mem.toBytes(@as(u16, @intFromFloat(rhs_float))),
+                        .dword => &mem.toBytes(@as(u32, @intFromFloat(rhs_float))),
+                        .qword => &mem.toBytes(@as(u64, @intFromFloat(rhs_float))),
+                        .float => &mem.toBytes(@as(f32, @floatCast(rhs_float))),
+                        .double => &mem.toBytes(@as(f64, @floatCast(rhs_float))),
+                    });
+                    return;
+                },
+                .address => |rhs_addr| {
+                    try self.bytecode.push(switch (op) {
+                        .add => Opcode.add_reg_reg_addr,
+                        .sub => Opcode.sub_reg_reg_addr,
+                        .mul => Opcode.mul_reg_reg_addr,
+                        .div => Opcode.div_reg_reg_addr,
+                    });
+                    try self.bytecode.push(dest_reg);
+                    try self.bytecode.push(lhs_reg);
+                    try self.emitAddress(rhs_addr, span);
+                    return;
+                },
+                else => {},
+            }
         },
-        .integer_literal => |rhs_int| {
-            try self.bytecode.push(switch (op) {
-                .add => Opcode.add_reg_reg_imm,
-                .sub => Opcode.sub_reg_reg_imm,
-                .mul => Opcode.mul_reg_reg_imm,
-                .div => Opcode.div_reg_reg_imm,
-            });
-            try self.bytecode.push(dest_reg);
-            try self.bytecode.push(lhs_reg);
-            try self.bytecode.extend(switch (DataSize.fromRegister(dest_reg)) {
-                .byte => &mem.toBytes(@as(u8, @bitCast(@as(i8, @intCast(rhs_int))))),
-                .word => &mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(rhs_int))))),
-                .dword => &mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(rhs_int))))),
-                .qword => &mem.toBytes(@as(u64, @bitCast(rhs_int))),
-                .float => &mem.toBytes(@as(f32, @floatFromInt(rhs_int))),
-                .double => &mem.toBytes(@as(f64, @floatFromInt(rhs_int))),
-            });
-            return;
+        .address => |lhs_addr| {
+            switch (rhs.*) {
+                .register => |rhs_reg| {
+                    try self.bytecode.push(switch (op) {
+                        .add => Opcode.add_reg_addr_reg,
+                        .sub => Opcode.sub_reg_addr_reg,
+                        .mul => Opcode.mul_reg_addr_reg,
+                        .div => Opcode.div_reg_addr_reg,
+                    });
+                    try self.bytecode.push(dest_reg);
+                    try self.emitAddress(lhs_addr, span);
+                    try self.bytecode.push(rhs_reg);
+                    return;
+                },
+                .integer_literal => |rhs_int| {
+                    try self.bytecode.push(switch (op) {
+                        .add => Opcode.add_reg_addr_imm,
+                        .sub => Opcode.sub_reg_addr_imm,
+                        .mul => Opcode.mul_reg_addr_imm,
+                        .div => Opcode.div_reg_addr_imm,
+                    });
+                    try self.bytecode.push(dest_reg);
+                    try self.emitAddress(lhs_addr, span);
+                    try self.bytecode.extend(switch (DataSize.fromRegister(dest_reg)) {
+                        .byte => &mem.toBytes(@as(u8, @bitCast(@as(i8, @intCast(rhs_int))))),
+                        .word => &mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(rhs_int))))),
+                        .dword => &mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(rhs_int))))),
+                        .qword => &mem.toBytes(@as(u64, @bitCast(rhs_int))),
+                        .float => &mem.toBytes(@as(f32, @floatFromInt(rhs_int))),
+                        .double => &mem.toBytes(@as(f64, @floatFromInt(rhs_int))),
+                    });
+                    return;
+                },
+                .float_literal => |rhs_float| {
+                    try self.bytecode.push(switch (op) {
+                        .add => Opcode.add_reg_addr_imm,
+                        .sub => Opcode.sub_reg_addr_imm,
+                        .mul => Opcode.mul_reg_addr_imm,
+                        .div => Opcode.div_reg_addr_imm,
+                    });
+                    try self.bytecode.push(dest_reg);
+                    try self.emitAddress(lhs_addr, span);
+                    try self.bytecode.extend(switch (DataSize.fromRegister(dest_reg)) {
+                        .byte => &mem.toBytes(@as(u8, @intFromFloat(rhs_float))),
+                        .word => &mem.toBytes(@as(u16, @intFromFloat(rhs_float))),
+                        .dword => &mem.toBytes(@as(u32, @intFromFloat(rhs_float))),
+                        .qword => &mem.toBytes(@as(u64, @intFromFloat(rhs_float))),
+                        .float => &mem.toBytes(@as(f32, @floatCast(rhs_float))),
+                        .double => &mem.toBytes(@as(f64, @floatCast(rhs_float))),
+                    });
+                    return;
+                },
+                .address => |rhs_addr| {
+                    try self.bytecode.push(switch (op) {
+                        .add => Opcode.add_reg_addr_addr,
+                        .sub => Opcode.sub_reg_addr_addr,
+                        .mul => Opcode.mul_reg_addr_addr,
+                        .div => Opcode.div_reg_addr_addr,
+                    });
+                    try self.bytecode.push(dest_reg);
+                    try self.emitAddress(lhs_addr, span);
+                    try self.emitAddress(rhs_addr, span);
+                    return;
+                },
+                else => {},
+            }
         },
-        .float_literal => |rhs_float| {
-            try self.bytecode.push(switch (op) {
-                .add => Opcode.add_reg_reg_imm,
-                .sub => Opcode.sub_reg_reg_imm,
-                .mul => Opcode.mul_reg_reg_imm,
-                .div => Opcode.div_reg_reg_imm,
-            });
-            try self.bytecode.push(dest_reg);
-            try self.bytecode.push(lhs_reg);
-            try self.bytecode.extend(switch (DataSize.fromRegister(dest_reg)) {
-                .byte => &mem.toBytes(@as(u8, @intFromFloat(rhs_float))),
-                .word => &mem.toBytes(@as(u16, @intFromFloat(rhs_float))),
-                .dword => &mem.toBytes(@as(u32, @intFromFloat(rhs_float))),
-                .qword => &mem.toBytes(@as(u64, @intFromFloat(rhs_float))),
-                .float => &mem.toBytes(@as(f32, @floatCast(rhs_float))),
-                .double => &mem.toBytes(@as(f64, @floatCast(rhs_float))),
-            });
-            return;
-        },
-        else => {},
+        else => return self.reportError("second operand must be a register or address", span),
     }
 
     return self.reportError("unsupported operands", span);
@@ -1028,61 +1139,139 @@ fn compileBitwise(
         else => return self.reportError("first operand must be a register", span),
     };
 
-    const lhs_reg = switch (lhs.*) {
-        .register => |v| v,
-        else => return self.reportError("second operand must be a register", span),
-    };
-
-    switch (DataSize.fromRegister(lhs_reg)) {
-        .float, .double => return self.reportError("bitwise operations not supported on floating-point registers", span),
-        else => {},
-    }
-
-    switch (rhs.*) {
-        .register => |rhs_reg| {
-            switch (DataSize.fromRegister(rhs_reg)) {
+    switch (lhs.*) {
+        .register => |lhs_reg| {
+            switch (DataSize.fromRegister(lhs_reg)) {
                 .float, .double => return self.reportError("bitwise operations not supported on floating-point registers", span),
                 else => {},
             }
 
-            try self.bytecode.push(switch (op) {
-                .@"and" => Opcode.and_reg_reg_reg,
-                .@"or" => Opcode.or_reg_reg_reg,
-                .xor => Opcode.xor_reg_reg_reg,
-                .shl => Opcode.shl_reg_reg_reg,
-                .shr => Opcode.shr_reg_reg_reg,
-                .rol => Opcode.rol_reg_reg_reg,
-                .ror => Opcode.ror_reg_reg_reg,
-            });
-            try self.bytecode.push(dest_reg);
-            try self.bytecode.push(lhs_reg);
-            try self.bytecode.push(rhs_reg);
-            return;
+            switch (rhs.*) {
+                .register => |rhs_reg| {
+                    switch (DataSize.fromRegister(rhs_reg)) {
+                        .float, .double => return self.reportError("bitwise operations not supported on floating-point registers", span),
+                        else => {},
+                    }
+
+                    try self.bytecode.push(switch (op) {
+                        .@"and" => Opcode.and_reg_reg_reg,
+                        .@"or" => Opcode.or_reg_reg_reg,
+                        .xor => Opcode.xor_reg_reg_reg,
+                        .shl => Opcode.shl_reg_reg_reg,
+                        .shr => Opcode.shr_reg_reg_reg,
+                        .rol => Opcode.rol_reg_reg_reg,
+                        .ror => Opcode.ror_reg_reg_reg,
+                    });
+                    try self.bytecode.push(dest_reg);
+                    try self.bytecode.push(lhs_reg);
+                    try self.bytecode.push(rhs_reg);
+                    return;
+                },
+                .integer_literal => |rhs_int| {
+                    try self.bytecode.push(switch (op) {
+                        .@"and" => Opcode.and_reg_reg_imm,
+                        .@"or" => Opcode.or_reg_reg_imm,
+                        .xor => Opcode.xor_reg_reg_imm,
+                        .shl => Opcode.shl_reg_reg_imm,
+                        .shr => Opcode.shr_reg_reg_imm,
+                        .rol => Opcode.rol_reg_reg_imm,
+                        .ror => Opcode.ror_reg_reg_imm,
+                    });
+                    try self.bytecode.push(dest_reg);
+                    try self.bytecode.push(lhs_reg);
+                    try self.bytecode.extend(switch (DataSize.fromRegister(dest_reg)) {
+                        .byte => &mem.toBytes(@as(u8, @bitCast(@as(i8, @intCast(rhs_int))))),
+                        .word => &mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(rhs_int))))),
+                        .dword => &mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(rhs_int))))),
+                        .qword => &mem.toBytes(@as(u64, @bitCast(rhs_int))),
+                        .float => &mem.toBytes(@as(f32, @floatFromInt(rhs_int))),
+                        .double => &mem.toBytes(@as(f64, @floatFromInt(rhs_int))),
+                    });
+                    return;
+                },
+                .float_literal => return self.reportError("bitwise operations not supported on floating-point numbers", span),
+                .address => |rhs_addr| {
+                    try self.bytecode.push(switch (op) {
+                        .@"and" => Opcode.and_reg_reg_addr,
+                        .@"or" => Opcode.or_reg_reg_addr,
+                        .xor => Opcode.xor_reg_reg_addr,
+                        .shl => Opcode.shl_reg_reg_addr,
+                        .shr => Opcode.shr_reg_reg_addr,
+                        .rol => Opcode.rol_reg_reg_addr,
+                        .ror => Opcode.ror_reg_reg_addr,
+                    });
+                    try self.bytecode.push(dest_reg);
+                    try self.bytecode.push(lhs_reg);
+                    try self.emitAddress(rhs_addr, span);
+                    return;
+                },
+                else => {},
+            }
         },
-        .integer_literal => |rhs_int| {
-            try self.bytecode.push(switch (op) {
-                .@"and" => Opcode.and_reg_reg_imm,
-                .@"or" => Opcode.or_reg_reg_imm,
-                .xor => Opcode.xor_reg_reg_imm,
-                .shl => Opcode.shl_reg_reg_imm,
-                .shr => Opcode.shr_reg_reg_imm,
-                .rol => Opcode.rol_reg_reg_imm,
-                .ror => Opcode.ror_reg_reg_imm,
-            });
-            try self.bytecode.push(dest_reg);
-            try self.bytecode.push(lhs_reg);
-            try self.bytecode.extend(switch (DataSize.fromRegister(dest_reg)) {
-                .byte => &mem.toBytes(@as(u8, @bitCast(@as(i8, @intCast(rhs_int))))),
-                .word => &mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(rhs_int))))),
-                .dword => &mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(rhs_int))))),
-                .qword => &mem.toBytes(@as(u64, @bitCast(rhs_int))),
-                .float => &mem.toBytes(@as(f32, @floatFromInt(rhs_int))),
-                .double => &mem.toBytes(@as(f64, @floatFromInt(rhs_int))),
-            });
-            return;
+        .address => |lhs_addr| {
+            switch (rhs.*) {
+                .register => |rhs_reg| {
+                    switch (DataSize.fromRegister(rhs_reg)) {
+                        .float, .double => return self.reportError("bitwise operations not supported on floating-point registers", span),
+                        else => {},
+                    }
+
+                    try self.bytecode.push(switch (op) {
+                        .@"and" => Opcode.and_reg_addr_reg,
+                        .@"or" => Opcode.or_reg_addr_reg,
+                        .xor => Opcode.xor_reg_addr_reg,
+                        .shl => Opcode.shl_reg_addr_reg,
+                        .shr => Opcode.shr_reg_addr_reg,
+                        .rol => Opcode.rol_reg_addr_reg,
+                        .ror => Opcode.ror_reg_addr_reg,
+                    });
+                    try self.bytecode.push(dest_reg);
+                    try self.emitAddress(lhs_addr, span);
+                    try self.bytecode.push(rhs_reg);
+                    return;
+                },
+                .integer_literal => |rhs_int| {
+                    try self.bytecode.push(switch (op) {
+                        .@"and" => Opcode.and_reg_addr_imm,
+                        .@"or" => Opcode.or_reg_addr_imm,
+                        .xor => Opcode.xor_reg_addr_imm,
+                        .shl => Opcode.shl_reg_addr_imm,
+                        .shr => Opcode.shr_reg_addr_imm,
+                        .rol => Opcode.rol_reg_addr_imm,
+                        .ror => Opcode.ror_reg_addr_imm,
+                    });
+                    try self.bytecode.push(dest_reg);
+                    try self.emitAddress(lhs_addr, span);
+                    try self.bytecode.extend(switch (DataSize.fromRegister(dest_reg)) {
+                        .byte => &mem.toBytes(@as(u8, @bitCast(@as(i8, @intCast(rhs_int))))),
+                        .word => &mem.toBytes(@as(u16, @bitCast(@as(i16, @intCast(rhs_int))))),
+                        .dword => &mem.toBytes(@as(u32, @bitCast(@as(i32, @intCast(rhs_int))))),
+                        .qword => &mem.toBytes(@as(u64, @bitCast(rhs_int))),
+                        .float => &mem.toBytes(@as(f32, @floatFromInt(rhs_int))),
+                        .double => &mem.toBytes(@as(f64, @floatFromInt(rhs_int))),
+                    });
+                    return;
+                },
+                .float_literal => return self.reportError("bitwise operations not supported on floating-point numbers", span),
+                .address => |rhs_addr| {
+                    try self.bytecode.push(switch (op) {
+                        .@"and" => Opcode.and_reg_addr_addr,
+                        .@"or" => Opcode.or_reg_addr_addr,
+                        .xor => Opcode.xor_reg_addr_addr,
+                        .shl => Opcode.shl_reg_addr_addr,
+                        .shr => Opcode.shr_reg_addr_addr,
+                        .rol => Opcode.rol_reg_addr_addr,
+                        .ror => Opcode.ror_reg_addr_addr,
+                    });
+                    try self.bytecode.push(dest_reg);
+                    try self.emitAddress(lhs_addr, span);
+                    try self.emitAddress(rhs_addr, span);
+                    return;
+                },
+                else => {},
+            }
         },
-        .float_literal => return self.reportError("bitwise operations not supported on floating-point numbers", span),
-        else => {},
+        else => return self.reportError("second operand must be a register or address", span),
     }
 
     return self.reportError("unsupported operands", span);
