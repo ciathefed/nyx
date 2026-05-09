@@ -8,33 +8,108 @@
         #define SOCK_RAW	   3
         #define SOCK_RDM	   4
         #define SOCK_SEQPACKET 5
+        #define SOCK_DCCP	   6
         #define SOCK_PACKET	   10
 
-        #define AF_UNSPEC	 0
-        #define AF_UNIX		 1
-        #define AF_INET		 2
-        #define AF_AX25		 3
-        #define AF_IPX		 4
-        #define AF_APPLETALK 5
-        #define	AF_NETROM	 6
-        #define AF_BRIDGE	 7
-        #define AF_AAL5		 8
-        #define AF_X25		 9
-        #define AF_INET6	 10
-        #define AF_MAX		 12
+        #define AF_UNSPEC	0
+        #define AF_UNIX		1	
+        #define AF_LOCAL	1	
+        #define AF_INET		2	
+        #define AF_AX25		3	
+        #define AF_IPX		4	
+        #define AF_APPLETALK	5	
+        #define AF_NETROM	6	
+        #define AF_BRIDGE	7	
+        #define AF_ATMPVC	8	
+        #define AF_X25		9	
+        #define AF_INET6	10	
+        #define AF_ROSE		11	
+        #define AF_DECnet	12	
+        #define AF_NETBEUI	13	
+        #define AF_SECURITY	14	
+        #define AF_KEY		15      
+        #define AF_NETLINK	16
+        #define AF_ROUTE	AF_NETLINK 
+        #define AF_PACKET	17	
+        #define AF_ASH		18	
+        #define AF_ECONET	19	
+        #define AF_ATMSVC	20	
+        #define AF_RDS		21	
+        #define AF_SNA		22	
+        #define AF_IRDA		23	
+        #define AF_PPPOX	24	
+        #define AF_WANPIPE	25	
+        #define AF_LLC		26	
+        #define AF_IB		27	
+        #define AF_MPLS		28	
+        #define AF_CAN		29	
+        #define AF_TIPC		30	
+        #define AF_BLUETOOTH	31	
+        #define AF_IUCV		32	
+        #define AF_RXRPC	33	
+        #define AF_ISDN		34	
+        #define AF_PHONET	35	
+        #define AF_IEEE802154	36	
+        #define AF_CAIF		37	
+        #define AF_ALG		38	
+        #define AF_NFC		39	
+        #define AF_VSOCK	40	
+        #define AF_KCM		41	
+        #define AF_QIPCRTR	42	
+        #define AF_SMC		43	
+        #define AF_XDP		44	
+        #define AF_MCTP		45
+        #define AF_MAX		46	
 
-        #define PF_UNSPEC	 AF_UNSPEC
-        #define PF_UNIX		 AF_UNIX
-        #define PF_INET		 AF_INET
-        #define PF_AX25		 AF_AX25
-        #define PF_IPX		 AF_IPX
-        #define PF_APPLETALK AF_APPLETALK
-        #define	PF_NETROM	 AF_NETROM
-        #define PF_BRIDGE	 AF_BRIDGE
-        #define PF_AAL5		 AF_AAL5
-        #define PF_X25		 AF_X25
-        #define PF_INET6	 AF_INET6
-        #define PF_MAX		 AF_MAX
+        #define PF_UNSPEC	AF_UNSPEC
+        #define PF_UNIX		AF_UNIX
+        #define PF_LOCAL	AF_LOCAL
+        #define PF_INET		AF_INET
+        #define PF_AX25		AF_AX25
+        #define PF_IPX		AF_IPX
+        #define PF_APPLETALK	AF_APPLETALK
+        #define	PF_NETROM	AF_NETROM
+        #define PF_BRIDGE	AF_BRIDGE
+        #define PF_ATMPVC	AF_ATMPVC
+        #define PF_X25		AF_X25
+        #define PF_INET6	AF_INET6
+        #define PF_ROSE		AF_ROSE
+        #define PF_DECnet	AF_DECnet
+        #define PF_NETBEUI	AF_NETBEUI
+        #define PF_SECURITY	AF_SECURITY
+        #define PF_KEY		AF_KEY
+        #define PF_NETLINK	AF_NETLINK
+        #define PF_ROUTE	AF_ROUTE
+        #define PF_PACKET	AF_PACKET
+        #define PF_ASH		AF_ASH
+        #define PF_ECONET	AF_ECONET
+        #define PF_ATMSVC	AF_ATMSVC
+        #define PF_RDS		AF_RDS
+        #define PF_SNA		AF_SNA
+        #define PF_IRDA		AF_IRDA
+        #define PF_PPPOX	AF_PPPOX
+        #define PF_WANPIPE	AF_WANPIPE
+        #define PF_LLC		AF_LLC
+        #define PF_IB		AF_IB
+        #define PF_MPLS		AF_MPLS
+        #define PF_CAN		AF_CAN
+        #define PF_TIPC		AF_TIPC
+        #define PF_BLUETOOTH	AF_BLUETOOTH
+        #define PF_IUCV		AF_IUCV
+        #define PF_RXRPC	AF_RXRPC
+        #define PF_ISDN		AF_ISDN
+        #define PF_PHONET	AF_PHONET
+        #define PF_IEEE802154	AF_IEEE802154
+        #define PF_CAIF		AF_CAIF
+        #define PF_ALG		AF_ALG
+        #define PF_NFC		AF_NFC
+        #define PF_VSOCK	AF_VSOCK
+        #define PF_KCM		AF_KCM
+        #define PF_QIPCRTR	AF_QIPCRTR
+        #define PF_SMC		AF_SMC
+        #define PF_XDP		AF_XDP
+        #define PF_MCTP		AF_MCTP
+        #define PF_MAX		AF_MAX
 
         #define SOMAXCONN 128
     #else
@@ -43,7 +118,102 @@
 #endif
 
 #ifdef __MACOS__
-    #error "unsupported operating system"
+    #ifdef __AARCH64__
+        #define SOCK_STREAM     1
+        #define SOCK_DGRAM      2
+        #define SOCK_RAW        3
+        #define SOCK_RDM        4
+        #define SOCK_SEQPACKET  5
+
+        #define AF_UNSPEC       0
+        #define AF_UNIX         1
+        #define AF_LOCAL        AF_UNIX         
+        #define AF_INET         2
+        #define AF_IMPLINK      3
+        #define AF_PUP          4
+        #define AF_CHAOS        5
+        #define AF_NS           6
+        #define AF_ISO          7
+        #define AF_OSI          AF_ISO
+        #define AF_ECMA         8
+        #define AF_DATAKIT      9
+        #define AF_CCITT        10
+        #define AF_SNA          11
+        #define AF_DECnet       12
+        #define AF_DLI          13
+        #define AF_LAT          14
+        #define AF_HYLINK       15
+        #define AF_APPLETALK    16
+        #define AF_ROUTE        17
+        #define AF_LINK         18
+        #define pseudo_AF_XTP   19
+        #define AF_COIP         20
+        #define AF_CNT          21
+        #define pseudo_AF_RTIP  22
+        #define AF_IPX          23
+        #define AF_SIP          24
+        #define pseudo_AF_PIP   25
+        #define AF_NDRV         27
+        #define AF_ISDN         28
+        #define AF_E164         AF_ISDN
+        #define pseudo_AF_KEY   29
+        #define AF_INET6        30
+        #define AF_NATM         31
+        #define AF_SYSTEM       32
+        #define AF_NETBIOS      33
+        #define AF_PPP          34
+        #define pseudo_AF_HDRCMPLT 35
+        #define AF_RESERVED_36  36
+        #define AF_IEEE80211    37
+        #define AF_UTUN         38
+        #define AF_VSOCK        40
+        #define AF_MAX          41
+
+        #define PF_UNSPEC       AF_UNSPEC
+        #define PF_LOCAL        AF_LOCAL
+        #define PF_UNIX         PF_LOCAL        
+        #define PF_INET         AF_INET
+        #define PF_IMPLINK      AF_IMPLINK
+        #define PF_PUP          AF_PUP
+        #define PF_CHAOS        AF_CHAOS
+        #define PF_NS           AF_NS
+        #define PF_ISO          AF_ISO
+        #define PF_OSI          AF_ISO
+        #define PF_ECMA         AF_ECMA
+        #define PF_DATAKIT      AF_DATAKIT
+        #define PF_CCITT        AF_CCITT
+        #define PF_SNA          AF_SNA
+        #define PF_DECnet       AF_DECnet
+        #define PF_DLI          AF_DLI
+        #define PF_LAT          AF_LAT
+        #define PF_HYLINK       AF_HYLINK
+        #define PF_APPLETALK    AF_APPLETALK
+        #define PF_ROUTE        AF_ROUTE
+        #define PF_LINK         AF_LINK
+        #define PF_XTP          pseudo_AF_XTP   
+        #define PF_COIP         AF_COIP
+        #define PF_CNT          AF_CNT
+        #define PF_SIP          AF_SIP
+        #define PF_IPX          AF_IPX          
+        #define PF_RTIP         pseudo_AF_RTIP  
+        #define PF_PIP          pseudo_AF_PIP
+        #define PF_NDRV         AF_NDRV
+        #define PF_ISDN         AF_ISDN
+        #define PF_KEY          pseudo_AF_KEY
+        #define PF_INET6        AF_INET6
+        #define PF_NATM         AF_NATM
+        #define PF_SYSTEM       AF_SYSTEM
+        #define PF_NETBIOS      AF_NETBIOS
+        #define PF_PPP          AF_PPP
+        #define PF_RESERVED_36  AF_RESERVED_36
+        #define PF_UTUN         AF_UTUN
+        #define PF_VSOCK        AF_VSOCK
+        #define PF_MAX          AF_MAX
+
+        #define SOMAXCONN 128
+    #else
+        #error "unsupported macos architecture"
+    #endif
 #endif
 
 .section text
