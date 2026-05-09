@@ -1,5 +1,7 @@
 // TODO: err register so program doesn't crash on a zig error
 const std = @import("std");
+const builtin = @import("builtin");
+const native_os = builtin.os.tag;
 const posix = std.posix.system;
 const Allocator = std.mem.Allocator;
 const Vm = @import("Vm.zig");
@@ -59,7 +61,11 @@ fn sysRead(self: *Vm) anyerror!void {
     var buf = try self.mmu.gpa.alloc(u8, count);
     defer self.mmu.gpa.free(buf);
 
-    const n = posix.read(fd, @ptrCast(buf), buf.len);
+    const temp = posix.read(fd, @ptrCast(buf), buf.len);
+    const n: usize = switch (@TypeOf(temp)) {
+        isize => @bitCast(temp),
+        else => temp,
+    };
 
     try self.mmu.writeSlice(addr, buf[0..n]);
 
@@ -131,7 +137,10 @@ fn sysSocket(self: *Vm) anyerror!void {
 fn sysConnect(self: *Vm) anyerror!void {
     const sockfd: i32 = @intCast(self.regs.get(.d0).asU32());
     const sockaddr_ptr = self.regs.get(.q1).asUsize();
-    const sockaddr_family = (try self.mmu.read(sockaddr_ptr, .word)).asU16();
+    const sockaddr_family = switch (native_os) {
+        .linux, .emscripten, .windows, .illumos, .serenity => (try self.mmu.read(sockaddr_ptr, .word)).asU16(),
+        else => (try self.mmu.read(sockaddr_ptr, .word)).asU8(),
+    };
     const sockaddr_port = (try self.mmu.read(sockaddr_ptr + 2, .word)).asU16();
     const sockaddr_addr = (try self.mmu.read(sockaddr_ptr + 4, .dword)).asU32();
     const sockaddr_zero = (try self.mmu.readSlice(sockaddr_ptr + 8, 8))[0..8];
@@ -151,7 +160,10 @@ fn sysConnect(self: *Vm) anyerror!void {
 fn sysBind(self: *Vm) anyerror!void {
     const sockfd: i32 = @intCast(self.regs.get(.d0).asU32());
     const sockaddr_ptr = self.regs.get(.q1).asUsize();
-    const sockaddr_family = (try self.mmu.read(sockaddr_ptr, .word)).asU16();
+    const sockaddr_family = switch (native_os) {
+        .linux, .emscripten, .windows, .illumos, .serenity => (try self.mmu.read(sockaddr_ptr, .word)).asU16(),
+        else => (try self.mmu.read(sockaddr_ptr, .word)).asU8(),
+    };
     const sockaddr_port = (try self.mmu.read(sockaddr_ptr + 2, .word)).asU16();
     const sockaddr_addr = (try self.mmu.read(sockaddr_ptr + 4, .dword)).asU32();
     const sockaddr_zero = (try self.mmu.readSlice(sockaddr_ptr + 8, 8))[0..8];
