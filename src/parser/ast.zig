@@ -20,7 +20,7 @@ pub const Statement = union(enum) {
     entry: Expr1,
     ascii: Expr1,
     asciz: Expr1,
-    @"extern": Expr1,
+    @"extern": Extern,
     nop: Span,
     mov: Mov,
     push: PushPop,
@@ -120,6 +120,24 @@ pub const Statement = union(enum) {
         name: StringId,
         params: []StringId,
         body: []Statement,
+        span: Span,
+    };
+
+    pub const FfiType = enum(u8) {
+        byte = 0,
+        word = 1,
+        dword = 2,
+        qword = 3,
+        float = 4,
+        double = 5,
+        void = 6,
+        ptr = 7,
+    };
+
+    pub const Extern = struct {
+        name: *Expression,
+        param_types: []const FfiType,
+        return_type: FfiType,
         span: Span,
     };
 

@@ -1,0 +1,12 @@
+.extern puts(ptr): i32
+
+#include "stdlib.nyx"
+
+.section text
+_start:
+    mov q0, message
+    call puts
+    hlt
+
+.section data
+message:    .asciz "Hello from libffi! puts() called directly!"

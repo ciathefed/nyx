@@ -482,11 +482,13 @@ call q0
 
 #### Call External Function (FFI)
 
-Call a function from a dynamically loaded shared library. The function name is encoded as a null-terminated string in the bytecode.
+Call a native C function from a dynamically loaded shared library via libffi. The function must be declared with `.extern` including a type signature (e.g. `.extern puts(ptr): i32`). The `call_ex` opcode encodes the function name, return type, argument count, and argument types in the bytecode. At runtime the VM uses libffi to invoke the function with proper ABI marshalling. Arguments are read from registers following the calling convention: integer/pointer arguments in `q0`–`q5`, float arguments in `ff0`–`ff5` / `dd0`–`dd5`.
 
 ```/dev/null/example.nyx#L1
 call puts
 ```
+
+> **Note:** `puts` must be declared as `.extern puts(ptr): i32` for this call to work.
 
 External libraries are loaded via the `-l` CLI flag at execution time.
 

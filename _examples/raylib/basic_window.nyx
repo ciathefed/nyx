@@ -1,0 +1,51 @@
+.extern InitWindow(i32, i32, ptr): void
+.extern CloseWindow(): void
+.extern SetTargetFPS(i32): void
+.extern WindowShouldClose(): i32
+.extern BeginDrawing(): void
+.extern EndDrawing(): void
+.extern ClearBackground(i32): void
+.extern DrawText(ptr, i32, i32, i32, i32): void
+.extern GetColor(i32): i32
+
+#include "stdlib.nyx"
+
+.section text
+_start:
+    ; InitWindow(800, 450, "raylib [core] example - basic window")
+    mov d0, 800
+    mov d1, 450
+    mov q2, title
+    call InitWindow
+
+    ; SetTargetFPS(60)
+    mov d0, 60
+    call SetTargetFPS
+
+.loop:
+    call BeginDrawing
+
+        ; ClearBackground(0xF5F5F5FF)  -- RAYWHITE as a packed color
+        mov d0, 0xFFF5F5F5
+        call ClearBackground
+
+        ; DrawText("Congrats!...", 190, 200, 20, 0xC8C8C8FF) -- LIGHTGRAY
+        mov q0, message
+        mov d1, 190
+        mov d2, 200
+        mov d3, 20
+        mov d4, 0xFFC8C8C8
+        call DrawText
+
+    call EndDrawing
+
+    call WindowShouldClose
+    cmp d0, 1
+    jne .loop
+
+    call CloseWindow
+    hlt
+
+.section data
+title:      .asciz "raylib [core] example - basic window"
+message:    .asciz "Congrats! You created your first window!"

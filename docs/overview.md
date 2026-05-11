@@ -48,7 +48,7 @@ The VM loads and executes compiled bytecode. Key components:
 - **Stack** — Grows downward from the top of the memory block.
 - **Flags** — Condition flags (`eq`, `lt`) set by comparison instructions.
 - **Syscalls** — Built-in system call interface for I/O and OS interaction.
-- **External library loading** — Supports loading shared libraries at runtime.
+- **FFI** Loads shared libraries at runtime and calls native C functions directly via libffi.
 
 ## Project Structure
 

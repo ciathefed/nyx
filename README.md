@@ -15,7 +15,7 @@
 * 64-bit register-based virtual machine with 16 general-purpose registers, 16 floating-point registers, and 3 special registers
 * Block-based memory model with an MMU, stack, and dynamic allocation
 * Syscalls for file I/O, memory management, and networking (sockets)
-* C API for writing native extensions as shared libraries
+* Direct FFI via libffi. Call native C functions from shared libraries without wrapper code
 * Standard library with string, print, and socket utilities
 * Written in safe, modern [Zig](https://ziglang.org/)
 
@@ -70,7 +70,7 @@ nyx exec hello.nyb -m 16384
 nyx build _examples/hello.nyx -i ./std -i ./my_includes
 
 # Link a shared library for external function calls
-nyx run _examples/raylib/main.nyx -l ./libbridge.so
+nyx run _examples/raylib/basic_window.nyx -l ./libraylib.so
 
 # Disable the preprocessor
 nyx build _examples/hello.nyx --disable-preprocessor
@@ -111,7 +111,7 @@ Detailed documentation lives in the [`docs/`](./docs) directory:
 | [Preprocessor](./docs/preprocessor.md) | `#define`, `#include`, conditionals, macros, and built-in definitions |
 | [Syscalls](./docs/syscalls.md) | All syscalls with register-level input/output documentation |
 | [Standard Library](./docs/standard-library.md) | `stdlib.nyx`, `string.nyx`, `print.nyx`, and `socket.nyx` |
-| [C API](./docs/c-api.md) | Writing native extensions and the `nyx.h` C interface |
+| [C API](./docs/c-api.md) | FFI: calling native C functions directly via libffi |
 | [Examples](./docs/examples.md) | Annotated example programs |
 
 ## Contributing

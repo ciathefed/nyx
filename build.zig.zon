@@ -12,6 +12,10 @@
             .url = "git+https://github.com/prajwalch/yazap#82edda4aa180cc3aebf00b2c39a37975969eba0a",
             .hash = "yazap-0.7.0-Z1t-EiT6AQDpbgaDQ1i_oBfnvmeH4AUM3WmiuTuXuQMN",
         },
+        .libffi = .{
+            .url = "git+https://codeberg.org/vezel/libffi.git#a7d0f7789f8064e17995544b1074da98367af724",
+            .hash = "libffi-3.5.2-7_tEtAQ6FwCyo6AiqKCeXubTz6GiTxofkyjTyEA7w_B8",
+        },
     },
     .paths = .{
         "build.zig",

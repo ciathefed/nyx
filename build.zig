@@ -6,6 +6,7 @@ pub fn build(b: *std.Build) void {
 
     const fehler_dep = b.dependency("fehler", .{ .target = target, .optimize = optimize });
     const yazap_dep = b.dependency("yazap", .{});
+    const libffi_dep = b.dependency("libffi", .{ .target = target, .optimize = optimize });
 
     const exe = b.addExecutable(.{
         .name = "nyx",
@@ -18,6 +19,7 @@ pub fn build(b: *std.Build) void {
 
     exe.root_module.addImport("fehler", fehler_dep.module("fehler"));
     exe.root_module.addImport("yazap", yazap_dep.module("yazap"));
+    exe.root_module.linkLibrary(libffi_dep.artifact("ffi"));
 
     b.installArtifact(exe);
 

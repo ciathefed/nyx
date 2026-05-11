@@ -16,6 +16,13 @@ const fehler = @import("fehler");
 const ast = @import("../parser/ast.zig");
 
 const Compiler = @This();
+const FfiType = ast.Statement.FfiType;
+
+const ExternInfo = struct {
+    name: StringId,
+    return_type: FfiType,
+    param_types: []const FfiType,
+};
 
 pub const addressing_variant_1: u8 = 0x00; // [REGISTER, ?INTEGER]
 pub const addressing_variant_2: u8 = 0x01; // [INTEGER, ?INTEGER]
@@ -46,7 +53,7 @@ bytecode: Bytecode,
 interner: *StringInterner,
 labels: std.AutoHashMap(StringId, Label),
 fixups: std.AutoHashMap(Label, Fixup),
-externs: ArrayList(StringId),
+externs: ArrayList(ExternInfo),
 entry: ?Entry,
 filename: []const u8,
 input: []const u8,
@@ -134,8 +141,12 @@ pub fn compile(self: *Compiler) ![]u8 {
                 }
             },
             .@"extern" => |v| {
-                switch (v.expr.*) {
-                    .identifier => |ident_id| try self.externs.append(ident_id),
+                switch (v.name.*) {
+                    .identifier => |ident_id| try self.externs.append(.{
+                        .name = ident_id,
+                        .return_type = v.return_type,
+                        .param_types = v.param_types,
+                    }),
                     else => {
                         self.report(.err, "unsupported operand", v.span, 1);
                         return error.CompilerError;
@@ -734,12 +745,17 @@ fn compileSti(
             try self.bytecode.extend(&mem.toBytes(@as(u64, @bitCast(offset))));
         },
         .identifier => |src_id| {
-            for (self.externs.items) |ex_id| {
-                if (src_id == ex_id) {
+            for (self.externs.items) |ex| {
+                if (src_id == ex.name) {
                     try self.bytecode.push(Opcode.call_ex);
                     const name = self.interner.get(src_id).?;
                     try self.bytecode.extend(name);
                     try self.bytecode.push(0x00);
+                    try self.bytecode.push(@intFromEnum(ex.return_type));
+                    try self.bytecode.push(@as(u8, @intCast(ex.param_types.len)));
+                    for (ex.param_types) |pt| {
+                        try self.bytecode.push(@intFromEnum(pt));
+                    }
                     return;
                 }
             }
@@ -1408,11 +1424,16 @@ fn compileCall(self: *Compiler, expr: *ast.Expression, span: Span) !void {
         },
         .identifier => |src_id| {
             for (self.externs.items) |ex| {
-                if (src_id == ex) {
+                if (src_id == ex.name) {
                     try self.bytecode.push(Opcode.call_ex);
                     const name = self.interner.get(src_id).?;
                     try self.bytecode.extend(name);
                     try self.bytecode.push(0x00);
+                    try self.bytecode.push(@intFromEnum(ex.return_type));
+                    try self.bytecode.push(@as(u8, @intCast(ex.param_types.len)));
+                    for (ex.param_types) |pt| {
+                        try self.bytecode.push(@intFromEnum(pt));
+                    }
                     return;
                 }
             }

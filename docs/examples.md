@@ -292,8 +292,9 @@ add_numbers:
   the inputs, and the result is left in `q0`.
 
 - **Indirect calls.** `call` also accepts a register operand (e.g. `call q0`)
-  for indirect / computed calls, and can invoke external (FFI) functions by
-  name from shared libraries loaded with the `-l` flag.
+  for indirect / computed calls. External (FFI) functions require `.extern`
+  declarations with type signatures (e.g. `.extern puts(ptr): i32`) and are
+  called directly via libffi from shared libraries loaded with the `-l` flag.
 
 ---
 

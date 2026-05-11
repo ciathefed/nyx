@@ -151,6 +151,22 @@ pub fn size(self: *Mmu) usize {
     return sz;
 }
 
+/// Resolve a VM virtual address to a host pointer into the underlying block
+/// storage.  This is needed for FFI calls where native C functions expect
+/// real pointers (e.g. `const char *` for `puts`).
+pub fn resolveHostPtr(self: *Mmu, addr: usize) ?[*]u8 {
+    var start: usize = 0;
+    for (self.blocks.items) |block| {
+        const end = start + block.storage.len;
+        if (addr >= start and addr < end) {
+            const offset = addr - start;
+            return block.storage.ptr + offset;
+        }
+        start = end;
+    }
+    return null;
+}
+
 pub fn debug(self: *Mmu) void {
     var start: usize = 0;
     for (self.buses.items) |*bus| {

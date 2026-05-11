@@ -286,15 +286,20 @@ table:  resq 16         ; 16 zero qwords (128 bytes)
 | `.section text`    | Switch to the text (code) section                    |
 | `.section data`    | Switch to the data section                           |
 | `.entry name`      | Set the program entry point to a label or address    |
-| `.extern name`     | Declare an external function (from a dynamic library)|
+| `.extern name(types): ret` | Declare an external function with its FFI type signature |
 
-```/dev/null/example.nyx#L1-7
-.extern printf
+```/dev/null/example.nyx#L1-10
+.extern puts(ptr): i32
 
 .section text
 _start:
-    call printf
+    mov q0, message
+    call puts
     hlt
+
+.section data
+message:
+    .asciz "Hello, world!"
 ```
 
 ---

@@ -217,9 +217,64 @@ fn parseStatement(self: *Parser) !ast.Statement {
         },
         .kw_extern => {
             self.nextToken();
-            const expr = try self.parseExpression();
+            const name_expr = try self.parseExpression();
+
+            // Parse parameter types: (type1, type2, ...)
+            if (!self.curTokenIs(.lparen)) {
+                self.report(.err, "expected '(' after extern function name", self.cur_token.span, 1);
+                return error.ParserError;
+            }
+            self.nextToken();
+
+            var param_types = ArrayList(ast.Statement.FfiType).init(self.arena.allocator());
+            if (!self.curTokenIs(.rparen)) {
+                while (true) {
+                    if (!self.curTokenIs(.identifier)) {
+                        self.report(.err, "expected type name in extern parameter list", self.cur_token.span, 1);
+                        return error.ParserError;
+                    }
+                    const type_name = self.lexer.interner.get(self.cur_token.string_id).?;
+                    try param_types.append(parseFfiType(type_name) orelse {
+                        self.report(.err, "unknown FFI type in extern parameter list", self.cur_token.span, 1);
+                        return error.ParserError;
+                    });
+                    self.nextToken();
+                    if (self.curTokenIs(.comma)) {
+                        self.nextToken();
+                        continue;
+                    }
+                    break;
+                }
+            }
+
+            if (!self.curTokenIs(.rparen)) {
+                self.report(.err, "expected ')' after extern parameter types", self.cur_token.span, 1);
+                return error.ParserError;
+            }
+            self.nextToken();
+
+            // Parse return type: : return_type
+            if (!self.curTokenIs(.colon)) {
+                self.report(.err, "expected ':' before extern return type", self.cur_token.span, 1);
+                return error.ParserError;
+            }
+            self.nextToken();
+
+            if (!self.curTokenIs(.identifier)) {
+                self.report(.err, "expected return type after ':'", self.cur_token.span, 1);
+                return error.ParserError;
+            }
+            const ret_type_name = self.lexer.interner.get(self.cur_token.string_id).?;
+            const return_type = parseFfiType(ret_type_name) orelse {
+                self.report(.err, "unknown FFI return type", self.cur_token.span, 1);
+                return error.ParserError;
+            };
+            self.nextToken();
+
             return .{ .@"extern" = .{
-                .expr = expr,
+                .name = name_expr,
+                .param_types = try param_types.toOwnedSlice(),
+                .return_type = return_type,
                 .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
@@ -947,4 +1002,16 @@ fn expect_cur(self: *Parser, kind: Token.Kind) !void {
         self.report(.err, "unexpected token", self.peek_token.span, 1);
         return error.ParserError;
     }
+}
+
+fn parseFfiType(name: []const u8) ?ast.Statement.FfiType {
+    if (mem.eql(u8, name, "i8")) return .byte;
+    if (mem.eql(u8, name, "i16")) return .word;
+    if (mem.eql(u8, name, "i32")) return .dword;
+    if (mem.eql(u8, name, "i64")) return .qword;
+    if (mem.eql(u8, name, "f32")) return .float;
+    if (mem.eql(u8, name, "f64")) return .double;
+    if (mem.eql(u8, name, "void")) return .void;
+    if (mem.eql(u8, name, "ptr")) return .ptr;
+    return null;
 }
