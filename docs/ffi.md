@@ -238,19 +238,6 @@ nyx run raylib_demo.nyx -l /usr/local/lib/libraylib.dylib
 
 ---
 
-## Advanced: The C API (nyx.h)
-
-The C header `include/nyx.h` and the shared library `libnyx` still exist for
-**embedding** the Nyx VM inside a C/C++ application. Functions like
-`vm_get_reg_int`, `vm_mem_read_cstr`, etc. let a host program inspect and
-manipulate the VM state.
-
-However, **you do not need the C API for external function calls**. The libffi
-system handles everything automatically. The C API is only relevant if you are
-building a program that creates and drives a `Vm` instance from C code.
-
----
-
 ## Limitations
 
 - **Struct arguments/returns** are not yet supported. Use packed integers or

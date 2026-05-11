@@ -23,18 +23,6 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(exe);
 
-    const lib = b.addLibrary(.{
-        .name = "nyx",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/c_api.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-        .linkage = .dynamic,
-    });
-
-    b.installArtifact(lib);
-
     const run_step = b.step("run", "Run the app");
 
     const run_cmd = b.addRunArtifact(exe);

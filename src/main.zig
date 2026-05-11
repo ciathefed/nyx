@@ -1,5 +1,3 @@
-// TODO: add tests
-
 const std = @import("std");
 const process = std.process;
 const fmt = std.fmt;
