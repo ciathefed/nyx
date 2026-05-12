@@ -111,7 +111,7 @@ Detailed documentation lives in the [`docs/`](./docs) directory:
 | [Preprocessor](./docs/preprocessor.md) | `#define`, `#include`, conditionals, macros, and built-in definitions |
 | [Syscalls](./docs/syscalls.md) | All syscalls with register-level input/output documentation |
 | [Standard Library](./docs/standard-library.md) | `stdlib.nyx`, `string.nyx`, `print.nyx`, and `socket.nyx` |
-| [C API](./docs/c-api.md) | FFI: calling native C functions directly via libffi |
+| [FFI](./docs/ffi.md) | Calling native C functions directly via libffi |
 | [Examples](./docs/examples.md) | Annotated example programs |
 
 ## Contributing

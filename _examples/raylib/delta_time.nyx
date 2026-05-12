@@ -1,0 +1,195 @@
+.extern InitWindow(i32, i32, ptr): void
+.extern CloseWindow(): void
+.extern SetTargetFPS(i32): void
+.extern WindowShouldClose(): i32
+.extern BeginDrawing(): void
+.extern EndDrawing(): void
+.extern ClearBackground(struct(4)): void
+.extern DrawCircle(i32, i32, f32, struct(4)): void
+.extern DrawText(ptr, i32, i32, i32, struct(4)): void
+.extern DrawFPS(i32, i32): void
+.extern GetFrameTime(): f32
+.extern GetMouseWheelMove(): f32
+.extern IsKeyPressed(i32): i32
+
+#include "stdlib.nyx"
+
+#define SCREEN_W 800
+#define SCREEN_H 450
+#define KEY_R 82
+
+.section text
+_start:
+    mov d0, SCREEN_W
+    mov d1, SCREEN_H
+    mov q2, title
+    call InitWindow
+
+    mov d0, 60
+    call SetTargetFPS
+
+    ; Store initial FPS target
+    mov q8, currentFps
+    mov d9, 60
+    mov [q8], d9
+
+.loop:
+    ; --- UPDATE ---
+
+    ; Check scroll wheel for FPS change
+    call GetMouseWheelMove      ; ff0 = mouse wheel delta (float)
+    ; We need to compare ff0 != 0.0 and adjust FPS
+    ; Since we can't easily ftoi, we compare to 0
+    cmp ff0, 0.0
+    jeq .no_scroll
+
+    ; ff0 is nonzero. If positive, increase fps. If negative, decrease.
+    ; Load current fps as float, add wheel * 1.0 (wheel is typically 1.0 or -1.0)
+    mov q8, currentFps
+    mov d9, [q8]                ; d9 = currentFps (int)
+
+    ; Approximate: if wheel > 0, add 5 to fps, else subtract 5
+    cmp ff0, 0.0
+    jlt .scroll_down
+    add d9, d9, 5
+    jmp .scroll_done
+.scroll_down:
+    ; Only subtract if fps >= 5 to avoid unsigned underflow
+    cmp d9, 5
+    jlt .scroll_done
+    sub d9, d9, 5
+.scroll_done:
+    mov [q8], d9
+    mov d0, d9
+    call SetTargetFPS
+.no_scroll:
+
+    ; Check R key to reset
+    mov d0, KEY_R
+    call IsKeyPressed
+    cmp d0, 1
+    jne .no_reset
+    ; Reset both circle positions to 0
+    mov q8, deltaCircle
+    mov ff1, 0.0
+    mov [q8], ff1
+    mov q8, frameCircle
+    mov [q8], ff1
+.no_reset:
+
+    ; float dt = GetFrameTime()
+    call GetFrameTime           ; ff0 = delta time
+
+    ; deltaCircle.x += dt * 6.0 * 10.0 = dt * 60.0
+    mov q8, deltaCircle
+    mov ff1, [q8]               ; ff1 = deltaCircle.x
+    mul ff2, ff0, 60.0          ; ff2 = dt * 60.0
+    add ff1, ff1, ff2
+    mov [q8], ff1
+
+    ; Wrap deltaCircle
+    cmp ff1, 800.0
+    jlt .no_wrap_delta
+    mov ff1, 0.0
+    mov [q8], ff1
+.no_wrap_delta:
+
+    ; frameCircle.x += 0.1 * 10.0 = 1.0 per frame
+    mov q9, frameCircle
+    mov ff3, [q9]
+    add ff3, ff3, 1.0
+    mov [q9], ff3
+
+    ; Wrap frameCircle
+    cmp ff3, 800.0
+    jlt .no_wrap_frame
+    mov ff3, 0.0
+    mov [q9], ff3
+.no_wrap_frame:
+
+    ; --- DRAW ---
+
+    call BeginDrawing
+
+        mov q0, RAYWHITE
+        call ClearBackground
+
+        ; DrawCircle((int)deltaCircle.x, 150, 32.0, RED)
+        mov q8, deltaCircle
+        mov ff4, [q8]           ; ff4 = deltaCircle.x (float)
+        mov d0, ff4             ; d0 = (int)deltaCircle.x  (float-to-int truncation)
+        mov d1, 150
+        mov ff0, 32.0
+        mov q2, RED
+        call DrawCircle
+
+        ; DrawCircle((int)frameCircle.x, 300, 32.0, BLUE)
+        mov q9, frameCircle
+        mov ff5, [q9]           ; ff5 = frameCircle.x (float)
+        mov d0, ff5             ; d0 = (int)frameCircle.x
+        mov d1, 300
+        mov ff0, 32.0
+        mov q2, BLUE
+        call DrawCircle
+
+        ; FPS counter at top-left
+        mov d0, 10
+        mov d1, 10
+        call DrawFPS
+
+        ; Help text
+        mov q0, help_text
+        mov d1, 10
+        mov d2, 30
+        mov d3, 20
+        mov q4, DARKGRAY
+        call DrawText
+
+        ; "FUNC: x += GetFrameTime()*speed" label
+        mov q0, label_delta
+        mov d1, 10
+        mov d2, 70
+        mov d3, 20
+        mov q4, RED
+        call DrawText
+
+        ; "FUNC: x += speed" label
+        mov q0, label_frame
+        mov d1, 10
+        mov d2, 220
+        mov d3, 20
+        mov q4, BLUE
+        call DrawText
+
+    call EndDrawing
+
+    call WindowShouldClose
+    cmp d0, 1
+    jne .loop
+
+    call CloseWindow
+    hlt
+
+.section data
+title:          .asciz "raylib [core] example - delta time"
+help_text:      .asciz "Use the scroll wheel to change the fps limit, r to reset"
+label_delta:    .asciz "FUNC: x += GetFrameTime()*speed"
+label_frame:    .asciz "FUNC: x += speed"
+
+; Current FPS target (mutable int)
+currentFps:     dd 60
+
+; Vector2 structs: { f32 x, f32 y } = 8 bytes each
+deltaCircle:
+    dd 0.0                      ; x
+    dd 150.0                    ; y = screenHeight / 3
+
+frameCircle:
+    dd 0.0                      ; x
+    dd 300.0                    ; y = screenHeight * 2/3
+
+; Color structs: { r, g, b, a } = 4 bytes each
+RAYWHITE:   db 245, 245, 245, 255
+RED:        db 230, 41, 55, 255
+BLUE:       db 0, 121, 241, 255
+DARKGRAY:   db 80, 80, 80, 255

@@ -219,7 +219,6 @@ fn parseStatement(self: *Parser) !ast.Statement {
             self.nextToken();
             const name_expr = try self.parseExpression();
 
-            // Parse parameter types: (type1, type2, ...)
             if (!self.curTokenIs(.lparen)) {
                 self.report(.err, "expected '(' after extern function name", self.cur_token.span, 1);
                 return error.ParserError;
@@ -229,16 +228,44 @@ fn parseStatement(self: *Parser) !ast.Statement {
             var param_types = ArrayList(ast.Statement.FfiType).init(self.arena.allocator());
             if (!self.curTokenIs(.rparen)) {
                 while (true) {
-                    if (!self.curTokenIs(.identifier)) {
+                    if (self.curTokenIs(.identifier)) {
+                        const type_name = self.lexer.interner.get(self.cur_token.string_id).?;
+                        if (mem.eql(u8, type_name, "struct")) {
+                            self.nextToken();
+                            if (!self.curTokenIs(.lparen)) {
+                                self.report(.err, "expected '(' after 'struct'", self.cur_token.span, 1);
+                                return error.ParserError;
+                            }
+                            self.nextToken();
+                            const size_expr = try self.parseExpression();
+                            const size_val: u8 = switch (size_expr.*) {
+                                .integer_literal => |v| @intCast(v),
+                                else => {
+                                    self.report(.err, "expected integer size in struct(N)", self.cur_token.span, 1);
+                                    return error.ParserError;
+                                },
+                            };
+                            if (size_val < 1) {
+                                self.report(.err, "struct size must be at least 1", self.cur_token.span, 1);
+                                return error.ParserError;
+                            }
+                            if (!self.curTokenIs(.rparen)) {
+                                self.report(.err, "expected ')' after struct size", self.cur_token.span, 1);
+                                return error.ParserError;
+                            }
+                            self.nextToken();
+                            try param_types.append(ast.Statement.FfiType.fromStructSize(size_val));
+                        } else {
+                            try param_types.append(parseFfiType(type_name) orelse {
+                                self.report(.err, "unknown FFI type in extern parameter list", self.cur_token.span, 1);
+                                return error.ParserError;
+                            });
+                            self.nextToken();
+                        }
+                    } else {
                         self.report(.err, "expected type name in extern parameter list", self.cur_token.span, 1);
                         return error.ParserError;
                     }
-                    const type_name = self.lexer.interner.get(self.cur_token.string_id).?;
-                    try param_types.append(parseFfiType(type_name) orelse {
-                        self.report(.err, "unknown FFI type in extern parameter list", self.cur_token.span, 1);
-                        return error.ParserError;
-                    });
-                    self.nextToken();
                     if (self.curTokenIs(.comma)) {
                         self.nextToken();
                         continue;
@@ -253,23 +280,51 @@ fn parseStatement(self: *Parser) !ast.Statement {
             }
             self.nextToken();
 
-            // Parse return type: : return_type
             if (!self.curTokenIs(.colon)) {
                 self.report(.err, "expected ':' before extern return type", self.cur_token.span, 1);
                 return error.ParserError;
             }
             self.nextToken();
 
-            if (!self.curTokenIs(.identifier)) {
+            var return_type: ast.Statement.FfiType = undefined;
+            if (self.curTokenIs(.identifier)) {
+                const ret_type_name = self.lexer.interner.get(self.cur_token.string_id).?;
+                if (mem.eql(u8, ret_type_name, "struct")) {
+                    self.nextToken();
+                    if (!self.curTokenIs(.lparen)) {
+                        self.report(.err, "expected '(' after 'struct'", self.cur_token.span, 1);
+                        return error.ParserError;
+                    }
+                    self.nextToken();
+                    const size_expr = try self.parseExpression();
+                    const ret_size: u8 = switch (size_expr.*) {
+                        .integer_literal => |v| @intCast(v),
+                        else => {
+                            self.report(.err, "expected integer size in struct(N)", self.cur_token.span, 1);
+                            return error.ParserError;
+                        },
+                    };
+                    if (ret_size < 1) {
+                        self.report(.err, "struct size must be at least 1", self.cur_token.span, 1);
+                        return error.ParserError;
+                    }
+                    if (!self.curTokenIs(.rparen)) {
+                        self.report(.err, "expected ')' after struct size", self.cur_token.span, 1);
+                        return error.ParserError;
+                    }
+                    self.nextToken();
+                    return_type = ast.Statement.FfiType.fromStructSize(ret_size);
+                } else {
+                    return_type = parseFfiType(ret_type_name) orelse {
+                        self.report(.err, "unknown FFI return type", self.cur_token.span, 1);
+                        return error.ParserError;
+                    };
+                    self.nextToken();
+                }
+            } else {
                 self.report(.err, "expected return type after ':'", self.cur_token.span, 1);
                 return error.ParserError;
             }
-            const ret_type_name = self.lexer.interner.get(self.cur_token.string_id).?;
-            const return_type = parseFfiType(ret_type_name) orelse {
-                self.report(.err, "unknown FFI return type", self.cur_token.span, 1);
-                return error.ParserError;
-            };
-            self.nextToken();
 
             return .{ .@"extern" = .{
                 .name = name_expr,

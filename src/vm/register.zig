@@ -506,11 +506,11 @@ pub const Registers = struct {
             .floating_point => switch (info.view) {
                 .float => {
                     const new_value = imm.asF32();
-                    self.fpr[info.index] = @intFromFloat(new_value);
+                    self.fpr[info.index] = @as(u64, @as(u32, @bitCast(new_value)));
                 },
                 .double => {
                     const new_value = imm.asF64();
-                    self.fpr[info.index] = @intFromFloat(new_value);
+                    self.fpr[info.index] = @bitCast(new_value);
                 },
                 else => unreachable,
             },

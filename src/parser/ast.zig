@@ -132,6 +132,21 @@ pub const Statement = union(enum) {
         double = 5,
         void = 6,
         ptr = 7,
+        // Values 0x80..0xFF encode struct-by-value types.
+        // The struct size in bytes is (value - 0x80 + 1), giving sizes 1..128.
+        _,
+
+        pub fn isStruct(self: FfiType) bool {
+            return @intFromEnum(self) >= 0x80;
+        }
+
+        pub fn structSize(self: FfiType) u8 {
+            return @intFromEnum(self) - 0x80 + 1;
+        }
+
+        pub fn fromStructSize(size: u8) FfiType {
+            return @enumFromInt(0x80 + size - 1);
+        }
     };
 
     pub const Extern = struct {

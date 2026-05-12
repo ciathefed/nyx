@@ -186,7 +186,7 @@ pub fn compile(self: *Compiler) ![]u8 {
                 for (v.exprs) |expr| {
                     switch (expr.*) {
                         .integer_literal => |int| try self.bytecode.push(
-                            @as(u8, @bitCast(@as(i8, @intCast(int)))),
+                            @as(u8, @truncate(@as(u64, @bitCast(@as(i64, int))))),
                         ),
                         .string_literal => |str_id| {
                             const str = self.interner.get(str_id).?;
@@ -222,6 +222,11 @@ pub fn compile(self: *Compiler) ![]u8 {
                             const bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, val));
                             try self.bytecode.extend(&bytes);
                         },
+                        .float_literal => |flt| {
+                            const val: u32 = @bitCast(@as(f32, @floatCast(flt)));
+                            const bytes = std.mem.toBytes(std.mem.nativeToLittle(u32, val));
+                            try self.bytecode.extend(&bytes);
+                        },
                         else => {
                             self.report(.err, "unsupported operand", v.span, 1);
                             return error.CompilerError;
@@ -234,6 +239,11 @@ pub fn compile(self: *Compiler) ![]u8 {
                     switch (expr.*) {
                         .integer_literal => |int| {
                             const val: u64 = @bitCast(int);
+                            const bytes = std.mem.toBytes(std.mem.nativeToLittle(u64, val));
+                            try self.bytecode.extend(&bytes);
+                        },
+                        .float_literal => |flt| {
+                            const val: u64 = @bitCast(flt);
                             const bytes = std.mem.toBytes(std.mem.nativeToLittle(u64, val));
                             try self.bytecode.extend(&bytes);
                         },

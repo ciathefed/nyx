@@ -4,15 +4,14 @@
 .extern WindowShouldClose(): i32
 .extern BeginDrawing(): void
 .extern EndDrawing(): void
-.extern ClearBackground(i32): void
-.extern DrawText(ptr, i32, i32, i32, i32): void
-.extern GetColor(i32): i32
+.extern ClearBackground(struct(4)): void
+.extern DrawText(ptr, i32, i32, i32, struct(4)): void
 
 #include "stdlib.nyx"
 
 .section text
 _start:
-    ; InitWindow(800, 450, "raylib [core] example - basic window")
+    ; InitWindow(800, 450, title)
     mov d0, 800
     mov d1, 450
     mov q2, title
@@ -25,16 +24,16 @@ _start:
 .loop:
     call BeginDrawing
 
-        ; ClearBackground(0xF5F5F5FF)  -- RAYWHITE as a packed color
-        mov d0, 0xFFF5F5F5
+        ; ClearBackground(RAYWHITE)
+        mov q0, RAYWHITE
         call ClearBackground
 
-        ; DrawText("Congrats!...", 190, 200, 20, 0xC8C8C8FF) -- LIGHTGRAY
+        ; DrawText(message, 190, 200, 20, LIGHTGRAY)
         mov q0, message
         mov d1, 190
         mov d2, 200
         mov d3, 20
-        mov d4, 0xFFC8C8C8
+        mov q4, LIGHTGRAY
         call DrawText
 
     call EndDrawing
@@ -49,3 +48,7 @@ _start:
 .section data
 title:      .asciz "raylib [core] example - basic window"
 message:    .asciz "Congrats! You created your first window!"
+
+; Color structs: { r, g, b, a } - 4 bytes each
+RAYWHITE:   db 245, 245, 245, 255
+LIGHTGRAY:  db 200, 200, 200, 255

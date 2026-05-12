@@ -58,40 +58,82 @@ pub const FfiType = enum(u8) {
     double = 0x05,
     void = 0x06,
     ptr = 0x07,
+    // Values 0x80..0xFF encode struct-by-value types.
+    // The struct size in bytes is (value - 0x80 + 1), giving sizes 1..128.
+    _,
 
-    pub fn toLibffiType(self: FfiType) *c.ffi_type {
-        return switch (self) {
-            .byte => &c.ffi_type_uint8,
-            .word => &c.ffi_type_uint16,
-            .dword => &c.ffi_type_uint32,
-            .qword => &c.ffi_type_uint64,
-            .float => &c.ffi_type_float,
-            .double => &c.ffi_type_double,
-            .void => &c.ffi_type_void,
-            .ptr => &c.ffi_type_pointer,
+    pub fn isStruct(self: FfiType) bool {
+        return @intFromEnum(self) >= 0x80;
+    }
+
+    pub fn structSize(self: FfiType) usize {
+        return @as(usize, @intFromEnum(self)) - 0x80 + 1;
+    }
+
+    pub fn toLibffiType(self: FfiType, struct_type_buf: *StructTypeBuf) ?*c.ffi_type {
+        return switch (@intFromEnum(self)) {
+            0x00 => &c.ffi_type_uint8,
+            0x01 => &c.ffi_type_uint16,
+            0x02 => &c.ffi_type_uint32,
+            0x03 => &c.ffi_type_uint64,
+            0x04 => &c.ffi_type_float,
+            0x05 => &c.ffi_type_double,
+            0x06 => &c.ffi_type_void,
+            0x07 => &c.ffi_type_pointer,
+            0x80...0xFF => struct_type_buf.getOrCreate(self.structSize()),
+            else => null,
         };
     }
 
     pub fn fromU8(val: u8) !FfiType {
         return switch (val) {
-            0x00 => .byte,
-            0x01 => .word,
-            0x02 => .dword,
-            0x03 => .qword,
-            0x04 => .float,
-            0x05 => .double,
-            0x06 => .void,
-            0x07 => .ptr,
+            0x00...0x07 => @enumFromInt(val),
+            0x80...0xFF => @enumFromInt(val),
             else => error.InvalidFfiType,
         };
     }
 
     pub fn isFloat(self: FfiType) bool {
-        return self == .float or self == .double;
+        return @intFromEnum(self) == 0x04 or @intFromEnum(self) == 0x05;
     }
 
     pub fn isIntOrPtr(self: FfiType) bool {
-        return self == .byte or self == .word or self == .dword or self == .qword or self == .ptr;
+        const v = @intFromEnum(self);
+        return v <= 0x03 or v == 0x07;
+    }
+};
+
+const StructTypeBuf = struct {
+    element_arrays: [8][129]*c.ffi_type = undefined,
+    null_sentinel: @TypeOf(@as(*c.ffi_type, undefined)) = undefined,
+    types: [8]c.ffi_type = undefined,
+    sizes: [8]usize = undefined,
+    count: usize = 0,
+
+    fn getOrCreate(self: *StructTypeBuf, size: usize) ?*c.ffi_type {
+        for (0..self.count) |i| {
+            if (self.sizes[i] == size) return &self.types[i];
+        }
+        if (self.count >= 8) return null;
+
+        const idx = self.count;
+        for (0..size) |j| {
+            self.element_arrays[idx][j] = @constCast(&c.ffi_type_uint8);
+        }
+
+        const elem_ptr: [*]*c.ffi_type = &self.element_arrays[idx];
+        const as_opt: [*]?*c.ffi_type = @ptrCast(elem_ptr);
+        as_opt[size] = null;
+
+        self.types[idx] = .{
+            .size = 0,
+            .alignment = 0,
+            .type = c.FFI_TYPE_STRUCT,
+            .elements = @ptrCast(elem_ptr),
+        };
+        self.sizes[idx] = size;
+        self.count += 1;
+        return &self.types[idx];
     }
 };
 
@@ -126,17 +168,21 @@ fn popVm(vm: *Vm, size: DataSize) !Immediate {
 pub fn call(func_ptr: *anyopaque, ret_type: FfiType, arg_types: []const FfiType, vm: *Vm) !void {
     if (arg_types.len > MAX_ARGS) return error.TooManyArguments;
 
+    var struct_type_buf: StructTypeBuf = .{};
+
     var ffi_arg_types: [MAX_ARGS]*c.ffi_type = undefined;
     for (arg_types, 0..) |at, i| {
-        ffi_arg_types[i] = at.toLibffiType();
+        ffi_arg_types[i] = at.toLibffiType(&struct_type_buf) orelse return error.InvalidFfiType;
     }
+
+    const ret_ffi_type = ret_type.toLibffiType(&struct_type_buf) orelse return error.InvalidFfiType;
 
     var cif: c.ffi_cif = undefined;
     const prep_status = c.ffi_prep_cif(
         &cif,
         c.FFI_DEFAULT_ABI,
         @intCast(arg_types.len),
-        ret_type.toLibffiType(),
+        ret_ffi_type,
         if (arg_types.len > 0) @ptrCast(&ffi_arg_types) else null,
     );
     if (prep_status != c.FFI_OK) return error.FfiPrepFailed;
@@ -148,6 +194,7 @@ pub fn call(func_ptr: *anyopaque, ret_type: FfiType, arg_types: []const FfiType,
     var arg_values_f32: [MAX_ARGS]f32 = undefined;
     var arg_values_f64: [MAX_ARGS]f64 = undefined;
     var arg_values_ptr: [MAX_ARGS]?*anyopaque = undefined;
+    var arg_struct_bufs: [MAX_ARGS][128]u8 = undefined;
 
     var arg_ptrs: [MAX_ARGS]?*anyopaque = undefined;
 
@@ -161,7 +208,7 @@ pub fn call(func_ptr: *anyopaque, ret_type: FfiType, arg_types: []const FfiType,
             } else {
                 total_overflow += 1;
             }
-        } else if (at.isIntOrPtr()) {
+        } else if (at.isIntOrPtr() or at.isStruct()) {
             if (int_count < 6) {
                 int_count += 1;
             } else {
@@ -259,18 +306,39 @@ pub fn call(func_ptr: *anyopaque, ret_type: FfiType, arg_types: []const FfiType,
                 }
                 arg_ptrs[i] = @ptrCast(&arg_values_f64[i]);
             },
-            .void => return error.VoidArgumentType,
+            else => {
+                if (at.isStruct()) {
+                    const struct_sz = at.structSize();
+                    const vm_addr: u64 = if (int_reg_idx < 6) blk: {
+                        const v = vm.regs.get(int_arg_regs[int_reg_idx].q).asU64();
+                        int_reg_idx += 1;
+                        break :blk v;
+                    } else blk: {
+                        const v = stack_values[stack_read_idx];
+                        stack_read_idx += 1;
+                        break :blk v;
+                    };
+                    const host_ptr = vm.mmu.resolveHostPtr(@intCast(vm_addr)) orelse return error.AddressOutOfBounds;
+                    @memcpy(arg_struct_bufs[i][0..struct_sz], host_ptr[0..struct_sz]);
+                    arg_ptrs[i] = @ptrCast(&arg_struct_bufs[i]);
+                } else {
+                    return error.VoidArgumentType;
+                }
+            },
         }
     }
 
     var ret_u64: u64 = 0;
     var ret_f32: f32 = 0;
     var ret_f64: f64 = 0;
-    const ret_storage: ?*anyopaque = switch (ret_type) {
-        .void => null,
-        .float => @ptrCast(&ret_f32),
-        .double => @ptrCast(&ret_f64),
-        else => @ptrCast(&ret_u64),
+    var ret_struct_buf: [128]u8 = undefined;
+    const ret_storage: ?*anyopaque = blk: {
+        const v = @intFromEnum(ret_type);
+        if (v == @intFromEnum(FfiType.void)) break :blk null;
+        if (v == @intFromEnum(FfiType.float)) break :blk @ptrCast(&ret_f32);
+        if (v == @intFromEnum(FfiType.double)) break :blk @ptrCast(&ret_f64);
+        if (ret_type.isStruct()) break :blk @ptrCast(&ret_struct_buf);
+        break :blk @ptrCast(&ret_u64);
     };
 
     c.ffi_call(
@@ -280,13 +348,25 @@ pub fn call(func_ptr: *anyopaque, ret_type: FfiType, arg_types: []const FfiType,
         if (arg_types.len > 0) @ptrCast(&arg_ptrs) else null,
     );
 
-    switch (ret_type) {
-        .void => {},
-        .byte => vm.regs.set(.b0, .{ .byte = @truncate(ret_u64) }),
-        .word => vm.regs.set(.w0, .{ .word = @truncate(ret_u64) }),
-        .dword => vm.regs.set(.d0, .{ .dword = @truncate(ret_u64) }),
-        .qword, .ptr => vm.regs.set(.q0, .{ .qword = ret_u64 }),
-        .float => vm.regs.set(.ff0, .{ .float = ret_f32 }),
-        .double => vm.regs.set(.dd0, .{ .double = ret_f64 }),
+    const ret_v = @intFromEnum(ret_type);
+    if (ret_v == @intFromEnum(FfiType.void)) {
+        // nothing
+    } else if (ret_v == @intFromEnum(FfiType.byte)) {
+        vm.regs.set(.b0, .{ .byte = @truncate(ret_u64) });
+    } else if (ret_v == @intFromEnum(FfiType.word)) {
+        vm.regs.set(.w0, .{ .word = @truncate(ret_u64) });
+    } else if (ret_v == @intFromEnum(FfiType.dword)) {
+        vm.regs.set(.d0, .{ .dword = @truncate(ret_u64) });
+    } else if (ret_v == @intFromEnum(FfiType.qword) or ret_v == @intFromEnum(FfiType.ptr)) {
+        vm.regs.set(.q0, .{ .qword = ret_u64 });
+    } else if (ret_v == @intFromEnum(FfiType.float)) {
+        vm.regs.set(.ff0, .{ .float = ret_f32 });
+    } else if (ret_v == @intFromEnum(FfiType.double)) {
+        vm.regs.set(.dd0, .{ .double = ret_f64 });
+    } else if (ret_type.isStruct()) {
+        const dest_addr = vm.regs.get(.q0).asU64();
+        const struct_sz = ret_type.structSize();
+        const host_ptr = vm.mmu.resolveHostPtr(@intCast(dest_addr)) orelse return error.AddressOutOfBounds;
+        @memcpy(host_ptr[0..struct_sz], ret_struct_buf[0..struct_sz]);
     }
 }

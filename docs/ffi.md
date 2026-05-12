@@ -53,6 +53,7 @@ That's it. No C code to write, no Makefile, no bridge library.
 | `f32` | 4 bytes | 32-bit float | `ff` |
 | `f64` | 8 bytes | 64-bit float | `dd` |
 | `ptr` | 8 bytes | Pointer (VM address → host pointer) | `q` |
+| `struct(N)` | N bytes | Struct passed by value (1–128 bytes) | `q` (address) |
 | `void` | — | No value (return type only) | — |
 
 ### Examples
@@ -62,6 +63,7 @@ That's it. No C code to write, no Makefile, no bridge library.
 .extern InitWindow(i32, i32, ptr): void
 .extern SetTargetFPS(i32): void
 .extern sin(f64): f64
+.extern ClearBackground(struct(4)): void
 .extern CloseWindow(): void
 ```
 
@@ -110,6 +112,7 @@ Integer and float arguments use **separate register pools**. A function with
 | `f32` | `ff0` |
 | `f64` | `dd0` |
 | `void` | — |
+| `struct(N)` | Written to VM memory at address in `q0` |
 
 ### Pointer Translation
 
@@ -121,6 +124,30 @@ function can dereference. This means you can pass label addresses directly:
 mov q0, my_string    ; VM address of the string
 call puts            ; puts receives a real const char*
 ```
+
+### Struct Passing
+
+When a `struct(N)` argument is passed, the register holds a VM address
+pointing to the struct's bytes in memory. The VM copies those N bytes and
+passes them **by value** to the native function via libffi. This means you
+layout structs in the `.data` section (or on the stack) just like any other
+data:
+
+```nyx
+.extern ClearBackground(struct(4)): void
+
+.section text
+_start:
+    mov q0, RAYWHITE       ; q0 = address of the Color bytes
+    call ClearBackground    ; VM copies 4 bytes and passes by value
+    hlt
+
+.section data
+RAYWHITE:   db 245, 245, 245, 255   ; Color { r, g, b, a }
+```
+
+For struct **return values**, the VM writes the returned bytes to the VM
+memory address held in `q0` at the time of the call.
 
 ---
 
@@ -240,8 +267,7 @@ nyx run raylib_demo.nyx -l /usr/local/lib/libraylib.dylib
 
 ## Limitations
 
-- **Struct arguments/returns** are not yet supported. Use packed integers or
-  helper functions as a workaround.
 - **Variadic functions** (e.g. `printf`) are not yet supported. Use
   non-variadic alternatives like `puts` or `fputs`.
 - **Maximum 64 arguments** per extern call.
+- **Struct size limit** is 128 bytes per `struct(N)` type.
