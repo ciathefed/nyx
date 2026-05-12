@@ -33,6 +33,7 @@ pub const Kind = enum {
     rparen,
     lbracket,
     rbracket,
+    ellipsis,
 
     kw_error,
     kw_define,

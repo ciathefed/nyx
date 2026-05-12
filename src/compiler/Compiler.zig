@@ -22,6 +22,7 @@ const ExternInfo = struct {
     name: StringId,
     return_type: FfiType,
     param_types: []const FfiType,
+    is_variadic: bool,
 };
 
 pub const addressing_variant_1: u8 = 0x00; // [REGISTER, ?INTEGER]
@@ -146,6 +147,7 @@ pub fn compile(self: *Compiler) ![]u8 {
                         .name = ident_id,
                         .return_type = v.return_type,
                         .param_types = v.param_types,
+                        .is_variadic = v.is_variadic,
                     }),
                     else => {
                         self.report(.err, "unsupported operand", v.span, 1);
@@ -177,6 +179,7 @@ pub fn compile(self: *Compiler) ![]u8 {
             .jle => |v| try self.compileJump(v.expr, .jle, v.span),
             .jge => |v| try self.compileJump(v.expr, .jge, v.span),
             .call => |v| try self.compileCall(v.expr, v.span),
+            .call_variadic => |v| try self.compileCallVariadic(v.name, v.variadic_types, v.span),
             .ret => try self.bytecode.push(Opcode.ret),
             .inc => |v| try self.compileIncOrDec(v.expr, .inc, v.span),
             .dec => |v| try self.compileIncOrDec(v.expr, .dec, v.span),
@@ -762,7 +765,9 @@ fn compileSti(
                     try self.bytecode.extend(name);
                     try self.bytecode.push(0x00);
                     try self.bytecode.push(@intFromEnum(ex.return_type));
-                    try self.bytecode.push(@as(u8, @intCast(ex.param_types.len)));
+                    const arg_count: u8 = @intCast(ex.param_types.len);
+                    try self.bytecode.push(arg_count); // fixed_arg_count
+                    try self.bytecode.push(arg_count); // total_arg_count
                     for (ex.param_types) |pt| {
                         try self.bytecode.push(@intFromEnum(pt));
                     }
@@ -1440,7 +1445,9 @@ fn compileCall(self: *Compiler, expr: *ast.Expression, span: Span) !void {
                     try self.bytecode.extend(name);
                     try self.bytecode.push(0x00);
                     try self.bytecode.push(@intFromEnum(ex.return_type));
-                    try self.bytecode.push(@as(u8, @intCast(ex.param_types.len)));
+                    const arg_count: u8 = @intCast(ex.param_types.len);
+                    try self.bytecode.push(arg_count); // fixed_arg_count
+                    try self.bytecode.push(arg_count); // total_arg_count
                     for (ex.param_types) |pt| {
                         try self.bytecode.push(@intFromEnum(pt));
                     }
@@ -1461,6 +1468,42 @@ fn compileCall(self: *Compiler, expr: *ast.Expression, span: Span) !void {
     }
 
     return self.reportError("unsupported operand", span);
+}
+
+fn compileCallVariadic(self: *Compiler, name_expr: *ast.Expression, variadic_types: []const FfiType, span: Span) !void {
+    switch (name_expr.*) {
+        .identifier => |src_id| {
+            for (self.externs.items) |ex| {
+                if (src_id == ex.name) {
+                    if (!ex.is_variadic) {
+                        self.report(.err, "function is not declared as variadic", span, 1);
+                        return error.CompilerError;
+                    }
+                    try self.bytecode.push(Opcode.call_ex);
+                    const name = self.interner.get(src_id).?;
+                    try self.bytecode.extend(name);
+                    try self.bytecode.push(0x00);
+                    try self.bytecode.push(@intFromEnum(ex.return_type));
+                    const fixed_count: u8 = @intCast(ex.param_types.len);
+                    const total_count: u8 = fixed_count + @as(u8, @intCast(variadic_types.len));
+                    try self.bytecode.push(fixed_count);
+                    try self.bytecode.push(total_count);
+                    for (ex.param_types) |pt| {
+                        try self.bytecode.push(@intFromEnum(pt));
+                    }
+                    for (variadic_types) |vt| {
+                        try self.bytecode.push(@intFromEnum(vt));
+                    }
+                    return;
+                }
+            }
+            self.report(.err, "unknown extern function for variadic call", span, 1);
+            return error.CompilerError;
+        },
+        else => {},
+    }
+
+    return self.reportError("unsupported operand for variadic call", span);
 }
 
 fn compileIncOrDec(

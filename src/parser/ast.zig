@@ -61,6 +61,7 @@ pub const Statement = union(enum) {
     resq: Expr1,
     macro_def: MacroDef,
     macro_call: MacroCall,
+    call_variadic: CallVariadic,
 
     pub const Expr1 = struct {
         expr: *Expression,
@@ -153,6 +154,13 @@ pub const Statement = union(enum) {
         name: *Expression,
         param_types: []const FfiType,
         return_type: FfiType,
+        is_variadic: bool,
+        span: Span,
+    };
+
+    pub const CallVariadic = struct {
+        name: *Expression,
+        variadic_types: []const FfiType,
         span: Span,
     };
 
@@ -217,6 +225,7 @@ pub const Statement = union(enum) {
             .resq => |v| v.span,
             .macro_def => |v| v.span,
             .macro_call => |v| v.span,
+            .call_variadic => |v| v.span,
         };
     }
 };

@@ -1,0 +1,30 @@
+.extern printf(ptr, ...): i32
+
+#include "stdlib.nyx"
+
+.section text
+_start:
+    ; printf("Hello %s!\n", "world")
+    mov q0, fmt_str
+    mov q1, arg_world
+    call printf(ptr)
+
+    ; printf("The answer is %d\n", 42)
+    mov q0, fmt_int
+    mov d1, 42
+    call printf(i32)
+
+    ; printf("%d + %d = %d\n", 10, 20, 30)
+    mov q0, fmt_three
+    mov d1, 10
+    mov d2, 20
+    mov d3, 30
+    call printf(i32, i32, i32)
+
+    hlt
+
+.section data
+fmt_str:    .asciz "Hello %s!\n"
+fmt_int:    .asciz "The answer is %d\n"
+fmt_three:  .asciz "%d + %d = %d\n"
+arg_world:  .asciz "world"

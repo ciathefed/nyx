@@ -165,7 +165,7 @@ fn popVm(vm: *Vm, size: DataSize) !Immediate {
     return value;
 }
 
-pub fn call(func_ptr: *anyopaque, ret_type: FfiType, arg_types: []const FfiType, vm: *Vm) !void {
+pub fn call(func_ptr: *anyopaque, ret_type: FfiType, arg_types: []const FfiType, fixed_arg_count: u8, vm: *Vm) !void {
     if (arg_types.len > MAX_ARGS) return error.TooManyArguments;
 
     var struct_type_buf: StructTypeBuf = .{};
@@ -178,13 +178,23 @@ pub fn call(func_ptr: *anyopaque, ret_type: FfiType, arg_types: []const FfiType,
     const ret_ffi_type = ret_type.toLibffiType(&struct_type_buf) orelse return error.InvalidFfiType;
 
     var cif: c.ffi_cif = undefined;
-    const prep_status = c.ffi_prep_cif(
-        &cif,
-        c.FFI_DEFAULT_ABI,
-        @intCast(arg_types.len),
-        ret_ffi_type,
-        if (arg_types.len > 0) @ptrCast(&ffi_arg_types) else null,
-    );
+    const prep_status = if (fixed_arg_count < arg_types.len)
+        c.ffi_prep_cif_var(
+            &cif,
+            c.FFI_DEFAULT_ABI,
+            @intCast(fixed_arg_count),
+            @intCast(arg_types.len),
+            ret_ffi_type,
+            if (arg_types.len > 0) @ptrCast(&ffi_arg_types) else null,
+        )
+    else
+        c.ffi_prep_cif(
+            &cif,
+            c.FFI_DEFAULT_ABI,
+            @intCast(arg_types.len),
+            ret_ffi_type,
+            if (arg_types.len > 0) @ptrCast(&ffi_arg_types) else null,
+        );
     if (prep_status != c.FFI_OK) return error.FfiPrepFailed;
 
     var arg_values_u8: [MAX_ARGS]u8 = undefined;
@@ -280,9 +290,14 @@ pub fn call(func_ptr: *anyopaque, ret_type: FfiType, arg_types: []const FfiType,
                 };
                 if (vm_addr == 0) {
                     arg_values_ptr[i] = null;
-                } else {
+                } else if (vm_addr < vm.mmu.size()) {
+                    // Address falls within VM memory, resolve to host pointer
                     const host = vm.mmu.resolveHostPtr(@intCast(vm_addr));
                     arg_values_ptr[i] = if (host) |h| @ptrCast(h) else null;
+                } else {
+                    // Address is outside VM memory, treat as a raw host pointer
+                    // (e.g. returned by a previous FFI call like TextFormat)
+                    arg_values_ptr[i] = @ptrFromInt(@as(usize, @intCast(vm_addr)));
                 }
                 arg_ptrs[i] = @ptrCast(&arg_values_ptr[i]);
             },

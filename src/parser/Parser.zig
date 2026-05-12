@@ -226,7 +226,12 @@ fn parseStatement(self: *Parser) !ast.Statement {
             self.nextToken();
 
             var param_types = ArrayList(ast.Statement.FfiType).init(self.arena.allocator());
-            if (!self.curTokenIs(.rparen)) {
+            var is_variadic = false;
+            if (self.curTokenIs(.ellipsis)) {
+                // (..) with no fixed args
+                is_variadic = true;
+                self.nextToken();
+            } else if (!self.curTokenIs(.rparen)) {
                 while (true) {
                     if (self.curTokenIs(.identifier)) {
                         const type_name = self.lexer.interner.get(self.cur_token.string_id).?;
@@ -268,6 +273,12 @@ fn parseStatement(self: *Parser) !ast.Statement {
                     }
                     if (self.curTokenIs(.comma)) {
                         self.nextToken();
+                        // Check for ellipsis after comma
+                        if (self.curTokenIs(.ellipsis)) {
+                            is_variadic = true;
+                            self.nextToken();
+                            break;
+                        }
                         continue;
                     }
                     break;
@@ -330,6 +341,7 @@ fn parseStatement(self: *Parser) !ast.Statement {
                 .name = name_expr,
                 .param_types = try param_types.toOwnedSlice(),
                 .return_type = return_type,
+                .is_variadic = is_variadic,
                 .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
             } };
         },
@@ -603,6 +615,70 @@ fn parseStatement(self: *Parser) !ast.Statement {
         .kw_call => {
             self.nextToken();
             const expr = try self.parseExpression();
+
+            // Check for variadic call syntax: call name(type, type, ...)
+            if (self.curTokenIs(.lparen)) {
+                self.nextToken();
+                var variadic_types = ArrayList(ast.Statement.FfiType).init(self.arena.allocator());
+                if (!self.curTokenIs(.rparen)) {
+                    while (true) {
+                        if (self.curTokenIs(.identifier)) {
+                            const type_name = self.lexer.interner.get(self.cur_token.string_id).?;
+                            if (mem.eql(u8, type_name, "struct")) {
+                                self.nextToken();
+                                if (!self.curTokenIs(.lparen)) {
+                                    self.report(.err, "expected '(' after 'struct'", self.cur_token.span, 1);
+                                    return error.ParserError;
+                                }
+                                self.nextToken();
+                                const size_expr = try self.parseExpression();
+                                const size_val: u8 = switch (size_expr.*) {
+                                    .integer_literal => |v| @intCast(v),
+                                    else => {
+                                        self.report(.err, "expected integer size in struct(N)", self.cur_token.span, 1);
+                                        return error.ParserError;
+                                    },
+                                };
+                                if (size_val < 1) {
+                                    self.report(.err, "struct size must be at least 1", self.cur_token.span, 1);
+                                    return error.ParserError;
+                                }
+                                if (!self.curTokenIs(.rparen)) {
+                                    self.report(.err, "expected ')' after struct size", self.cur_token.span, 1);
+                                    return error.ParserError;
+                                }
+                                self.nextToken();
+                                try variadic_types.append(ast.Statement.FfiType.fromStructSize(size_val));
+                            } else {
+                                try variadic_types.append(parseFfiType(type_name) orelse {
+                                    self.report(.err, "unknown FFI type in variadic call argument list", self.cur_token.span, 1);
+                                    return error.ParserError;
+                                });
+                                self.nextToken();
+                            }
+                        } else {
+                            self.report(.err, "expected type name in variadic call argument list", self.cur_token.span, 1);
+                            return error.ParserError;
+                        }
+                        if (self.curTokenIs(.comma)) {
+                            self.nextToken();
+                            continue;
+                        }
+                        break;
+                    }
+                }
+                if (!self.curTokenIs(.rparen)) {
+                    self.report(.err, "expected ')' after variadic call argument types", self.cur_token.span, 1);
+                    return error.ParserError;
+                }
+                self.nextToken();
+                return .{ .call_variadic = .{
+                    .name = expr,
+                    .variadic_types = try variadic_types.toOwnedSlice(),
+                    .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),
+                } };
+            }
+
             return .{ .call = .{
                 .expr = expr,
                 .span = .init(cur_span.start, self.prev_token.span.end, cur_span.filename),

@@ -376,14 +376,15 @@ pub fn step(self: *Vm) !void {
             const func_ptr = try self.external_loader.lookup(name);
 
             const ret_type = try ExternalLoader.FfiType.fromU8(try self.readByte());
-            const arg_count = try self.readByte();
+            const fixed_arg_count = try self.readByte();
+            const total_arg_count = try self.readByte();
 
             var arg_types: [64]ExternalLoader.FfiType = undefined;
-            for (0..arg_count) |i| {
+            for (0..total_arg_count) |i| {
                 arg_types[i] = try ExternalLoader.FfiType.fromU8(try self.readByte());
             }
 
-            try ExternalLoader.call(func_ptr, ret_type, arg_types[0..arg_count], self);
+            try ExternalLoader.call(func_ptr, ret_type, arg_types[0..total_arg_count], fixed_arg_count, self);
         },
         .inc => {
             const reg = try self.readRegister();

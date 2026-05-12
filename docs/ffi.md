@@ -52,8 +52,8 @@ That's it. No C code to write, no Makefile, no bridge library.
 | `i64` | 8 bytes | 64-bit integer | `q` |
 | `f32` | 4 bytes | 32-bit float | `ff` |
 | `f64` | 8 bytes | 64-bit float | `dd` |
-| `ptr` | 8 bytes | Pointer (VM address → host pointer) | `q` |
-| `struct(N)` | N bytes | Struct passed by value (1–128 bytes) | `q` (address) |
+| `ptr` | 8 bytes | Pointer (VM address or host pointer) | `q` |
+| `struct(N)` | N bytes | Struct passed by value (1-128 bytes) | `q` (address) |
 | `void` | — | No value (return type only) | — |
 
 ### Examples
@@ -61,11 +61,52 @@ That's it. No C code to write, no Makefile, no bridge library.
 ```nyx
 .extern puts(ptr): i32
 .extern InitWindow(i32, i32, ptr): void
-.extern SetTargetFPS(i32): void
-.extern sin(f64): f64
 .extern ClearBackground(struct(4)): void
+.extern DrawCircle(i32, i32, f32, struct(4)): void
+.extern GetFrameTime(): f32
 .extern CloseWindow(): void
 ```
+
+---
+
+## Variadic Functions
+
+Functions like `printf` and `TextFormat` accept a variable number of arguments.
+Declare them with `...` after the fixed parameters:
+
+```nyx
+.extern printf(ptr, ...): i32
+.extern TextFormat(ptr, ...): ptr
+```
+
+At the call site, specify the types of the variadic arguments in parentheses
+after the function name:
+
+```nyx
+; printf("Hello %s!\n", "world")
+mov q0, fmt_str
+mov q1, arg_world
+call printf(ptr)
+
+; printf("%d + %d = %d\n", 10, 20, 30)
+mov q0, fmt_three
+mov d1, 10
+mov d2, 20
+mov d3, 30
+call printf(i32, i32, i32)
+
+; TextFormat("FPS: %d (target: %d)", fps, target)
+mov q0, fmt_fps
+mov d1, 60
+mov d2, 60
+call TextFormat(i32, i32)    ; returns ptr in q0
+```
+
+The fixed arguments follow the normal calling convention. The variadic
+arguments continue from where the fixed arguments left off in the same
+register pools.
+
+Non-variadic calls use the normal `call name` syntax without parentheses.
 
 ---
 
@@ -99,7 +140,7 @@ registers following this convention:
 | 7+ | Stack (pushed right-to-left) |
 
 Integer and float arguments use **separate register pools**. A function with
-3 integer args and 2 float args uses `q0`–`q2` and `ff0`–`ff1`.
+3 integer args and 2 float args uses `q0`-`q2` and `ff0`-`ff1`.
 
 ### Return Values
 
@@ -116,22 +157,33 @@ Integer and float arguments use **separate register pools**. A function with
 
 ### Pointer Translation
 
-When a `ptr` argument is passed, the VM automatically translates the virtual
-memory address (stored in the register) to a real host pointer that the native
-function can dereference. This means you can pass label addresses directly:
+When a `ptr` argument is passed, the VM checks if the value falls within VM
+memory. If it does, the VM address is translated to a real host pointer. If
+it falls outside VM memory (e.g. a pointer returned by a previous FFI call
+like `TextFormat`), it is passed through as-is. This means you can freely
+pass both label addresses and host pointers returned by native functions:
 
 ```nyx
 mov q0, my_string    ; VM address of the string
 call puts            ; puts receives a real const char*
+
+mov q0, fmt
+mov d1, 42
+call TextFormat(i32) ; returns a host pointer in q0
+; q0 now holds a host pointer, which can be passed directly:
+mov d1, 10
+mov d2, 10
+mov d3, 20
+mov q4, DARKGRAY
+call DrawText        ; q0 (host pointer) is passed through correctly
 ```
 
 ### Struct Passing
 
 When a `struct(N)` argument is passed, the register holds a VM address
 pointing to the struct's bytes in memory. The VM copies those N bytes and
-passes them **by value** to the native function via libffi. This means you
-layout structs in the `.data` section (or on the stack) just like any other
-data:
+passes them **by value** to the native function via libffi. Layout structs
+in the `.data` section (or on the stack) just like any other data:
 
 ```nyx
 .extern ClearBackground(struct(4)): void
@@ -148,6 +200,23 @@ RAYWHITE:   db 245, 245, 245, 255   ; Color { r, g, b, a }
 
 For struct **return values**, the VM writes the returned bytes to the VM
 memory address held in `q0` at the time of the call.
+
+---
+
+## Float Data
+
+The `dd` directive accepts float literals, storing them as 4-byte IEEE 754
+values. Similarly, `dq` accepts float literals as 8-byte IEEE 754 doubles:
+
+```nyx
+.section data
+speed:      dd 120.0        ; f32
+pi:         dq 3.14159265   ; f64
+position:   dd 0.0          ; f32, initialized to zero
+```
+
+This is useful for storing mutable float state (e.g. positions, velocities)
+that you load and store with `mov ff0, [addr]` / `mov [addr], ff0`.
 
 ---
 
@@ -206,7 +275,8 @@ nyx run hello.nyx -l /lib/x86_64-linux-gnu/libc.so.6
 
 ## Real-World Example: Raylib
 
-Calling raylib functions directly, no C bridge needed:
+Calling raylib functions directly with `struct(4)` for Color, `dd` for float
+data, and `TextFormat` for dynamic text:
 
 ```nyx
 .extern InitWindow(i32, i32, ptr): void
@@ -215,8 +285,12 @@ Calling raylib functions directly, no C bridge needed:
 .extern WindowShouldClose(): i32
 .extern BeginDrawing(): void
 .extern EndDrawing(): void
-.extern ClearBackground(i32): void
-.extern DrawText(ptr, i32, i32, i32, i32): void
+.extern ClearBackground(struct(4)): void
+.extern DrawCircle(i32, i32, f32, struct(4)): void
+.extern DrawText(ptr, i32, i32, i32, struct(4)): void
+.extern GetFrameTime(): f32
+.extern GetFPS(): i32
+.extern TextFormat(ptr, ...): ptr
 
 #include "stdlib.nyx"
 
@@ -231,16 +305,42 @@ _start:
     call SetTargetFPS
 
 .loop:
+    call GetFrameTime           ; ff0 = delta time
+    mov q8, posX
+    mov ff1, [q8]
+    mul ff2, ff0, 120.0         ; speed = 120 px/sec
+    add ff1, ff1, ff2
+    mov [q8], ff1
+
+    cmp ff1, 850.0
+    jlt .no_wrap
+    mov ff1, 0.0
+    mov [q8], ff1
+.no_wrap:
+
     call BeginDrawing
 
-        mov d0, 0xFFF5F5F5
+        mov q0, RAYWHITE
         call ClearBackground
 
-        mov q0, message
-        mov d1, 190
-        mov d2, 200
+        ; DrawCircle((int)posX, 225, 30.0, RED)
+        mov q8, posX
+        mov ff4, [q8]
+        mov d0, ff4             ; float-to-int truncation
+        mov d1, 225
+        mov ff0, 30.0
+        mov q2, RED
+        call DrawCircle
+
+        ; Dynamic FPS text using TextFormat (variadic)
+        call GetFPS
+        mov d1, d0
+        mov q0, fmt_fps
+        call TextFormat(i32)
+        mov d1, 10
+        mov d2, 10
         mov d3, 20
-        mov d4, 0xFFC8C8C8
+        mov q4, DARKGRAY
         call DrawText
 
     call EndDrawing
@@ -253,21 +353,39 @@ _start:
     hlt
 
 .section data
-title:      .asciz "raylib [core] example - basic window"
-message:    .asciz "Congrats! You created your first window!"
+title:      .asciz "raylib example - nyx FFI"
+fmt_fps:    .asciz "FPS: %d"
+
+posX:       dd 0.0
+
+RAYWHITE:   db 245, 245, 245, 255
+RED:        db 230, 41, 55, 255
+DARKGRAY:   db 80, 80, 80, 255
 ```
 
 Run it:
 
 ```sh
-nyx run raylib_demo.nyx -l /usr/local/lib/libraylib.dylib
+nyx run raylib_demo.nyx -l /opt/homebrew/lib/libraylib.dylib   # macOS (Homebrew)
+nyx run raylib_demo.nyx -l /usr/local/lib/libraylib.so          # Linux
 ```
+
+---
+
+## Advanced: The C API (nyx.h)
+
+The C header `include/nyx.h` and the shared library `libnyx` still exist for
+**embedding** the Nyx VM inside a C/C++ application. Functions like
+`vm_get_reg_int`, `vm_mem_read_cstr`, etc. let a host program inspect and
+manipulate the VM state.
+
+However, **you do not need the C API for external function calls**. The libffi
+system handles everything automatically. The C API is only relevant if you are
+building a program that creates and drives a `Vm` instance from C code.
 
 ---
 
 ## Limitations
 
-- **Variadic functions** (e.g. `printf`) are not yet supported. Use
-  non-variadic alternatives like `puts` or `fputs`.
 - **Maximum 64 arguments** per extern call.
 - **Struct size limit** is 128 bytes per `struct(N)` type.

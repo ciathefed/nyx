@@ -53,7 +53,16 @@ pub fn nextToken(self: *Lexer) Token {
         '[' => Token.init(.lbracket, "[", .init(start, start, self.filename)),
         ']' => Token.init(.rbracket, "]", .init(start, start, self.filename)),
         '#' => return self.readDirective(),
-        '.' => return self.readDirective(),
+        '.' => {
+            // Check for '...' (ellipsis)
+            if (self.peekChar() == '.' and self.read_pos + 1 < self.input.len and self.input[self.read_pos + 1] == '.') {
+                self.readChar(); // consume second '.'
+                self.readChar(); // consume third '.'
+                self.readChar(); // advance past
+                return Token.init(.ellipsis, "...", .init(start, start + 2, self.filename));
+            }
+            return self.readDirective();
+        },
         '"' => return self.readString(),
         ';' => return self.skipComment(),
         else => {
