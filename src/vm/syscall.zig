@@ -48,7 +48,8 @@ fn sysOpen(self: *Vm) anyerror!void {
 
 fn sysClose(self: *Vm) anyerror!void {
     const fd: i32 = @intCast(self.regs.get(.d0).asU32());
-    _ = posix.close(fd);
+    const res = posix.close(fd);
+    self.regs.set(.q0, .{ .qword = @intCast(res) });
 }
 
 fn sysRead(self: *Vm) anyerror!void {
